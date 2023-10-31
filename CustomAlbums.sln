@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.7.34221.43
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CustomAlbums", "CustomAlbums.csproj", "{AE06FA98-27DC-4F0D-8C4D-59D049F2E5FB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AE06FA98-27DC-4F0D-8C4D-59D049F2E5FB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE06FA98-27DC-4F0D-8C4D-59D049F2E5FB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE06FA98-27DC-4F0D-8C4D-59D049F2E5FB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE06FA98-27DC-4F0D-8C4D-59D049F2E5FB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B77F8FBA-9A6D-485A-B265-FEEE920E41B3}
+	EndGlobalSection
+EndGlobal

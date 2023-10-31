@@ -1,0 +1,161 @@
+<Project>
+  <PropertyGroup>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <ClearOutputDirectory>False</ClearOutputDirectory>
+    <GameFolder>$(MD_NET6_DIRECTORY)</GameFolder>
+    <MelonLoader>$(GameFolder)/MelonLoader/</MelonLoader>
+    <MelonNET6>$(MelonLoader)/net6/</MelonNET6>
+    <MelonAssemblies>$(MelonLoader)/Il2CppAssemblies/</MelonAssemblies>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)/Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)/Assembly-CSharp-firstpass.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppPeroString, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)/Il2CppPeroString.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppGoogle.Protobuf, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)/Il2CppGoogle.Protobuf.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2Cppmscorlib, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2Cppmscorlib.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppNewtonsoft.Json, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2CppNewtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppSystem, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2CppSystem.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppSystem.Core, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2CppSystem.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="MelonLoader, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonNET6)\MelonLoader.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppInterop.Common, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonNET6)\Il2CppInterop.Common.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppInterop.Generator, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonNET6)\Il2CppInterop.Generator.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppInterop.Runtime, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonNET6)\Il2CppInterop.Runtime.dll</HintPath>
+    </Reference>
+    <Reference Include="0Harmony, Version=2.9.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonNET6)\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppNAudio, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2CppNAudio.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppPeroTools2, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2CppPeroTools2.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppPeroTools2.Resources, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2CppPeroTools2.Resources.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppPeroTools2.Account, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2CppPeroTools2.Account.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppSirenix.Serialization, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2CppSirenix.Serialization.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppSystem.Runtime.InteropServices, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2CppSystem.Runtime.InteropServices.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2Cppspine-unity, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2Cppspine-unity.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.Addressables, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Unity.Addressables.dll</HintPath>
+    </Reference>
+    <Reference Include="Unity.ResourceManager, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Unity.ResourceManager.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AudioModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\UnityEngine.AudioModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.ImageConversionModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\UnityEngine.ImageConversionModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\UnityEngine.AnimationModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UnityWebRequestModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\UnityEngine.UnityWebRequestModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.UI, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\UnityEngine.UI.dll</HintPath>
+    </Reference>
+    <Reference Include="Il2CppDOTween, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2CppDOTween.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputPath>$(MsBuildThisFileDirectory)\Output\$(Configuration)\</OutputPath>
+  </PropertyGroup>
+</Project>
