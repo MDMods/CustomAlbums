@@ -15,6 +15,8 @@ namespace CustomAlbums
 
         internal static Bms Load(MemoryStream stream, string bmsName)
         {
+            Logger.Msg($"Loading bms {bmsName}...");
+
             var bpmDict = new Dictionary<string, float>();
             var notePercents = new Dictionary<int, JsonObject>();
             var dataList = new List<JsonObject>();
@@ -112,10 +114,8 @@ namespace CustomAlbums
                                 var totalOffset = 0f; // num4
 
                                 var data = dataList.FindAll(d => d["tick"].GetValue<float>() < tick);
-                                Logger.Msg("Data count: " + data.Count);
                                 for (var j = data.Count - 1; j >= 0; j--)
                                 {
-                                    Logger.Msg("LOOP DA LOOP");
                                     var obj = data[j];
                                     var offset = 0f; // num5
                                     var freq = obj["freq"].GetValue<float>(); // num6
@@ -138,7 +138,6 @@ namespace CustomAlbums
 
                                     for (var k = floorOffset; k < ceilOffset; k++)
                                     {
-                                        Logger.Msg("LOOPING@!!!!");
                                         var off = 1f; // num10
 
                                         if (k == floorOffset)
@@ -156,9 +155,7 @@ namespace CustomAlbums
 
                                         notePercents.TryGetValue(k, out var node);
                                         var percent = node?["percent"].GetValue<float>() ?? 1f;
-                                        Logger.Msg("Time before: " + time);
                                         time += Mathf.RoundToInt(off * percent * freq / 1E-06f) * 1E-06F;
-                                        Logger.Msg("Time after: " + time);
                                     }
                                 }
 
@@ -215,6 +212,7 @@ namespace CustomAlbums
                 bms.Info["BANNER"] = "cover/none_cover.png";
             }
 
+            Logger.Msg($"Loaded bms ${bmsName}.");
             return bms;
         }
     }
