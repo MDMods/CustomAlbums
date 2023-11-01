@@ -1,6 +1,5 @@
 ﻿using CustomAlbums.Data;
 using CustomAlbums.Utilities;
-using Il2CppAssets.Scripts.PeroTools.Commons;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Png;
@@ -11,10 +10,14 @@ namespace CustomAlbums.Managers
 {
     public static class CoverManager
     {
+        private static readonly Dictionary<int, Sprite> CachedCovers = new();
+        private static readonly Dictionary<int, AnimatedCover> CachedAnimatedCovers = new();
         private static readonly Logger Logger = new(nameof(CoverManager));
+
         public static Sprite GetCover(this Album album)
         {
             if (!album.HasFile("cover.png")) return null;
+            if (CachedCovers.TryGetValue(album.Index, out var cached)) return cached;
 
             using var stream = album.OpenFileStream("cover.png");
 
@@ -23,12 +26,16 @@ namespace CustomAlbums.Managers
             var tex = new Texture2D(2, 2, TextureFormat.ARGB32, false);
             tex.LoadImage(bytes);
 
-            return Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+            var cover = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+            CachedCovers.Add(album.Index, cover);
+
+            return cover;
         }
 
         public static AnimatedCover GetAnimatedCover(this Album album)
         {
             if (!album.HasFile("cover.gif")) return null;
+            if (CachedAnimatedCovers.TryGetValue(album.Index, out var cached)) return cached;
 
             var stream = album.OpenFileStream("cover.gif");
             var image = GifDecoder.Instance.Decode<Rgba32>(new DecoderOptions(), stream);
@@ -48,7 +55,10 @@ namespace CustomAlbums.Managers
                 sprites[i] = sprite;
             }
 
-            return new AnimatedCover(sprites, image.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay * 10);
+            var cover = new AnimatedCover(sprites, image.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay * 10);
+            CachedAnimatedCovers.Add(album.Index, cover);
+
+            return cover;
         }
     }
 }
