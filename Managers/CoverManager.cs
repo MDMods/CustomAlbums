@@ -1,14 +1,17 @@
 ﻿using CustomAlbums.Data;
 using CustomAlbums.Utilities;
+using Il2CppAssets.Scripts.PeroTools.Commons;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Png;
 using UnityEngine;
+using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums.Managers
 {
     public static class CoverManager
     {
+        private static readonly Logger Logger = new(nameof(CoverManager));
         public static Sprite GetCover(this Album album)
         {
             if (!album.HasFile("cover.png")) return null;
@@ -38,9 +41,8 @@ namespace CustomAlbums.Managers
                 using var ms = new MemoryStream();
                 frameImage.Save(ms, new PngEncoder());
 
-                var tex = new Texture2D(frameImage.Width, frameImage.Height);
-                tex.LoadRawTextureData(ms.ToArray());
-                tex.Apply();
+                var tex = new Texture2D(frameImage.Width, frameImage.Height, TextureFormat.ARGB32, false);
+                tex.LoadImage(ms.ToArray());
 
                 var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
                 sprites[i] = sprite;

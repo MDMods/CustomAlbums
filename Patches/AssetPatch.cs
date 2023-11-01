@@ -196,7 +196,7 @@ namespace CustomAlbums.Patches
                                 newAsset = album?.Music;
                                 break;
                             case "_cover":
-                                newAsset = album?.Cover;
+                                newAsset = album?.AnimatedCover?.Frames[0] ?? album?.Cover;
                                 break;
                             default:
                                 Logger.Error($"Unknown suffix: {suffix}");
