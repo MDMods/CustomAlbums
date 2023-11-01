@@ -70,8 +70,11 @@ namespace CustomAlbums.Managers
                 return true;
             });
 
-            Coroutines.Add(name, coroutine);
-            _currentCoroutine = coroutine;
+            if (!Coroutines.ContainsKey(name))
+            {
+                Coroutines.Add(name, coroutine);
+                _currentCoroutine = coroutine;
+            }
 
             return audioClip;
         }
@@ -139,8 +142,11 @@ namespace CustomAlbums.Managers
                 return true;
             });
 
-            Coroutines.Add(name, coroutine);
-            _currentCoroutine = coroutine;
+            if (!Coroutines.ContainsKey(name))
+            {
+                Coroutines.Add(name, coroutine);
+                _currentCoroutine = coroutine;
+            }
 
             return audioClip;
         }
