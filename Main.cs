@@ -1,4 +1,5 @@
-﻿using MelonLoader;
+﻿using CustomAlbums.Managers;
+using MelonLoader;
 
 namespace CustomAlbums
 {
@@ -9,6 +10,7 @@ namespace CustomAlbums
             base.OnInitializeMelon();
             Patches.AssetPatch.AttachHook();
             ModSettings.Register();
+            AlbumManager.LoadAlbums();
         }
     }
 }
