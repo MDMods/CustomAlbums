@@ -1,4 +1,5 @@
 ﻿using System.IO.Compression;
+using System.Text;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.Database;
@@ -120,14 +121,18 @@ namespace CustomAlbums.Data
                 if (HasFile($"map{difficulty}.talk"))
                 {
                     using var talkStream = OpenFileStream($"map{difficulty}.talk");
-                    var data = talkStream.ReadFully().ToString();
+                    var data = talkStream.ReadFully();
                     if (data != null)
                     {
-                        var dict = Json.Deserialize<Dictionary<string, List<GameDialogArgs>>>(data);
+                        var dataString = Encoding.UTF8.GetString(data);
+                        var dict = Json
+                            .Il2CppJsonDeserialize<
+                                Il2CppSystem.Collections.Generic.Dictionary<string,
+                                    Il2CppSystem.Collections.Generic.List<GameDialogArgs>>>(dataString);
                         stageInfo.dialogEvents = new Il2CppSystem.Collections.Generic.Dictionary<string, Il2CppSystem.Collections.Generic.List<GameDialogArgs>>();
-                        foreach (var (key, value) in dict)
+                        foreach (var dialogEvent in dict)
                         {
-                            stageInfo.dialogEvents.Add(key, value.ToIl2Cpp());
+                            stageInfo.dialogEvents.Add(dialogEvent.Key, dialogEvent.Value);
                         }
                     }
                 }

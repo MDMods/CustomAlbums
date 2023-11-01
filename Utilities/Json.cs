@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
+using JsonConvert = Il2CppNewtonsoft.Json.JsonConvert;
 
 namespace CustomAlbums.Utilities
 {
@@ -25,6 +26,10 @@ namespace CustomAlbums.Utilities
             }
 
             return array;
+        }
+
+        public static T Il2CppJsonDeserialize<T>(string text) {
+            return JsonConvert.DeserializeObject<T>(text);
         }
     }
 }
