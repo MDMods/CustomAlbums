@@ -212,7 +212,7 @@ namespace CustomAlbums
                 bms.Info["BANNER"] = "cover/none_cover.png";
             }
 
-            Logger.Msg($"Loaded bms ${bmsName}.");
+            Logger.Msg($"Loaded bms {bmsName}.");
             return bms;
         }
     }
