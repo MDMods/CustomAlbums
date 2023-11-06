@@ -1,7 +1,6 @@
 ﻿using System.Text.Json.Nodes;
 using CustomAlbums.Data;
 using CustomAlbums.Utilities;
-using Il2CppGameLogic;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
 
@@ -9,8 +8,6 @@ namespace CustomAlbums
 {
     internal static class BmsLoader
     {
-        private static readonly List<MusicData> MusicData = new();
-
         private static readonly Logger Logger = new(nameof(BmsLoader));
 
         internal static Bms Load(MemoryStream stream, string bmsName)
@@ -125,11 +122,8 @@ namespace CustomAlbums
                                         var prevObj = data[j - 1];
                                         offset = prevObj["tick"].GetValue<float>() - obj["tick"].GetValue<float>();
                                     }
-                                    
-                                    if (j == 0)
-                                    {
-                                        offset = tick - obj["tick"].GetValue<float>();
-                                    }
+
+                                    if (j == 0) offset = tick - obj["tick"].GetValue<float>();
 
                                     var localOffset = totalOffset; // num7
                                     totalOffset += offset;
@@ -141,17 +135,11 @@ namespace CustomAlbums
                                         var off = 1f; // num10
 
                                         if (k == floorOffset)
-                                        {
-                                            off = (k + 1) - localOffset;
-                                        }
+                                            off = k + 1 - localOffset;
                                         else if (k == ceilOffset - 1)
-                                        {
                                             off = totalOffset - (ceilOffset - 1);
-                                        }
                                         else if (ceilOffset == floorOffset + 1)
-                                        {
                                             off = totalOffset - localOffset;
-                                        }
 
                                         notePercents.TryGetValue(k, out var node);
                                         var percent = node?["percent"].GetValue<float>() ?? 1f;
@@ -204,15 +192,12 @@ namespace CustomAlbums
             bms.Info["NEW"] = true;
 
             if (bms.Info.TryGetPropertyValue("BANNER", out var banner))
-            {
                 bms.Info["BANNER"] = "cover/" + banner;
-            }
             else
-            {
                 bms.Info["BANNER"] = "cover/none_cover.png";
-            }
 
             Logger.Msg($"Loaded bms {bmsName}.");
+
             return bms;
         }
     }
