@@ -49,7 +49,7 @@ namespace CustomAlbums.Patches
 
                     if (uid != "?")
                     {
-                        var animatedCover = AlbumManager.LoadedAlbums[uid.Replace("999-", "album_")].AnimatedCover;
+                        var animatedCover = AlbumManager.GetByUid(uid).AnimatedCover;
                         if (animatedCover == null) continue;
                         var frame = (int)Mathf.Floor(Time.time * 1000) % (animatedCover.FramesPerSecond * animatedCover.FrameCount) / animatedCover.FramesPerSecond;
                         cell.m_StageImg.sprite = animatedCover.Frames[frame];

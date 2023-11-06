@@ -8,6 +8,7 @@ using UnityEngine;
 
 namespace CustomAlbums.Managers
 {
+    // TODO: fix audio cut bug
     public static class AudioManager
     {
         public const int AsyncReadSpeed = 4096;
@@ -61,6 +62,7 @@ namespace CustomAlbums.Managers
 
                 if (remainingSamples > 0 && readCount != 0) return false;
 
+                mp3.Dispose();
                 stream.Dispose();
 
                 Coroutines.Remove(name);
@@ -70,11 +72,8 @@ namespace CustomAlbums.Managers
                 return true;
             });
 
-            if (!Coroutines.ContainsKey(name))
-            {
-                Coroutines.Add(name, coroutine);
-                _currentCoroutine = coroutine;
-            }
+            Coroutines[name] = coroutine;
+            _currentCoroutine = coroutine;
 
             return audioClip;
         }
@@ -142,11 +141,8 @@ namespace CustomAlbums.Managers
                 return true;
             });
 
-            if (!Coroutines.ContainsKey(name))
-            {
-                Coroutines.Add(name, coroutine);
-                _currentCoroutine = coroutine;
-            }
+            Coroutines[name] = coroutine;
+            _currentCoroutine = coroutine;
 
             return audioClip;
         }
