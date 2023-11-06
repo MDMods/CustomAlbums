@@ -15,6 +15,9 @@ namespace CustomAlbums.Patches
 {
     internal class TagPatch
     {
+        /// <summary>
+        /// Enables animated album covers.
+        /// </summary>
         [HarmonyPatch(typeof(MusicTagManager), nameof(MusicTagManager.InitAlbumTagInfo))]
         internal class MusicTagPatch
         {
@@ -30,9 +33,8 @@ namespace CustomAlbums.Patches
                 {
                     tag_name = AlbumManager.Languages.ToIl2Cpp(),
                     tag_picture = "https://mdmc.moe/cdn/melon.png",
+                    music_list = AlbumManager.GetAllUid().ToIl2Cpp()
                 };
-                customInfo.music_list = new Il2CppSystem.Collections.Generic.List<string>();
-                foreach (var uid in AlbumManager.GetAllUid()) customInfo.music_list.Add(uid);
 
                 info.InitCustomTagInfo(customInfo);
 
