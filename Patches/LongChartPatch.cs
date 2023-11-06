@@ -5,6 +5,7 @@ namespace CustomAlbums.Patches
 {
     /// <summary>
     /// Changes the maximum length of a chart from 4 minutes to about 357913 minutes.
+    /// This does not change the fact that the maximum amount of chart elements is 
     /// </summary>
     [HarmonyPatch(typeof(FixUpdateTimer), "Run")]
     internal class LongChartPatch

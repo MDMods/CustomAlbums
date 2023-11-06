@@ -301,11 +301,10 @@ namespace CustomAlbums.Patches
         /// <returns>A new TextAsset initialized with the parameters.</returns>
         private static TextAsset CreateTextAsset(string name, string text)
         {
-            var asset = new TextAsset(text)
+            return new TextAsset(text)
             {
                 name = name
             };
-            return asset;
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]

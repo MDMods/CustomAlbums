@@ -24,7 +24,7 @@ namespace CustomAlbums.Patches
         internal static class MusicStageCellPatch
         {
             private static readonly Logger Logger = new(nameof(MusicStageCellPatch));
-            private static List<MusicStageCell> cells = new();
+            private static readonly List<MusicStageCell> Cells = new();
 
             public static void AnimateCovers()
             {
@@ -32,15 +32,15 @@ namespace CustomAlbums.Patches
 
                 if (dbMusicTag == null) return;
 
-                for (var i = cells.Count - 1; i >= 0; i--)
+                for (var i = Cells.Count - 1; i >= 0; i--)
                 {
-                    if (cells[i] == null || !cells[i].enabled)
+                    if (Cells[i] == null || !Cells[i].enabled)
                     {
-                        cells.RemoveAt(i);
+                        Cells.RemoveAt(i);
                     }
                 }
 
-                foreach (var cell in cells)
+                foreach (var cell in Cells)
                 {
                     var index = cell.m_VariableBehaviour.Cast<IVariable>().GetResult<int>();
                     var uid = dbMusicTag.GetShowStageUidByIndex(index);
@@ -51,15 +51,15 @@ namespace CustomAlbums.Patches
                     {
                         var animatedCover = AlbumManager.LoadedAlbums[uid.Replace("999-", "album_")].AnimatedCover;
                         if (animatedCover == null) continue;
-                        var frame = ((int)Mathf.Floor(Time.time * 1000) % (animatedCover.FramesPerSecond * animatedCover.FrameCount)) / animatedCover.FramesPerSecond;
-                        cell.m_StageImg.sprite = animatedCover.Frames[Math.Min(frame, animatedCover.FrameCount)];
+                        var frame = (int)Mathf.Floor(Time.time * 1000) % (animatedCover.FramesPerSecond * animatedCover.FrameCount) / animatedCover.FramesPerSecond;
+                        cell.m_StageImg.sprite = animatedCover.Frames[frame];
                     }
                 }
             }
 
             private static void Prefix(MusicStageCell __instance)
             {
-                cells.Add(__instance);
+                Cells.Add(__instance);
             }
         }
     }
