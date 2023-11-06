@@ -82,9 +82,10 @@ namespace CustomAlbums.Managers
             Logger.Msg($"Finished loading {LoadedAlbums.Count} albums with {Assets.Count} assets.", false);
         }
 
-        public static IEnumerable<string> GetAllUid()
-        {
-            return LoadedAlbums.Select(album => $"{Uid}-{album.Value.Index}");
-        }
+        public static IEnumerable<string> GetAllUid() =>
+            LoadedAlbums.Select(album => $"{Uid}-{album.Value.Index}");
+
+        public static Album GetByUid(int uid) =>
+            LoadedAlbums.FirstOrDefault(album => album.Value.Index == uid).Value;
     }
 }
