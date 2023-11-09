@@ -39,8 +39,8 @@
         public string Difficulty3 { get; set; } = "0";
         public string Difficulty4 { get; set; } = "0";
 
-        public HiddenMode HideBmsMode { get; set; } = HiddenMode.Click;
-        public int HideBmsDifficulty { get; set; } = 0;
+        public string HideBmsMode { get; set; } = "CLICK";
+        public string HideBmsDifficulty { get; set; } = "0";
         public string HideBmsMessage { get; set; } = string.Empty;
         
         public string[] SearchTags { get; set; } = Array.Empty<string>();
