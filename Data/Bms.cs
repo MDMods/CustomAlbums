@@ -1,5 +1,10 @@
 ﻿using System.Text.Json.Nodes;
+using CustomAlbums.Utilities;
+using Il2CppAssets.Scripts.GameCore.Managers;
+using Il2CppAssets.Scripts.PeroTools.Commons;
+using Il2CppFormulaBase;
 using Il2CppGameLogic;
+using Il2CppPeroPeroGames.GlobalDefines;
 
 namespace CustomAlbums.Data
 {
@@ -86,6 +91,47 @@ namespace CustomAlbums.Data
             ["D4"] = ChannelType.Ground | ChannelType.Event | ChannelType.SpTapHolds,
             ["SC"] = ChannelType.SpScroll
         };
+
+        public static void InitNoteData()
+        {
+            foreach (var config in NoteDataMananger.instance.noteDatas)
+            {
+                if (config.IsAprilFools()) continue;
+                if (config.GetNoteType() == NoteType.Block && config.boss_action.EndsWith("_atk_2")) continue;
+
+                var speeds = new List<int> { config.speed };
+                var scenes = new List<string> { config.scene };
+                var pathways = new List<int> { config.pathway };
+
+                if (config.IsAnySpeed()) speeds = new List<int> { 1, 2, 3 };
+                if (config.IsAnyScene())
+                {
+                    scenes = new List<string>();
+
+                    foreach (var scene in Singleton<StageBattleComponent>.instance.sceneInfo)
+                    {
+                        var noteType = config.GetNoteType();
+                        if (noteType is NoteType.Hp or NoteType.Music && scene.Value == 8) continue;
+
+                        scenes.Add($"scene_0{scene.Value}");
+                    }
+                }
+
+                if (config.IsAnyPathway()) pathways = new List<int> { 0, 1 };
+
+                foreach (var key in
+                         from pathway in pathways
+                         from speed in speeds
+                         from scene in scenes
+                         select GetNoteDataKey(config.ibms_id, pathway, speed, scene))
+                    NoteData.TryAdd(key, config);
+            }
+        }
+
+        private static string GetNoteDataKey(string bmsId, int pathway, int speed, string scene)
+        {
+            return $"{bmsId}-{pathway}-{speed}-{scene}";
+        }
     }
 }
 

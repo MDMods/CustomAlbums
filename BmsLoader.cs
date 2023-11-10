@@ -1,6 +1,8 @@
 ﻿using System.Text.Json.Nodes;
 using CustomAlbums.Data;
+using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
+using Il2CppAssets.Scripts.GameCore;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
 
@@ -9,7 +11,14 @@ namespace CustomAlbums
     internal static class BmsLoader
     {
         private static readonly Logger Logger = new(nameof(BmsLoader));
+        private static int Delay = 0;
 
+        /// <summary>
+        /// Creates a Bms object from a BMS file.
+        /// </summary>
+        /// <param name="stream">MemoryStream of BMS file.</param>
+        /// <param name="bmsName">Name of BMS score.</param>
+        /// <returns>Loaded Bms object.</returns>
         internal static Bms Load(MemoryStream stream, string bmsName)
         {
             Logger.Msg($"Loading bms {bmsName}...");
@@ -199,6 +208,22 @@ namespace CustomAlbums
             Logger.Msg($"Loaded bms {bmsName}.");
 
             return bms;
+        }
+
+        /// <summary>
+        /// Transmutes Bms data into StageInfo data.
+        /// </summary>
+        /// <param name="bms">The Bms object to transmute.</param>
+        /// <returns>The transmuted StageInfo object.</returns>
+        internal static StageInfo TransmuteData(Bms bms)
+        {
+            if (Bms.NoteData.Count == 0) Bms.InitNoteData();
+            MusicDataManager.Clear();
+            Delay = 0;
+
+            var stageInfo = ScriptableObject.CreateInstance<StageInfo>();
+
+            return stageInfo;
         }
     }
 }
