@@ -3,6 +3,7 @@ using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.GameCore;
+using Il2CppPeroPeroGames.GlobalDefines;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
 
@@ -223,7 +224,125 @@ namespace CustomAlbums
 
             var stageInfo = ScriptableObject.CreateInstance<StageInfo>();
 
+            var jsonArray = GetNoteData(bms);
+            Logger.Msg("Got note data");
+
+            // TODO: Process notes
+            // TODO: Process boss animations
+            // TODO: Process geminis
+            // TODO: Process note delay
+
             return stageInfo;
+        }
+
+        internal static JsonArray GetNoteData(Bms bms)
+        {
+            var processed = new JsonArray();
+
+            var speedAir = int.Parse(bms.Info["PLAYER"]?.GetValue<string>() ?? "0");
+            var speedGround = speedAir;
+
+            var objectId = 1;
+            for (var i = 0; i < bms.Notes.Count; i++)
+            {
+                var note = bms.Notes[i];
+                if (note is null) continue;
+
+                var bmsKey = note["value"]?.GetValue<string>() ?? "00";
+                var bmsId = Bms.BmsIds.TryGetValue(bmsKey, out var bType) ? bType : Bms.BmsId.None;
+                var channel = note["tone"]?.GetValue<string>() ?? string.Empty;
+                var channelType = Bms.Channels.TryGetValue(channel, out var cType) ? cType : Bms.ChannelType.None;
+
+                // Handle lane type
+                var pathway = -1;
+                if (channelType.HasFlag(Bms.ChannelType.Air))
+                    pathway = 1;
+                else if (channelType.HasFlag(Bms.ChannelType.Ground) || channelType.HasFlag(Bms.ChannelType.Event))
+                    pathway = 0;
+                if (pathway == -1) continue;
+
+                // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
+                // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
+                switch (bmsId)
+                {
+                    // Handle speed changes
+                    case Bms.BmsId.Speed1Both:
+                        speedGround = 1;
+                        speedAir = 1;
+                        break;
+                    case Bms.BmsId.Speed2Both:
+                        speedGround = 2;
+                        speedAir = 2;
+                        break;
+                    case Bms.BmsId.Speed3Both:
+                        speedGround = 3;
+                        speedAir = 3;
+                        break;
+                    case Bms.BmsId.Speed1Low:
+                        speedGround = 1;
+                        break;
+                    case Bms.BmsId.Speed1High:
+                        speedAir = 1;
+                        break;
+                    case Bms.BmsId.Speed2Low:
+                        speedGround = 2;
+                        break;
+                    case Bms.BmsId.Speed2High:
+                        speedAir = 2;
+                        break;
+                    case Bms.BmsId.Speed3Low:
+                        speedGround = 3;
+                        break;
+                    case Bms.BmsId.Speed3High:
+                        speedAir = 3;
+                        break;
+                }
+
+                var speed = (pathway == 1) ? speedAir : speedGround;
+                var scene = bms.Info["GENRE"]?.GetValue<string>();
+                if (!Bms.NoteData.TryGetValue(Bms.GetNoteDataKey(bmsKey, pathway, speed, scene), out var configData))
+                    continue;
+
+                var time = note["time"]?.GetValueAsDecimal() ?? 0M;
+
+                // Hold note & masher 
+                var holdLength = 0M;
+                var isHold = configData.GetNoteType() is NoteType.Press or NoteType.Mul;
+                if (isHold)
+                {
+                    if (channelType.HasFlag(Bms.ChannelType.SpTapHolds))
+                    {
+                        holdLength = 0.001M;
+                    }
+                    else
+                    {
+                        for (var j = i + 1; j < bms.Notes.Count; j++)
+                        {
+                            var holdEndNote = bms.Notes[j];
+                            var holdEndTime = holdEndNote?["time"]?.GetValueAsDecimal() ?? 0M;
+                            var holdEndBmsKey = holdEndNote?["value"]?.GetValue<string>() ?? string.Empty;
+                            var holdEndChannel = holdEndNote?["tone"]?.GetValue<string>() ?? string.Empty;
+
+                            if (holdEndBmsKey != bmsKey || holdEndChannel != channel) continue;
+                            holdLength = holdEndTime - time;
+                            bms.Notes[j]!["value"] = "";
+                            break;
+                        }
+                    }
+                }
+
+                processed.Add(new JsonObject
+                {
+                    ["id"] = objectId++,
+                    ["time"] = time,
+                    ["note_uid"] = configData.uid,
+                    ["length"] = holdLength,
+                    ["pathway"] = pathway,
+                    ["blood"] = !isHold && channelType.HasFlag(Bms.ChannelType.SpBlood)
+                });
+            }
+
+            return processed;
         }
     }
 }

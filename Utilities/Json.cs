@@ -31,5 +31,13 @@ namespace CustomAlbums.Utilities
         public static T Il2CppJsonDeserialize<T>(string text) {
             return JsonConvert.DeserializeObject<T>(text);
         }
+
+        /// <summary>
+        /// Fixes strange issue where getting a single as a decimal does not work.
+        /// </summary>
+        /// <param name="node">A JsonNode</param>
+        /// <returns>The decimal value</returns>
+        public static decimal GetValueAsDecimal(this JsonNode node) =>
+            decimal.TryParse(node.ToString(), out var result) ? result : 0M;
     }
 }

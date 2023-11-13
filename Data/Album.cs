@@ -137,8 +137,8 @@ namespace CustomAlbums.Data
                     }
                 }
 
+                stageInfo = BmsLoader.TransmuteData(bms);
                 GlobalDataBase.dbStageInfo.SetStageInfo(stageInfo);
-                // TODO: stageInfo = BmsLoader.TransmuteData(bms, stageInfo);
 
                 Sheets.Add(difficulty, new Sheet(hash, stageInfo));
             }
