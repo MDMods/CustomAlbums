@@ -1,9 +1,10 @@
-﻿using Il2CppGameLogic;
+﻿using System.Text.Json.Nodes;
+using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
 
 namespace CustomAlbums.Utilities
 {
-    public static class NoteConfigDataExtensions
+    public static class ConfigDataExtensions
     {
         public static bool IsAprilFools(this NoteConfigData config) =>
             config.prefab_name.EndsWith("_fool");
@@ -22,5 +23,18 @@ namespace CustomAlbums.Utilities
             || config.GetNoteType() == NoteType.None
             || config.ibms_id == "16"
             || config.ibms_id == "17";
+
+        public static MusicConfigData ToNoteConfigData(this JsonNode node)
+        {
+            var config = Interop.CreateTypeValue<MusicConfigData>();
+            config.id = node["id"]?.GetValue<int>() ?? -1;
+            config.time = node["time"]?.GetValue<Il2CppSystem.Decimal>() ?? Il2CppSystem.Decimal.Zero;
+            config.note_uid = node["node_uid"]?.GetValue<string>() ?? string.Empty;
+            config.length = node["length"]?.GetValue<Il2CppSystem.Decimal>() ?? Il2CppSystem.Decimal.Zero;
+            config.pathway = node["pathway"]?.GetValue<int>() ?? 0;
+            config.blood = node["blood"]?.GetValue<bool>() ?? false;
+
+            return config;
+        }
     }
 }

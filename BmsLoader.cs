@@ -3,6 +3,7 @@ using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.GameCore;
+using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
@@ -224,10 +225,10 @@ namespace CustomAlbums
 
             var stageInfo = ScriptableObject.CreateInstance<StageInfo>();
 
-            var jsonArray = GetNoteData(bms);
+            var noteData = GetNoteData(bms);
             Logger.Msg("Got note data");
 
-            // TODO: Process notes
+            LoadMusicData(noteData);
             // TODO: Process boss animations
             // TODO: Process geminis
             // TODO: Process note delay
@@ -235,7 +236,7 @@ namespace CustomAlbums
             return stageInfo;
         }
 
-        internal static JsonArray GetNoteData(Bms bms)
+        private static JsonArray GetNoteData(Bms bms)
         {
             var processed = new JsonArray();
 
@@ -343,6 +344,61 @@ namespace CustomAlbums
             }
 
             return processed;
+        }
+
+        private static void LoadMusicData(JsonArray noteData)
+        {
+            short noteId = 1;
+            foreach (var node in noteData)
+            {
+                if (noteId == short.MaxValue)
+                {
+                    Logger.Warning($"Cannot process full chart, there are too many objects. Max objects is {short.MaxValue}.");
+                    break;
+                }
+
+                var configData = node.ToNoteConfigData();
+                if (configData.time < 0) continue;
+                if (!Bms.NoteData.TryGetValue(configData.note_uid, out var newNoteData))
+                    newNoteData = Interop.CreateTypeValue<NoteConfigData>();
+
+                // Create a new note for each configData
+                var newNote = Interop.CreateTypeValue<MusicData>();
+                newNote.objId = noteId++;
+                newNote.tick = Il2CppSystem.Decimal.Round(configData.time, 3);
+                newNote.configData = configData;
+                newNote.isLongPressEnd = false;
+                newNote.isLongPressing = false;
+                newNote.noteData = newNoteData;
+
+                MusicDataManager.Add(newNote);
+
+                // Create ticks for hold notes. If it isn't a hold note, there is no need to continue.
+                if (!newNote.isLongPressStart) continue;
+
+                // Calculate the index in which the hold note ends
+                var endIndex = (int)(Il2CppSystem.Decimal.Round(
+                    newNote.tick + configData.length - newNoteData.left_great_range - newNoteData.left_perfect_range,
+                    3) / (Il2CppSystem.Decimal)0.001f);
+
+                for (var i = 0; i < newNote.longPressCount; i++)
+                {
+                    var holdTick = Interop.CreateTypeValue<MusicData>();
+                    holdTick.objId = noteId++;
+                    holdTick.tick = newNote.tick + i == newNote.longPressCount ? configData.length : (Il2CppSystem.Decimal)0.1f * i;
+                    holdTick.noteData = newNoteData;
+                    holdTick.longPressPTick = configData.time;
+                    holdTick.endIndex = endIndex;
+                    holdTick.isLongPressing = i != newNote.longPressCount;
+                    holdTick.isLongPressEnd = i == newNote.longPressCount;
+                    holdTick.configData = configData;
+                    holdTick.configData.length = 0;
+
+                    MusicDataManager.Add(holdTick);
+                }
+            }
+
+            Logger.Msg("Loaded music data!");
         }
     }
 }
