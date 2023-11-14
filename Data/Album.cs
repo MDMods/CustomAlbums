@@ -1,5 +1,6 @@
 ﻿using System.IO.Compression;
 using System.Text;
+using System.Text.Json.Nodes;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.Database;
@@ -14,6 +15,7 @@ namespace CustomAlbums.Data
         public int Index { get; }
         public string Path { get; }
         public bool IsPackaged { get; }
+        public bool[] TalkFileVersionsForDifficulty = new bool[4];
         public AlbumInfo Info { get; }
         public Sprite Cover => this.GetCover();
         public AnimatedCover AnimatedCover => this.GetAnimatedCover();
@@ -124,11 +126,17 @@ namespace CustomAlbums.Data
                     var data = talkStream.ReadFully();
                     if (data != null)
                     {
-                        var dataString = Encoding.UTF8.GetString(data);
+                        var talkFile = Json.Deserialize<JsonObject>(Encoding.UTF8.GetString(data));
+                        if (talkFile.TryGetPropertyValue("version", out var node) && node.GetValue<int>() == 2)
+                        {
+                            _logger.Msg("Version 2 talk file!");
+                            TalkFileVersionsForDifficulty[difficulty - 1] = true;
+                        }
+                        talkFile.Remove("version");
                         var dict = Json
                             .Il2CppJsonDeserialize<
                                 Il2CppSystem.Collections.Generic.Dictionary<string,
-                                    Il2CppSystem.Collections.Generic.List<GameDialogArgs>>>(dataString);
+                                    Il2CppSystem.Collections.Generic.List<GameDialogArgs>>>(talkFile.ToJsonString());
                         stageInfo.dialogEvents = new Il2CppSystem.Collections.Generic.Dictionary<string, Il2CppSystem.Collections.Generic.List<GameDialogArgs>>();
                         foreach (var dialogEvent in dict)
                         {

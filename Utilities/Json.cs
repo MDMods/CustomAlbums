@@ -28,7 +28,8 @@ namespace CustomAlbums.Utilities
             return array;
         }
 
-        public static T Il2CppJsonDeserialize<T>(string text) {
+        public static T Il2CppJsonDeserialize<T>(string text) 
+        {
             return JsonConvert.DeserializeObject<T>(text);
         }
 
