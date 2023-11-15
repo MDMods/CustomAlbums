@@ -26,11 +26,15 @@ namespace CustomAlbums.Utilities
 
         public static MusicConfigData ToNoteConfigData(this JsonNode node)
         {
+            // Converting decimal -> Il2CppSystem.Decimal is ass, so decimal -> float -> Il2CppSystem.Decimal
+            var time = node["time"]?.GetValue<decimal>() ?? decimal.Zero;
+            var length = node["length"]?.GetValue<decimal>() ?? decimal.Zero;
+            
             var config = Interop.CreateTypeValue<MusicConfigData>();
             config.id = node["id"]?.GetValue<int>() ?? -1;
-            config.time = node["time"]?.GetValue<Il2CppSystem.Decimal>() ?? Il2CppSystem.Decimal.Zero;
+            config.time = (Il2CppSystem.Decimal)(float)time;
             config.note_uid = node["node_uid"]?.GetValue<string>() ?? string.Empty;
-            config.length = node["length"]?.GetValue<Il2CppSystem.Decimal>() ?? Il2CppSystem.Decimal.Zero;
+            config.length = (Il2CppSystem.Decimal)(float)length;
             config.pathway = node["pathway"]?.GetValue<int>() ?? 0;
             config.blood = node["blood"]?.GetValue<bool>() ?? false;
 
