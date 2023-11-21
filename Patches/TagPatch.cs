@@ -38,8 +38,8 @@ namespace CustomAlbums.Patches
 
                 info.InitCustomTagInfo(customInfo);
 
-                GlobalDataBase.dbMusicTag.m_AlbumTagsSort.Insert(GlobalDataBase.dbMusicTag.m_AlbumTagsSort.Count - 4, AlbumManager.Uid);
-                GlobalDataBase.dbMusicTag.AddAlbumTagData(AlbumManager.Uid, info);
+                GlobalDataBase.dbMusicTag.m_AlbumTagsSort.Insert(GlobalDataBase.dbMusicTag.m_AlbumTagsSort.Count - 4, AlbumManager.UID);
+                GlobalDataBase.dbMusicTag.AddAlbumTagData(AlbumManager.UID, info);
             }
         }
     }

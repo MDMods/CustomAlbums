@@ -48,12 +48,12 @@ namespace CustomAlbums.Patches
                     if (uid is null) continue;
                     
                     var musicInfo = dbMusicTag.GetMusicInfoFromAll(uid);
-                    if (musicInfo.albumJsonIndex < AlbumManager.Uid) continue;
+                    if (musicInfo.albumJsonIndex < AlbumManager.UID) continue;
 
                     if (uid != "?")
                     {
                         var animatedCover = AlbumManager.GetByUid(uid).AnimatedCover;
-                        if (animatedCover == null) continue;
+                        if (animatedCover is null || animatedCover.FramesPerSecond == 0) continue;
                         var frame = (int)Mathf.Floor(Time.time * 1000) % (animatedCover.FramesPerSecond * animatedCover.FrameCount) / animatedCover.FramesPerSecond;
                         cell.m_StageImg.sprite = animatedCover.Frames[frame];
                     }

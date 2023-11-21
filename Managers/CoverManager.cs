@@ -2,21 +2,29 @@
 using CustomAlbums.Utilities;
 using Il2Cpp;
 using Il2CppAssets.Scripts.PeroTools.Commons;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using Il2CppSystem.Linq.Expressions;
+using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.Formats;
-using SixLabors.ImageSharp.Formats.Gif;
-using SixLabors.ImageSharp.Formats.Png;
+using SixLabors.ImageSharp.PixelFormats;
+using SixLabors.ImageSharp.Processing;
+using System.Diagnostics;
+using System.Runtime.CompilerServices;
 using UnityEngine;
+using static Il2CppSystem.Linq.Expressions.Interpreter.OrInstruction;
+using static UnityEngine.PostProcessing.MotionBlurComponent.FrameBlendingFilter;
 using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums.Managers
 {
     public static class CoverManager
     {
-        private static readonly Configuration CustomConfig = Configuration.Default.Clone();
         private static readonly Dictionary<int, Sprite> CachedCovers = new();
         private static readonly Dictionary<int, AnimatedCover> CachedAnimatedCovers = new();
         private static readonly Logger Logger = new(nameof(CoverManager));
+
+        private static readonly Configuration Config = Configuration.Default;
 
         public static Sprite GetCover(this Album album)
         {
@@ -38,38 +46,53 @@ namespace CustomAlbums.Managers
 
         public static unsafe AnimatedCover GetAnimatedCover(this Album album)
         {
-            CustomConfig.PreferContiguousImageBuffers = true;
-
+            // early return statements
             if (!album.HasFile("cover.gif")) return null;
             if (CachedAnimatedCovers.TryGetValue(album.Index, out var cached)) return cached;
 
+            Config.PreferContiguousImageBuffers = true;
+
+            // open and load the gif
             using var stream = album.OpenFileStream("cover.gif");
-            using var gif = Image.Load<Rgba32>(new DecoderOptions { Configuration = CustomConfig }, stream);
+            using var gif = Image.Load<Rgba32>(new DecoderOptions { Configuration = Config }, stream);
 
-            gif.Mutate(processor => processor.Flip(FlipMode.Vertical));
-
+            // for some reason Unity loads textures upside down?
+            // flip the frames
+            gif.Mutate(c => c.Flip(FlipMode.Vertical));
+       
             var sprites = new Sprite[gif.Frames.Count];
 
             for (var i = 0; i < gif.Frames.Count; i++)
             {
-                var width = gif.Frames[i].Width;
-                var height = gif.Frames[i].Height;
+                // get frame data
+                var frame = gif.Frames[i];
+                var width = frame.Width;
+                var height = frame.Width;
 
-                var success = gif.Frames[i].DangerousTryGetSinglePixelMemory(out var memory);
-                
-                if (!success) 
-                    Logger.Error("Failed to get pixel memory.");
-                              
+                // get frame pixel data
+                //
+                // this should really be done with CopyPixelData and a byte array
+                // but that causes a 6MB+ copy of an array that slows things down by a bit
+                // the more efficient way is to retrieve an IntPtr that stores the data and pass that with a size instead
+                var getPixelDataResult = frame.DangerousTryGetSinglePixelMemory(out var memory);
+                if (!getPixelDataResult)
+                {
+                    Logger.Error("Failed to get pixel data.");
+                    return null;
+                }
                 using var handle = memory.Pin();
                 
-                var tex = new Texture2D(width, height, TextureFormat.RGBA32, false);
-                tex.LoadRawTextureData((IntPtr)handle.Pointer, memory.Length * 4);
-                tex.Apply(false, true);
+                // create the textures
+                var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+                texture.LoadRawTextureData((IntPtr)handle.Pointer, memory.Length * sizeof(IntPtr));
+                texture.Apply(false);
 
-                var sprite = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+                // create the sprite with the given texture and add it to the sprites array
+                var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
                 sprite.hideFlags |= HideFlags.DontUnloadUnusedAsset;
                 sprites[i] = sprite;
             }
+            // create and add cover to cache
             var cover = new AnimatedCover(sprites, gif.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay * 10);
             CachedAnimatedCovers.Add(album.Index, cover);
 

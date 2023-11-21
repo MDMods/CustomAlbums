@@ -21,14 +21,14 @@ namespace CustomAlbums.Patches
                 switch (url)
                 {
                     case "statistics/pc-play-statistics-feedback":
-                        if (datas["music_uid"].ToString().StartsWith($"{AlbumManager.Uid}"))
+                        if (datas["music_uid"].ToString().StartsWith($"{AlbumManager.UID}"))
                         {
                             Logger.Msg("Blocked play feedback upload:" + datas["music_uid"].ToString());
                             return false;
                         }
                         break;
                     case "musedash/v2/pcleaderboard/high-score":
-                        if (GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}"))
+                        if (GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.UID}"))
                         {
                             Logger.Msg("Blocked high score upload:" + GlobalDataBase.dbBattleStage.musicUid);
                             return false;

@@ -7,11 +7,11 @@ namespace CustomAlbums.Managers
 {
     public static class AlbumManager
     {
-        public static readonly int Uid = 999;
-        public static readonly string JsonName = $"ALBUM{Uid + 1}";
-        public static readonly string MusicPackage = $"music_package_{Uid}";
-        public static readonly string SearchPath = "Custom_Albums";
-        public static readonly string SearchPattern = "*.mdm";
+        public const int UID = 999;
+        public const string SEARCH_PATH = "Custom_Albums";
+        public const string SEARCH_PATTERN = "*.mdm";
+        public static readonly string JsonName = $"ALBUM{UID + 1}";
+        public static readonly string MusicPackage = $"music_package_{UID}";
         public static readonly Dictionary<string, string> Languages = new()
         {
             { "English", "Custom Albums" },
@@ -22,10 +22,8 @@ namespace CustomAlbums.Managers
         };
 
         public static Dictionary<string, Album> LoadedAlbums { get; } = new();
-        public static List<string> Assets { get; } = new();
-
         private static readonly Logger Logger = new(nameof(AlbumManager));
-
+        internal static readonly FileSystemWatcher AlbumWatcher = new();
         public static void LoadOne(string path)
         {
             var index = LoadedAlbums.Count;
@@ -56,8 +54,8 @@ namespace CustomAlbums.Managers
             LoadedAlbums.Clear();
 
             var files = new List<string>();
-            files.AddRange(Directory.GetFiles(SearchPath, SearchPattern));
-            files.AddRange(Directory.GetDirectories(SearchPath));
+            files.AddRange(Directory.GetFiles(SEARCH_PATH, SEARCH_PATTERN));
+            files.AddRange(Directory.GetDirectories(SEARCH_PATH));
 
             foreach (var file in files)
             {
@@ -68,7 +66,7 @@ namespace CustomAlbums.Managers
         }
 
         public static IEnumerable<string> GetAllUid() =>
-            LoadedAlbums.Select(album => $"{Uid}-{album.Value.Index}");
+            LoadedAlbums.Select(album => $"{UID}-{album.Value.Index}");
 
         public static Album GetByUid(string uid) =>
             LoadedAlbums.FirstOrDefault(album => album.Value.Index == int.Parse(uid[4..])).Value;

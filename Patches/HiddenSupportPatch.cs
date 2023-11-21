@@ -45,11 +45,11 @@ namespace CustomAlbums.Patches
                     foreach (var (key, value) in AlbumManager.LoadedAlbums)
                     {
                         // Enable hidden mode for charts containing map4
-                        if (value.Sheets.ContainsKey(4) && BmsInfoLoadedHiddens.Add($"{AlbumManager.Uid}-{value.Index}"))
+                        if (value.Sheets.ContainsKey(4) && BmsInfoLoadedHiddens.Add($"{AlbumManager.UID}-{value.Index}"))
                         {
-                            var albumUid = $"{AlbumManager.Uid}-{value.Index}";
+                            var albumUid = $"{AlbumManager.UID}-{value.Index}";
 
-                            __instance.m_HideBmsInfos.Add($"{AlbumManager.Uid}-{value.Index}", new SpecialSongManager.HideBmsInfo(
+                            __instance.m_HideBmsInfos.Add($"{AlbumManager.UID}-{value.Index}", new SpecialSongManager.HideBmsInfo(
                                 albumUid,
                                 value.Info.HideBmsDifficulty == "0" ? (value.Sheets.ContainsKey(3) ? 3 : 2) : int.Parse(value.Info.HideBmsDifficulty),
                                 4,
@@ -108,7 +108,7 @@ namespace CustomAlbums.Patches
             private static readonly Logger Logger = new(nameof(InvokeHideBmsPatch));
             private static bool Prefix(MusicInfo musicInfo, SpecialSongManager __instance)
             {
-                if (musicInfo.uid.StartsWith(AlbumManager.Uid.ToString()) && BmsInfoLoadedHiddens.Contains(musicInfo.uid))
+                if (musicInfo.uid.StartsWith(AlbumManager.UID.ToString()) && BmsInfoLoadedHiddens.Contains(musicInfo.uid))
                 {
                     var hideBms = __instance.m_HideBmsInfos[musicInfo.uid];
                     __instance.m_IsInvokeHideDic[hideBms.uid] = true;

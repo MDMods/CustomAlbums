@@ -3,9 +3,11 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Xml.Linq;
 using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
+using HarmonyLib;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.GeneralLocalization;
@@ -45,7 +47,7 @@ namespace CustomAlbums.Patches
                 {
                     uid = AlbumManager.MusicPackage,
                     title = "Custom Albums",
-                    prefabsName = $"AlbumDisco{AlbumManager.Uid}",
+                    prefabsName = $"AlbumDisco{AlbumManager.UID}",
                     price = "¥25.00",
                     jsonName = AlbumManager.JsonName,
                     needPurchase = false,
@@ -72,7 +74,7 @@ namespace CustomAlbums.Patches
                     var albumInfo = albumObj.Info;
                     var customChartJson = new
                     {
-                        uid = $"{AlbumManager.Uid}-{albumObj.Index}",
+                        uid = $"{AlbumManager.UID}-{albumObj.Index}",
                         name = albumInfo.Name,
                         author = albumInfo.Author,
                         bpm = albumInfo.Bpm,
@@ -258,7 +260,7 @@ namespace CustomAlbums.Patches
         {
             // retrieve the pointer of the asset and the name of the asset
             var assetPtr = Hook.Trampoline(instance, assetNamePtr, nativeMethodInfo);
-            var assetName = IL2CPP.Il2CppStringToManaged(assetNamePtr) ?? "";
+            var assetName = IL2CPP.Il2CppStringToManaged(assetNamePtr) ?? string.Empty;
             
             Logger.Msg($"Loading {assetName}!");
 
