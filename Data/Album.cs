@@ -1,11 +1,6 @@
 ﻿using System.IO.Compression;
-using System.Text;
-using System.Text.Json.Nodes;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
-using Il2CppAssets.Scripts.Database;
-using Il2CppAssets.Scripts.GameCore;
-using Il2CppAssets.Scripts.Structs;
 using UnityEngine;
 
 namespace CustomAlbums.Data
@@ -105,50 +100,8 @@ namespace CustomAlbums.Data
             {
                 using var stream = OpenFileStream($"map{difficulty}.bms");
                 var hash = stream.GetHash();
-                var mapName = $"album_{Index}_map{difficulty}";
 
-                var bms = BmsLoader.Load(stream, mapName);
-                if (bms is null) continue;
-                
-                var stageInfo = ScriptableObject.CreateInstance<StageInfo>();
-                stageInfo.mapName = mapName;
-                stageInfo.scene = (string)bms.Info["GENRE"];
-                stageInfo.music = $"{Index}";
-                stageInfo.difficulty = difficulty;
-                // TODO: stageInfo.bpm = bms.GetBpm();
-                stageInfo.md5 = hash;
-                // TODO: stageInfo.sceneEvents = bms.GetSceneEvents();
-                stageInfo.name = Info.Name;
-
-                if (HasFile($"map{difficulty}.talk"))
-                {
-                    using var talkStream = OpenFileStream($"map{difficulty}.talk");
-                    var data = talkStream.ReadFully();
-                    if (data != null)
-                    {
-                        var talkFile = Json.Deserialize<JsonObject>(Encoding.UTF8.GetString(data));
-                        if (talkFile.TryGetPropertyValue("version", out var node) && node.GetValue<int>() == 2)
-                        {
-                            _logger.Msg("Version 2 talk file!");
-                            TalkFileVersionsForDifficulty[difficulty - 1] = true;
-                        }
-                        talkFile.Remove("version");
-                        var dict = Json
-                            .Il2CppJsonDeserialize<
-                                Il2CppSystem.Collections.Generic.Dictionary<string,
-                                    Il2CppSystem.Collections.Generic.List<GameDialogArgs>>>(talkFile.ToJsonString());
-                        stageInfo.dialogEvents = new Il2CppSystem.Collections.Generic.Dictionary<string, Il2CppSystem.Collections.Generic.List<GameDialogArgs>>();
-                        foreach (var dialogEvent in dict)
-                        {
-                            stageInfo.dialogEvents.Add(dialogEvent.Key, dialogEvent.Value);
-                        }
-                    }
-                }
-
-                stageInfo = BmsLoader.TransmuteData(bms);
-                GlobalDataBase.dbStageInfo.SetStageInfo(stageInfo);
-
-                Sheets.Add(difficulty, new Sheet(hash, stageInfo));
+                Sheets.Add(difficulty, new Sheet(hash, this, difficulty));
             }
         }
     }
