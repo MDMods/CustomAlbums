@@ -153,6 +153,11 @@
       <Private>false</Private>
       <HintPath>$(MelonAssemblies)\Il2CppDOTween.dll</HintPath>
     </Reference>
+    <Reference Include="Il2Cppspine-unity, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2Cppspine-unity.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
   <PropertyGroup>

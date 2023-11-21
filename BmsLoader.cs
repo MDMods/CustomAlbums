@@ -2,18 +2,30 @@
 using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
+using Il2Cpp;
 using Il2CppAssets.Scripts.GameCore;
+using Il2CppAssets.Scripts.GameCore.Managers;
+using Il2CppAssets.Scripts.PeroTools.Commons;
+using Il2CppAssets.Scripts.PeroTools.Managers;
+using Il2CppAssets.Scripts.PeroTools.Nice.Actions;
 using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
+using Il2CppPeroTools2.Resources;
+using Il2CppSpine.Unity;
 using UnityEngine;
+using UnityEngine.SceneManagement;
+using static CustomAlbums.Data.BmsStates;
+using static Il2Cpp.YlyRichText;
 using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums
 {
     internal static class BmsLoader
     {
+        private static Dictionary<string, NoteConfigData> _noteData = new();
+        private static Dictionary<string, Dictionary<string, NoteConfigData>> _bossData = new();
+        private static int _delay;
         private static readonly Logger Logger = new(nameof(BmsLoader));
-        private static int Delay = 0;
 
         /// <summary>
         /// Creates a Bms object from a BMS file.
@@ -220,8 +232,9 @@ namespace CustomAlbums
         internal static StageInfo TransmuteData(Bms bms)
         {
             if (Bms.NoteData.Count == 0) Bms.InitNoteData();
+            if (_noteData.Count == 0) InitNoteData();
             MusicDataManager.Clear();
-            Delay = 0;
+            _delay = 0;
 
             var stageInfo = ScriptableObject.CreateInstance<StageInfo>();
 
@@ -229,11 +242,26 @@ namespace CustomAlbums
             Logger.Msg("Got note data");
 
             LoadMusicData(noteData);
+            MusicDataManager.Sort();
+            ProcessElements(bms);
             // TODO: Process boss animations
             // TODO: Process geminis
             // TODO: Process note delay
 
             return stageInfo;
+        }
+
+        private static void InitNoteData()
+        {
+            foreach(var nData in SingletonScriptableObject<NoteDataMananger>.instance.noteDatas)
+            {
+                _noteData.TryAdd(nData.uid, nData);
+
+                if (nData.type != 0 || string.IsNullOrEmpty(nData.boss_action) || nData.boss_action == "0") continue;
+
+                _bossData.TryAdd(nData.scene, new Dictionary<string, NoteConfigData>());
+                _bossData[nData.scene].TryAdd(nData.boss_action, nData);
+            }
         }
 
         private static JsonArray GetNoteData(Bms bms)
@@ -399,6 +427,226 @@ namespace CustomAlbums
             }
 
             Logger.Msg("Loaded music data!");
+        }
+
+        private static void ProcessElements(Bms bms)
+        {
+            var scene = bms.Info["GENRE"]?.GetValue<string>() ?? string.Empty;
+            var bossData = new List<MusicData>();
+
+            foreach (var mData in MusicDataManager.Data)
+            {
+                if (mData.isBossNote)
+                {
+                    bossData.Add(mData);
+                    continue;
+                }
+            }
+            
+            // If the boss is not used for some reason, no need to process animations.
+            if (bossData.Count == 0) return;
+
+            // Add a boss exit animation if it is missing.
+            var finalData = bossData[^1];
+            if (AnimStatesRight[finalData.noteData.boss_action] != BossState.OffScreen)
+            {
+                var finalNote = MusicDataManager.Data[^1];
+                var tick = finalNote.tick;
+
+                if (finalNote.isBossNote)
+                {
+                    var startDelay = Il2CppSystem.Decimal.Round((Il2CppSystem.Decimal)GetStartDelay(finalNote.noteData.prefab_name), 3);
+                    var duration = (Il2CppSystem.Decimal)GetAnimationDuration(scene, finalNote.noteData.boss_action);
+                    tick += Il2CppSystem.Decimal.Round(-startDelay + duration, 3);
+                }
+                tick = Il2CppSystem.Decimal.Round(tick + (Il2CppSystem.Decimal)0.1f, 3);
+
+                var exitNoteData = _bossData[scene]["out"];
+
+                var exitConfig = Interop.CreateTypeValue<MusicConfigData>();
+                exitConfig.note_uid = exitNoteData.uid;
+                exitConfig.time = tick;
+
+                var exitMusicData = Interop.CreateTypeValue<MusicData>();
+                exitMusicData.objId = 0;
+                exitMusicData.tick = tick;
+                exitMusicData.configData = exitConfig;
+                exitMusicData.noteData = exitNoteData;
+
+                MusicDataManager.Add(exitMusicData);
+                bossData.Add(exitMusicData);
+                Logger.Msg("Added missing boss exit");
+            }
+
+            // Fix incorrect phase gears
+            var phaseGearConfig = Interop.CreateTypeValue<NoteConfigData>();
+            phaseGearConfig.ibms_id = "0";
+
+            for (var i = 0; i < bossData.Count; i++)
+            {
+                var data = bossData[i];
+                if (data.noteData.GetNoteType() != NoteType.Block) continue;
+
+                // Find the next boss animation that is not a gear
+                var bossAnimAhead = Interop.CreateTypeValue<MusicData>();
+                bossAnimAhead.configData.time = Il2CppSystem.Decimal.MinValue;
+
+                for (var j = i + 1; j < bossData.Count; j++)
+                {
+                    var dataAhead = bossData[j];
+                    if (dataAhead.noteData.GetNoteType() == NoteType.Block) continue;
+
+                    bossAnimAhead = dataAhead;
+                    break;
+                }
+
+                MusicData bossAnimBefore;
+                if (i > 0) bossAnimBefore = bossData[i - 1];
+                else
+                {
+                    bossAnimBefore = Interop.CreateTypeValue<MusicData>();
+                    bossAnimBefore.configData.time = Il2CppSystem.Decimal.MinValue;
+                }
+
+                var diffToAhead = Math.Abs((float)data.configData.time - (float)bossAnimAhead.configData.time);
+                var diffToBefore = Math.Abs((float)data.configData.time - (float)bossAnimBefore.configData.time);
+                var ahead = diffToAhead < diffToBefore;
+
+                var stateBehind = i > 0 ? AnimStatesRight[bossAnimBefore.noteData.boss_action] : BossState.OffScreen;
+                var stateAhead = AnimStatesLeft.TryGetValue(bossAnimAhead.noteData.boss_action, out var state) ? state : BossState.OffScreen;
+                var usedState = ahead ? stateAhead : stateBehind;
+                var correctState = usedState is BossState.Phase1 or BossState.Phase2;
+                if (!correctState)
+                {
+                    ahead = !ahead;
+                    usedState = ahead ? stateAhead : stateBehind;
+                }
+                if (usedState is not (BossState.Phase1 or BossState.Phase2)) continue;
+
+
+                if ((ahead && AnimStatesLeft[data.noteData.boss_action] == usedState) 
+                    || (!ahead && AnimStatesRight[data.noteData.boss_action] == usedState)) {
+                    continue;
+                }
+
+                var phase = usedState == BossState.Phase1 ? 1 : 2;
+
+                var noteData = SingletonScriptableObject<NoteDataMananger>.instance.noteDatas;
+                if (phaseGearConfig.ibms_id != data.noteData.ibms_id
+                    || phaseGearConfig.pathway != data.noteData.pathway
+                    || phaseGearConfig.scene != data.noteData.scene
+                    || phaseGearConfig.speed != data.noteData.speed
+                    || !phaseGearConfig.boss_action.StartsWith($"boss_far_atk_{phase}"))
+                {
+                    foreach(var d in noteData)
+                    {
+                        if (d.ibms_id != data.noteData.ibms_id
+                            || d.pathway != data.noteData.pathway
+                            || d.scene != data.noteData.scene
+                            || d.speed != data.noteData.speed
+                            || !d.boss_action.StartsWith($"boss_far_atk_{phase}")) continue;
+
+                        phaseGearConfig = d;
+                        break;
+                    }
+                }
+
+                var fixedConfigData = Interop.CreateTypeValue<MusicConfigData>();
+                fixedConfigData.blood = data.configData.blood;
+                fixedConfigData.id = data.configData.id;
+                fixedConfigData.length = data.configData.length;
+                fixedConfigData.note_uid = phaseGearConfig.uid;
+                fixedConfigData.pathway = data.configData.pathway;
+                fixedConfigData.time = data.configData.time;
+
+                var fixedGear = Interop.CreateTypeValue<MusicData>();
+                fixedGear.objId = data.objId;
+                fixedGear.tick = data.tick;
+                fixedGear.configData = fixedConfigData;
+                fixedGear.isLongPressEnd = data.isLongPressEnd;
+                fixedGear.isLongPressing = data.isLongPressing;
+                fixedGear.noteData = phaseGearConfig;
+
+                MusicDataManager.Set(fixedGear.objId, fixedGear);
+                bossData[i] = fixedGear;
+                Logger.Msg($"Fixed gear at tick {data.tick}.");
+            }
+
+            // Resolve state changes in list
+            var bossState = BossState.OffScreen;
+            for (var i = 0; i < bossData.Count; i++)
+            {
+                var anim = bossData[i].noteData.boss_action;
+                var nextState = AnimStatesLeft[anim];
+
+                if (bossState != nextState)
+                {
+                    var transfer = StateTransferAnims[bossState][nextState];
+                    var transferNoteData = _bossData[scene][transfer];
+                    var alignment = TransferAlignment[transfer];
+
+                    var alignData = alignment == AnimAlignment.Right ? bossData[i] : bossData[i - 1];
+
+                    var rightDelay = (Il2CppSystem.Decimal)GetStartDelay(bossData[i].noteData.prefab_name);
+                    var leftDelay = i == 0 ? 0 : (Il2CppSystem.Decimal)GetStartDelay(bossData[i - 1].noteData.prefab_name);
+                    var alignDelay = alignment == AnimAlignment.Left ? leftDelay : rightDelay;
+
+                    var duration = (Il2CppSystem.Decimal)GetAnimationDuration(scene, transfer);
+
+                    var mConfig = Interop.CreateTypeValue<MusicConfigData>();
+                    mConfig.note_uid = transferNoteData.uid;
+                    mConfig.time =
+                        Il2CppSystem.Decimal.Round(alignData.tick - alignDelay - (duration * (int)alignment), 3);
+
+                    var mData = Interop.CreateTypeValue<MusicData>();
+                    mData.tick = mConfig.time;
+                    mData.configData = mConfig;
+                    mData.noteData = transferNoteData;
+
+                    var tolerance = (Il2CppSystem.Decimal)0.300f;
+                    var fits = alignment switch
+                    {
+                        AnimAlignment.Left => mData.tick + duration < bossData[i].tick - rightDelay + tolerance,
+                        _ => i == 0 || mData.tick > bossData[i - 1].tick - leftDelay
+                    };
+
+                    if (!fits)
+                    {
+                        bossState = AnimStatesRight[bossData[i].noteData.boss_action];
+                        continue;
+                    }
+
+                    MusicDataManager.Add(mData);
+                    bossData.Insert(i, mData);
+                    i--;
+                }
+                else
+                {
+                    bossState = AnimStatesRight[bossData[i].noteData.boss_action];
+                }
+            }
+
+            Logger.Msg("Processed boss animations!");
+        }
+
+        private static float GetStartDelay(string prefab) =>
+            ResourcesManager.instance.LoadFromName<GameObject>(prefab).GetComponent<SpineActionController>().startDelay;
+
+        private static float GetAnimationDuration(string scene, string animation)
+        {
+            var resourceName = Singleton<ConfigManager>.instance.GetConfigStringValue("boss", "scene_name", "boss_name", scene);
+            var controller = ResourcesManager.instance.LoadFromName<GameObject>(resourceName).GetComponent<SpineActionController>();
+            var animations = controller.gameObject.GetComponent<SkeletonAnimation>().skeletonDataAsset.GetSkeletonData(quiet: true).Animations;
+
+            var arr = new SkeletActionData[controller.actionData.Count];
+            controller.actionData.CopyTo(arr, 0);
+            var actionData = new List<SkeletActionData>(arr).Find((SkeletActionData dd) => dd.name == animation);
+            var animName = animation;
+            if (actionData is { actionIdx: not null } && actionData.actionIdx.Length != 0)
+            {
+                animName = actionData.actionIdx[0];
+            }
+            return animations.Find((Il2CppSystem.Predicate<Il2CppSpine.Animation>)((Il2CppSpine.Animation a) => a.Name == animName)).Duration;
         }
     }
 }
