@@ -33,6 +33,31 @@ namespace CustomAlbums.Patches
         private static readonly Logger Logger = new(nameof(AssetPatch));
 
         /// <summary>
+        /// Binds the asset to a new key, while removing the old asset.
+        /// </summary>
+        /// <param name="oldAssetName">The old assetName.</param>
+        /// <param name="newAssetName">The new assetName where the value should be binded.</param>
+        /// <returns>true if the key was successfully binded; otherwise, false.</returns>
+        internal static bool ModifyCacheKey(string oldAssetName, string newAssetName)
+        {
+            var success = AssetCache.Remove(oldAssetName, out var asset);
+            if (!success)
+                return false;
+
+            return AssetCache.TryAdd(newAssetName, asset);
+        }
+
+        /// <summary>
+        /// Removes a KeyValuePair from the asset cache.
+        /// </summary>
+        /// <param name="key">The key corresponding to the value to be removed.</param>
+        /// <returns>true if the entry was successfully removed; otherwise, false.</returns>
+        internal static bool RemoveFromCache(string key)
+        {
+            return AssetCache.Remove(key);
+        }
+
+        /// <summary>
         /// Adds methods to the <c>AssetHandler</c>.
         /// The <c>AssetHandler</c> modifies certain assets based on their name.
         /// </summary>
