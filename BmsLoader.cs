@@ -7,24 +7,21 @@ using Il2CppAssets.Scripts.GameCore;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Managers;
-using Il2CppAssets.Scripts.PeroTools.Nice.Actions;
 using Il2CppFormulaBase;
 using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
 using Il2CppPeroTools2.Resources;
 using Il2CppSpine.Unity;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using static CustomAlbums.Data.BmsStates;
-using static Il2Cpp.YlyRichText;
 using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums
 {
     internal static class BmsLoader
     {
-        private static Dictionary<string, NoteConfigData> _noteData = new();
-        private static Dictionary<string, Dictionary<string, NoteConfigData>> _bossData = new();
+        private static readonly Dictionary<string, NoteConfigData> NoteData = new();
+        private static readonly Dictionary<string, Dictionary<string, NoteConfigData>> BossData = new();
         private static Il2CppSystem.Decimal _delay;
         private static readonly Logger Logger = new(nameof(BmsLoader));
 
@@ -232,7 +229,7 @@ namespace CustomAlbums
         /// <returns>The transmuted StageInfo object.</returns>
         internal static StageInfo TransmuteData(Bms bms)
         {
-            if (_noteData.Count == 0) InitNoteData();
+            if (NoteData.Count == 0) InitNoteData();
             MusicDataManager.Clear();
             _delay = 0;
 
@@ -252,12 +249,12 @@ namespace CustomAlbums
         {
             foreach(var nData in SingletonScriptableObject<NoteDataMananger>.instance.noteDatas)
             {
-                _noteData.TryAdd(nData.uid, nData);
+                NoteData.TryAdd(nData.uid, nData);
 
                 if (nData.type != 0 || string.IsNullOrEmpty(nData.boss_action) || nData.boss_action == "0") continue;
 
-                _bossData.TryAdd(nData.scene, new Dictionary<string, NoteConfigData>());
-                _bossData[nData.scene].TryAdd(nData.boss_action, nData);
+                BossData.TryAdd(nData.scene, new Dictionary<string, NoteConfigData>());
+                BossData[nData.scene].TryAdd(nData.boss_action, nData);
             }
         }
 
@@ -326,7 +323,7 @@ namespace CustomAlbums
 
                 var speed = (pathway == 1) ? speedAir : speedGround;
                 var scene = bms.Info["GENRE"]?.GetValue<string>();
-                if (!_noteData.TryGetValue(Bms.GetNoteDataKey(bmsKey, pathway, speed, scene), out var configData))
+                if (!NoteData.TryGetValue(Bms.GetNoteDataKey(bmsKey, pathway, speed, scene), out var configData))
                     continue;
 
                 var time = note["time"]?.GetValueAsDecimal() ?? 0M;
@@ -384,7 +381,7 @@ namespace CustomAlbums
 
                 var configData = node.ToMusicConfigData();
                 if (configData.time < 0) continue;
-                if (!_noteData.TryGetValue(configData.note_uid, out var newNoteData))
+                if (!NoteData.TryGetValue(configData.note_uid, out var newNoteData))
                     newNoteData = Interop.CreateTypeValue<NoteConfigData>();
 
                 // Create a new note for each configData
@@ -433,6 +430,7 @@ namespace CustomAlbums
             var sceneInfo = Singleton<StageBattleComponent>.instance.sceneInfo;
             var bossData = new List<MusicData>();
             var delayCache = new Dictionary<string, Il2CppSystem.Decimal>();
+            var geminiCache = new Dictionary<Il2CppSystem.Decimal, List<MusicData>>();
 
             for (var i = 0; i < MusicDataManager.Data.Count; i++)
             {
@@ -476,7 +474,44 @@ namespace CustomAlbums
                     var showTick = mData.tick - mData.dt;
                     _delay = showTick < _delay ? showTick : _delay;
                 }
+
+                // Process geminis
+                mData.doubleIdx = -1;
+
+                if (mData.noteData.GetNoteType() != NoteType.Monster && mData.noteData.GetNoteType() != NoteType.Hide)
+                    continue;
+
+                if (geminiCache.TryGetValue(mData.tick, out var geminiList))
+                {
+                    var isNoteGemini = Bms.BmsIds[mData.noteData.ibms_id ?? "00"] == Bms.BmsId.Gemini;
+                    var isTargetGemini = false;
+                    var target = Interop.CreateTypeValue<MusicData>();
+
+                    foreach (var gemini in geminiList.Where(gemini => !gemini.isAir || !mData.isAir))
+                    {
+                        target = gemini;
+                        isTargetGemini = Bms.BmsIds[gemini.noteData.ibms_id ?? "00"] == Bms.BmsId.Gemini;
+
+                        if (isNoteGemini && isTargetGemini) break;
+                        if (!isNoteGemini) break;
+                    }
+
+                    if (target.objId > 0)
+                    {
+                        mData.isDouble = isNoteGemini && isTargetGemini;
+                        mData.doubleIdx = target.objId;
+                        target.isDouble = isNoteGemini && isTargetGemini;
+                        target.doubleIdx = mData.objId;
+                    }
+                }
+                else
+                {
+                    geminiCache[mData.tick] = new List<MusicData>();
+                }
+
+                geminiCache[mData.tick].Add(mData);
             }
+            Logger.Msg("Processed geminis!");
 
             // Round delay
             _delay = Il2CppSystem.Decimal.Round(_delay, 3);
@@ -500,7 +535,7 @@ namespace CustomAlbums
                 }
                 tick = Il2CppSystem.Decimal.Round(tick + (Il2CppSystem.Decimal)0.1f, 3);
 
-                var exitNoteData = _bossData[scene]["out"];
+                var exitNoteData = BossData[scene]["out"];
 
                 var exitConfig = Interop.CreateTypeValue<MusicConfigData>();
                 exitConfig.note_uid = exitNoteData.uid;
@@ -621,7 +656,7 @@ namespace CustomAlbums
                 if (bossState != nextState)
                 {
                     var transfer = StateTransferAnims[bossState][nextState];
-                    var transferNoteData = _bossData[scene][transfer];
+                    var transferNoteData = BossData[scene][transfer];
                     var alignment = TransferAlignment[transfer];
 
                     var alignData = alignment == AnimAlignment.Right ? bossData[i] : bossData[i - 1];
