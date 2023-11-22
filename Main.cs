@@ -1,16 +1,7 @@
-﻿using CustomAlbums.Data;
-using CustomAlbums.Managers;
+﻿using CustomAlbums.Managers;
 using CustomAlbums.Patches;
-using Il2Cpp;
-using Il2CppAssets.Scripts.Database;
-using Il2CppAssets.Scripts.PeroTools.Commons;
-using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
-using Il2CppGameCore.Scene.Controllers;
 using MelonLoader;
-using System.Reflection.Metadata.Ecma335;
-using UnityEngine;
 using static CustomAlbums.Patches.AnimatedCoverPatch;
-using static Il2CppSystem.IO.Directory;
 using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums
@@ -26,18 +17,17 @@ namespace CustomAlbums
             {
                 Logger.Msg($"Waiting for {path}...");
                 using var fileStream = File.Open(path, FileMode.Open);
-                if (fileStream.Length > 0)
-                {
-                    Logger.Msg("File is ready to be read now");
-                    return true;
-                }
-                return false;
+                if (fileStream.Length <= 0) return false;
+
+                Logger.Msg("File is ready to be read now");
+                return true;
             }
-            catch (Exception ex) when (ex is FileNotFoundException || ex is IOException)
+            catch (Exception ex) when (ex is FileNotFoundException or IOException)
             {
                 return false;
             }
         }
+
         public override void OnInitializeMelon()
         {
             base.OnInitializeMelon();
