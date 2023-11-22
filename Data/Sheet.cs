@@ -4,6 +4,7 @@ using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore;
 using Il2CppAssets.Scripts.Structs;
+using Il2CppGameLogic;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
 
@@ -35,12 +36,12 @@ namespace CustomAlbums.Data
                 
             var stageInfo = ScriptableObject.CreateInstance<StageInfo>();
             stageInfo.mapName = MapName;
-            stageInfo.scene = (string)bms.Info["GENRE"];
+            stageInfo.scene = bms.Info["GENRE"]?.GetValue<string>() ?? string.Empty;
             stageInfo.music = $"{ParentAlbum.Index}";
             stageInfo.difficulty = Difficulty;
-            // TODO: stageInfo.bpm = bms.GetBpm();
+            stageInfo.bpm = bms.Bpm;
             stageInfo.md5 = Md5;
-            // TODO: stageInfo.sceneEvents = bms.GetSceneEvents();
+            stageInfo.sceneEvents = bms.GetSceneEvents();
             stageInfo.name = ParentAlbum.Info.Name;
 
             if (ParentAlbum.HasFile($"map{Difficulty}.talk"))

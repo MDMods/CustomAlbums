@@ -5,6 +5,7 @@ using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppFormulaBase;
 using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
+using Decimal = Il2CppSystem.Decimal;
 
 namespace CustomAlbums.Data
 {
@@ -14,6 +15,15 @@ namespace CustomAlbums.Data
         public JsonArray Notes { get; set; }
         public JsonArray NotesPercent { get; set; }
         public string Md5 { get; set; }
+
+        public float Bpm
+        {
+            get
+            {
+                var bpmString = Info["BPM"]?.GetValue<string>() ?? Info["BPM01"]?.GetValue<string>() ?? string.Empty;
+                return !float.TryParse(bpmString, out var bpm) ? 0f : bpm;
+            }
+        }
 
         [Flags]
         public enum ChannelType
@@ -286,6 +296,40 @@ namespace CustomAlbums.Data
         public static string GetNoteDataKey(string bmsId, int pathway, int speed, string scene)
         {
             return $"{bmsId}-{pathway}-{speed}-{scene}";
+        }
+
+        public Il2CppSystem.Collections.Generic.List<SceneEvent> GetSceneEvents()
+        {
+            var sceneEvents = new Il2CppSystem.Collections.Generic.List<SceneEvent>();
+
+            foreach (var note in Notes)
+            {
+                var bmsKey = note["value"]?.GetValue<string>() ?? string.Empty;
+                if (string.IsNullOrEmpty(bmsKey)) continue;
+
+                var channelTone = note["tone"]?.GetValue<string>() ?? string.Empty;
+                if (!Channels.TryGetValue(channelTone, out var channel)) continue;
+
+                if (channel.HasFlag(ChannelType.Scene))
+                {
+                    sceneEvents.Add(new SceneEvent
+                    {
+                        time = note["time"].GetValueAsIl2CppDecimal(),
+                        uid = $"SceneEvent/{bmsKey}"
+                    });
+                }
+                else if (channel.HasFlag(ChannelType.SpBpmDirect) || channel.HasFlag(ChannelType.SpBpmLookup))
+                {
+                    sceneEvents.Add(new SceneEvent
+                    {
+                        time = note["time"].GetValueAsIl2CppDecimal(),
+                        uid = "SceneEvent/OnBPMChanged",
+                        value = note["value"]?.GetValue<string>() ?? string.Empty
+                    });
+                }
+            }
+
+            return sceneEvents;
         }
     }
 }

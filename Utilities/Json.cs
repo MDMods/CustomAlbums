@@ -40,5 +40,8 @@ namespace CustomAlbums.Utilities
         /// <returns>The decimal value</returns>
         public static decimal GetValueAsDecimal(this JsonNode node) =>
             decimal.TryParse(node.ToString(), out var result) ? result : 0M;
+
+        public static Il2CppSystem.Decimal GetValueAsIl2CppDecimal(this JsonNode node) =>
+            decimal.TryParse(node.ToString(), out var result) ? (Il2CppSystem.Decimal)(float)result : Il2CppSystem.Decimal.Zero;
     }
 }

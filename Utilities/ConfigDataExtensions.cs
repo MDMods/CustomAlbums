@@ -27,16 +27,11 @@ namespace CustomAlbums.Utilities
 
         public static MusicConfigData ToMusicConfigData(this JsonNode node)
         {
-            MelonLogger.Msg(node.ToJsonString());
-            // Converting decimal -> Il2CppSystem.Decimal is ass, so decimal -> float -> Il2CppSystem.Decimal
-            var time = node["time"]?.GetValue<decimal>() ?? decimal.Zero;
-            var length = node["length"]?.GetValue<decimal>() ?? decimal.Zero;
-            
             var config = Interop.CreateTypeValue<MusicConfigData>();
             config.id = node["id"]?.GetValue<int>() ?? -1;
-            config.time = (Il2CppSystem.Decimal)(float)time;
+            config.time = node["time"].GetValueAsIl2CppDecimal();
             config.note_uid = node["note_uid"]?.GetValue<string>() ?? string.Empty;
-            config.length = (Il2CppSystem.Decimal)(float)length;
+            config.length = node["length"].GetValueAsIl2CppDecimal();
             config.pathway = node["pathway"]?.GetValue<int>() ?? 0;
             config.blood = node["blood"]?.GetValue<bool>() ?? false;
 
