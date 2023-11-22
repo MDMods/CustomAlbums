@@ -7,15 +7,12 @@ using Il2CppAssets.Scripts.GameCore;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Managers;
-using Il2CppAssets.Scripts.PeroTools.Nice.Actions;
 using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
 using Il2CppPeroTools2.Resources;
 using Il2CppSpine.Unity;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using static CustomAlbums.Data.BmsStates;
-using static Il2Cpp.YlyRichText;
 using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums
@@ -170,7 +167,6 @@ namespace CustomAlbums
                                     }
                                 }
 
-                                //Logger.Msg("Time when setting obj: " + time);
                                 var noteObj = new JsonObject
                                 {
                                     { "time", time },
@@ -231,7 +227,6 @@ namespace CustomAlbums
         /// <returns>The transmuted StageInfo object.</returns>
         internal static StageInfo TransmuteData(Bms bms)
         {
-            if (Bms.NoteData.Count == 0) Bms.InitNoteData();
             if (_noteData.Count == 0) InitNoteData();
             MusicDataManager.Clear();
             _delay = 0;
@@ -244,9 +239,6 @@ namespace CustomAlbums
             LoadMusicData(noteData);
             MusicDataManager.Sort();
             ProcessElements(bms);
-            // TODO: Process boss animations
-            // TODO: Process geminis
-            // TODO: Process note delay
 
             return stageInfo;
         }
@@ -329,7 +321,7 @@ namespace CustomAlbums
 
                 var speed = (pathway == 1) ? speedAir : speedGround;
                 var scene = bms.Info["GENRE"]?.GetValue<string>();
-                if (!Bms.NoteData.TryGetValue(Bms.GetNoteDataKey(bmsKey, pathway, speed, scene), out var configData))
+                if (!_noteData.TryGetValue(Bms.GetNoteDataKey(bmsKey, pathway, speed, scene), out var configData))
                     continue;
 
                 var time = note["time"]?.GetValueAsDecimal() ?? 0M;
@@ -385,9 +377,9 @@ namespace CustomAlbums
                     break;
                 }
 
-                var configData = node.ToNoteConfigData();
+                var configData = node.ToMusicConfigData();
                 if (configData.time < 0) continue;
-                if (!Bms.NoteData.TryGetValue(configData.note_uid, out var newNoteData))
+                if (!_noteData.TryGetValue(configData.note_uid, out var newNoteData))
                     newNoteData = Interop.CreateTypeValue<NoteConfigData>();
 
                 // Create a new note for each configData
@@ -436,11 +428,7 @@ namespace CustomAlbums
 
             foreach (var mData in MusicDataManager.Data)
             {
-                if (mData.isBossNote)
-                {
-                    bossData.Add(mData);
-                    continue;
-                }
+                if (mData.isBossNote) bossData.Add(mData);
             }
             
             // If the boss is not used for some reason, no need to process animations.

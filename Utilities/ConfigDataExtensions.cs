@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Nodes;
 using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
+using MelonLoader;
 
 namespace CustomAlbums.Utilities
 {
@@ -24,8 +25,9 @@ namespace CustomAlbums.Utilities
             || config.ibms_id == "16"
             || config.ibms_id == "17";
 
-        public static MusicConfigData ToNoteConfigData(this JsonNode node)
+        public static MusicConfigData ToMusicConfigData(this JsonNode node)
         {
+            MelonLogger.Msg(node.ToJsonString());
             // Converting decimal -> Il2CppSystem.Decimal is ass, so decimal -> float -> Il2CppSystem.Decimal
             var time = node["time"]?.GetValue<decimal>() ?? decimal.Zero;
             var length = node["length"]?.GetValue<decimal>() ?? decimal.Zero;
@@ -33,7 +35,7 @@ namespace CustomAlbums.Utilities
             var config = Interop.CreateTypeValue<MusicConfigData>();
             config.id = node["id"]?.GetValue<int>() ?? -1;
             config.time = (Il2CppSystem.Decimal)(float)time;
-            config.note_uid = node["node_uid"]?.GetValue<string>() ?? string.Empty;
+            config.note_uid = node["note_uid"]?.GetValue<string>() ?? string.Empty;
             config.length = (Il2CppSystem.Decimal)(float)length;
             config.pathway = node["pathway"]?.GetValue<int>() ?? 0;
             config.blood = node["blood"]?.GetValue<bool>() ?? false;
