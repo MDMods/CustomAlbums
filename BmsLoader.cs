@@ -241,7 +241,24 @@ namespace CustomAlbums
             LoadMusicData(noteData);
             MusicDataManager.Sort();
             ProcessElements(bms);
+            MusicDataManager.Sort();
 
+            foreach (var mData in MusicDataManager.Data)
+            {
+                mData.tick -= _delay;
+                mData.showTick = Il2CppSystem.Decimal.Round(mData.tick - mData.dt, 2);
+                if (mData.isLongPressType)
+                    mData.endIndex -= (int)(_delay / (Il2CppSystem.Decimal)0.001f);
+            }
+
+            Logger.Msg("Applied Delay");
+
+            stageInfo.musicDatas = new Il2CppSystem.Collections.Generic.List<MusicData>();
+            foreach (var musicData in MusicDataManager.Data)
+                stageInfo.musicDatas.Add(musicData);
+            stageInfo.delay = _delay;
+
+            MusicDataManager.Clear();
             return stageInfo;
         }
 
@@ -250,6 +267,7 @@ namespace CustomAlbums
             foreach(var nData in SingletonScriptableObject<NoteDataMananger>.instance.noteDatas)
             {
                 NoteData.TryAdd(nData.uid, nData);
+                NoteData.TryAdd(Bms.GetNoteDataKey(nData.ibms_id, nData.pathway, nData.speed, nData.scene), nData);
 
                 if (nData.type != 0 || string.IsNullOrEmpty(nData.boss_action) || nData.boss_action == "0") continue;
 
@@ -381,6 +399,7 @@ namespace CustomAlbums
 
                 var configData = node.ToMusicConfigData();
                 if (configData.time < 0) continue;
+
                 if (!NoteData.TryGetValue(configData.note_uid, out var newNoteData))
                     newNoteData = Interop.CreateTypeValue<NoteConfigData>();
 
@@ -559,6 +578,7 @@ namespace CustomAlbums
             for (var i = 0; i < bossData.Count; i++)
             {
                 var data = bossData[i];
+
                 if (data.noteData.GetNoteType() != NoteType.Block) continue;
 
                 // Find the next boss animation that is not a gear

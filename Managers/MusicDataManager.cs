@@ -43,7 +43,7 @@ namespace CustomAlbums.Managers
             for (var i = 1; i < MusicDataList.Count; i++)
             {
                 var musicData = MusicDataList[i];
-                musicData.tick = Il2CppSystem.Decimal.Round(musicData.showTick, 3);
+                musicData.tick = Il2CppSystem.Decimal.Round(musicData.tick, 3);
                 musicData.objId = (short)i;
 
                 MusicDataList[i] = musicData;
