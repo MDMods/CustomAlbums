@@ -40,7 +40,7 @@ namespace CustomAlbums.Managers
             coroutine = CreateCoroutine((Il2CppSystem.Func<bool>)delegate
             {
                 // Stop coroutine if the asset is unloaded
-                if (audioClip is null)
+                if (audioClip == null)
                 {
                     Coroutines.Remove(name);
                     if (_currentCoroutine == coroutine) _currentCoroutine = null;
@@ -91,7 +91,7 @@ namespace CustomAlbums.Managers
             coroutine = CreateCoroutine((Il2CppSystem.Func<bool>)delegate
             {
                 // Stop coroutine if the asset is unloaded
-                if (audioClip is null)
+                if (audioClip == null)
                 {
                     Coroutines.Remove(name);
                     if (_currentCoroutine == coroutine) _currentCoroutine = null;

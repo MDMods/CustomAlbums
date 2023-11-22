@@ -135,7 +135,7 @@ namespace CustomAlbums.Patches
 
             private static bool ActivateHidden(SpecialSongManager.HideBmsInfo hideBms)
             {
-                if (hideBms is null) return false;
+                if (hideBms == null) return false;
 
                 var info = GlobalDataBase.dbMusicTag.GetMusicInfoFromAll(hideBms.uid);
                 var success = false;
