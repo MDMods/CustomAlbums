@@ -7,12 +7,16 @@ using Il2CppAssets.Scripts.GameCore;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Managers;
+using Il2CppAssets.Scripts.PeroTools.Nice.Actions;
+using Il2CppFormulaBase;
 using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
 using Il2CppPeroTools2.Resources;
 using Il2CppSpine.Unity;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using static CustomAlbums.Data.BmsStates;
+using static Il2Cpp.YlyRichText;
 using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums
@@ -21,7 +25,7 @@ namespace CustomAlbums
     {
         private static Dictionary<string, NoteConfigData> _noteData = new();
         private static Dictionary<string, Dictionary<string, NoteConfigData>> _bossData = new();
-        private static int _delay;
+        private static Il2CppSystem.Decimal _delay;
         private static readonly Logger Logger = new(nameof(BmsLoader));
 
         /// <summary>
@@ -167,6 +171,7 @@ namespace CustomAlbums
                                     }
                                 }
 
+                                //Logger.Msg("Time when setting obj: " + time);
                                 var noteObj = new JsonObject
                                 {
                                     { "time", time },
@@ -424,12 +429,58 @@ namespace CustomAlbums
         private static void ProcessElements(Bms bms)
         {
             var scene = bms.Info["GENRE"]?.GetValue<string>() ?? string.Empty;
+            var sceneIndex = int.Parse(scene.Split('_')[1]);
+            var sceneInfo = Singleton<StageBattleComponent>.instance.sceneInfo;
             var bossData = new List<MusicData>();
+            var delayCache = new Dictionary<string, Il2CppSystem.Decimal>();
 
-            foreach (var mData in MusicDataManager.Data)
+            for (var i = 0; i < MusicDataManager.Data.Count; i++)
             {
+                var mData = MusicDataManager.Data[i];
                 if (mData.isBossNote) bossData.Add(mData);
+
+                // Process delays
+                if (!string.IsNullOrEmpty(mData.noteData.ibms_id))
+                {
+                    var type = mData.noteData.GetNoteType();
+                    if (type == NoteType.SceneChange) sceneIndex = sceneInfo[mData.noteData.ibms_id];
+
+                    var prefabName = mData.noteData.prefab_name;
+                    if (!string.IsNullOrEmpty(prefabName))
+                    {
+                        // If not a pickup type, convert to most recent scene
+                        // Scene-agnostic, "empty_", and "boss_" types don't convert in this way
+                        if (type is NoteType.Hp or NoteType.Music) continue;
+                        var prefix = prefabName[..2];
+                        if (!(new[] { "00", "em", "bo" }).Contains(prefix)) 
+                            prefabName = prefabName.Remove(0, 2).Insert(0, $"{sceneIndex:D2}");
+
+                        if (!delayCache.ContainsKey(prefabName))
+                        {
+                            var gameObject = ResourcesManager.instance.LoadFromName<GameObject>(prefabName);
+
+                            if (gameObject is not null)
+                            {
+                                var spineActionController = gameObject.GetComponent<SpineActionController>();
+                                delayCache[prefabName] = (Il2CppSystem.Decimal)spineActionController.startDelay;
+                            }
+                        }
+
+                        if (delayCache.TryGetValue(prefabName, out var delay))
+                        {
+                            mData.dt = delay;
+                            MusicDataManager.Set(i, mData);
+                        }
+                    }
+
+                    var showTick = mData.tick - mData.dt;
+                    _delay = showTick < _delay ? showTick : _delay;
+                }
             }
+
+            // Round delay
+            _delay = Il2CppSystem.Decimal.Round(_delay, 3);
+            Logger.Msg("Processed delay!");
             
             // If the boss is not used for some reason, no need to process animations.
             if (bossData.Count == 0) return;
