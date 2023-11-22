@@ -26,7 +26,7 @@ namespace CustomAlbums.Patches
             private static readonly Logger Logger = new(nameof(MusicStageCellPatch));
             private static readonly List<MusicStageCell> Cells = new();
 
-            public static void AnimateCovers()
+            public static void AnimateCoversUpdate()
             {
                 var dbMusicTag = GlobalDataBase.dbMusicTag;
 
@@ -45,7 +45,7 @@ namespace CustomAlbums.Patches
                     var index = cell.m_VariableBehaviour.Cast<IVariable>().GetResult<int>();
                     
                     var uid = dbMusicTag.GetShowStageUidByIndex(index);
-                    if (uid is null) continue;
+                    if (uid == null) continue;
                     
                     var musicInfo = dbMusicTag.GetMusicInfoFromAll(uid);
                     if (musicInfo.albumJsonIndex < AlbumManager.UID) continue;
