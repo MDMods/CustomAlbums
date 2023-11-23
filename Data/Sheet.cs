@@ -33,8 +33,8 @@ namespace CustomAlbums.Data
 
             var bms = BmsLoader.Load(stream, MapName);
             if (bms is null) return null;
-                
-            var stageInfo = ScriptableObject.CreateInstance<StageInfo>();
+
+            var stageInfo = BmsLoader.TransmuteData(bms);
             stageInfo.mapName = MapName;
             stageInfo.scene = bms.Info["GENRE"]?.GetValue<string>() ?? string.Empty;
             stageInfo.music = $"{ParentAlbum.Index}";
@@ -69,9 +69,7 @@ namespace CustomAlbums.Data
                 }
             }
 
-            stageInfo = BmsLoader.TransmuteData(bms);
             GlobalDataBase.dbStageInfo.SetStageInfo(stageInfo);
-
             return stageInfo;
         }
     }
