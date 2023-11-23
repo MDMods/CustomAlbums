@@ -24,7 +24,7 @@ namespace CustomAlbums.Data
             Md5 = md5;
             ParentAlbum = parentAlbum;
             Difficulty = difficulty;
-            MapName = $"album_{parentAlbum.Index}_map{difficulty}";
+            MapName = $"album_{Path.GetFileNameWithoutExtension(parentAlbum.Path)}_map{difficulty}";
         }
 
         public StageInfo GetStage()

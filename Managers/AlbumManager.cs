@@ -35,12 +35,12 @@ namespace CustomAlbums.Managers
                 var album = new Album(path, index);
                 if (album.Info is null) return;
 
-                LoadedAlbums.Add($"album_{album.Index}", album);
+                LoadedAlbums.Add($"album_{fileName}", album);
 
                 if (album.HasFile("cover.png") || album.HasFile("cover.gif"))
-                    ResourcesManager.instance.LoadFromName<Sprite>($"album_{album.Index}_cover").hideFlags |= HideFlags.DontUnloadUnusedAsset;
+                    ResourcesManager.instance.LoadFromName<Sprite>($"album_{fileName}_cover").hideFlags |= HideFlags.DontUnloadUnusedAsset;
 
-                Logger.Msg($"Loaded album_{album.Index}: {album.Info.Name}");
+                Logger.Msg($"Loaded album_{fileName}: {album.Info.Name}");
             }
             catch (Exception ex)
             {
