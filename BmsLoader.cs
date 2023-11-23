@@ -14,6 +14,8 @@ using Il2CppPeroTools2.Resources;
 using Il2CppSpine.Unity;
 using UnityEngine;
 using static CustomAlbums.Data.BmsStates;
+using Animation = Il2CppSpine.Animation;
+using Decimal = Il2CppSystem.Decimal;
 using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums
@@ -22,11 +24,11 @@ namespace CustomAlbums
     {
         private static readonly Dictionary<string, NoteConfigData> NoteData = new();
         private static readonly Dictionary<string, Dictionary<string, NoteConfigData>> BossData = new();
-        private static Il2CppSystem.Decimal _delay;
+        private static Decimal _delay;
         private static readonly Logger Logger = new(nameof(BmsLoader));
 
         /// <summary>
-        /// Creates a Bms object from a BMS file.
+        ///     Creates a Bms object from a BMS file.
         /// </summary>
         /// <param name="stream">MemoryStream of BMS file.</param>
         /// <param name="bmsName">Name of BMS score.</param>
@@ -168,7 +170,6 @@ namespace CustomAlbums
                                     }
                                 }
 
-                                //Logger.Msg("Time when setting obj: " + time);
                                 var noteObj = new JsonObject
                                 {
                                     { "time", time },
@@ -223,7 +224,7 @@ namespace CustomAlbums
         }
 
         /// <summary>
-        /// Transmutes Bms data into StageInfo data.
+        ///     Transmutes Bms data into StageInfo data.
         /// </summary>
         /// <param name="bms">The Bms object to transmute.</param>
         /// <returns>The transmuted StageInfo object.</returns>
@@ -240,15 +241,19 @@ namespace CustomAlbums
 
             LoadMusicData(noteData);
             MusicDataManager.Sort();
-            ProcessElements(bms);
+
+            ProcessBossData(bms);
+            ProcessDelay(bms);
             MusicDataManager.Sort();
+
+            ProcessGeminis();
 
             foreach (var mData in MusicDataManager.Data)
             {
                 mData.tick -= _delay;
-                mData.showTick = Il2CppSystem.Decimal.Round(mData.tick - mData.dt, 2);
+                mData.showTick = Decimal.Round(mData.tick - mData.dt, 2);
                 if (mData.isLongPressType)
-                    mData.endIndex -= (int)(_delay / (Il2CppSystem.Decimal)0.001f);
+                    mData.endIndex -= (int)(_delay / (Decimal)0.001f);
             }
 
             Logger.Msg("Applied Delay");
@@ -264,7 +269,7 @@ namespace CustomAlbums
 
         private static void InitNoteData()
         {
-            foreach(var nData in SingletonScriptableObject<NoteDataMananger>.instance.noteDatas)
+            foreach (var nData in SingletonScriptableObject<NoteDataMananger>.instance.noteDatas)
             {
                 NoteData.TryAdd(nData.uid, nData);
                 NoteData.TryAdd(Bms.GetNoteDataKey(nData.ibms_id, nData.pathway, nData.speed, nData.scene), nData);
@@ -340,7 +345,7 @@ namespace CustomAlbums
                         break;
                 }
 
-                var speed = (pathway == 1) ? speedAir : speedGround;
+                var speed = pathway == 1 ? speedAir : speedGround;
                 var scene = bms.Info["GENRE"]?.GetValue<string>();
                 if (!bms.NoteData!.TryGetValue(Bms.GetNoteDataKey(bmsKey, pathway, speed, scene), out var configData))
                     continue;
@@ -353,11 +358,8 @@ namespace CustomAlbums
                 if (isHold)
                 {
                     if (channelType.HasFlag(Bms.ChannelType.SpTapHolds))
-                    {
                         holdLength = 0.001M;
-                    }
                     else
-                    {
                         for (var j = i + 1; j < bms.Notes.Count; j++)
                         {
                             var holdEndNote = bms.Notes[j];
@@ -370,7 +372,6 @@ namespace CustomAlbums
                             bms.Notes[j]!["value"] = "";
                             break;
                         }
-                    }
                 }
 
                 processed.Add(new JsonObject
@@ -394,7 +395,8 @@ namespace CustomAlbums
             {
                 if (noteId == short.MaxValue)
                 {
-                    Logger.Warning($"Cannot process full chart, there are too many objects. Max objects is {short.MaxValue}.");
+                    Logger.Warning(
+                        $"Cannot process full chart, there are too many objects. Max objects is {short.MaxValue}.");
                     break;
                 }
 
@@ -407,7 +409,7 @@ namespace CustomAlbums
                 // Create a new note for each configData
                 var newNote = Interop.CreateTypeValue<MusicData>();
                 newNote.objId = noteId++;
-                newNote.tick = Il2CppSystem.Decimal.Round(configData.time, 3);
+                newNote.tick = Decimal.Round(configData.time, 3);
                 newNote.configData = configData;
                 newNote.isLongPressEnd = false;
                 newNote.isLongPressing = false;
@@ -419,15 +421,17 @@ namespace CustomAlbums
                 if (!newNote.isLongPressStart) continue;
 
                 // Calculate the index in which the hold note ends
-                var endIndex = (int)(Il2CppSystem.Decimal.Round(
+                var endIndex = (int)(Decimal.Round(
                     newNote.tick + configData.length - newNoteData.left_great_range - newNoteData.left_perfect_range,
-                    3) / (Il2CppSystem.Decimal)0.001f);
+                    3) / (Decimal)0.001f);
 
                 for (var i = 1; i <= newNote.longPressCount; i++)
                 {
                     var holdTick = Interop.CreateTypeValue<MusicData>();
                     holdTick.objId = noteId++;
-                    holdTick.tick = i == newNote.longPressCount ? newNote.tick + configData.length : newNote.tick + (Il2CppSystem.Decimal)0.1f * i;
+                    holdTick.tick = i == newNote.longPressCount
+                        ? newNote.tick + configData.length
+                        : newNote.tick + (Decimal)0.1f * i;
                     holdTick.configData = newNote.configData;
 
                     // ACTUALLY REQUIRED TO WORK
@@ -448,101 +452,11 @@ namespace CustomAlbums
             Logger.Msg("Loaded music data!");
         }
 
-        private static void ProcessElements(Bms bms)
+        private static void ProcessBossData(Bms bms)
         {
             var scene = bms.Info["GENRE"]?.GetValue<string>() ?? string.Empty;
-            var sceneIndex = int.Parse(scene.Split('_')[1]);
-            var sceneInfo = Singleton<StageBattleComponent>.instance.sceneInfo;
-            var bossData = new List<MusicData>();
-            var delayCache = new Dictionary<string, Il2CppSystem.Decimal>();
-            var geminiCache = new Dictionary<Il2CppSystem.Decimal, List<MusicData>>();
+            var bossData = MusicDataManager.Data.Where(mData => mData.isBossNote).ToList();
 
-            for (var i = 0; i < MusicDataManager.Data.Count; i++)
-            {
-                var mData = MusicDataManager.Data[i];
-                if (mData.isBossNote) bossData.Add(mData);
-
-                // Process delays
-                if (!string.IsNullOrEmpty(mData.noteData.ibms_id))
-                {
-                    var type = mData.noteData.GetNoteType();
-                    if (type == NoteType.SceneChange) sceneIndex = sceneInfo[mData.noteData.ibms_id];
-
-                    var prefabName = mData.noteData.prefab_name;
-                    if (!string.IsNullOrEmpty(prefabName))
-                    {
-                        // If not a pickup type, convert to most recent scene
-                        if (type != NoteType.Hp && type != NoteType.Music)
-                        {
-                            var prefix = prefabName[..2];
-                            if (!(new[] { "00", "em", "bo" }).Contains(prefix))
-                                prefabName = prefabName.Remove(0, 2).Insert(0, $"{sceneIndex:D2}");
-                        }
-
-                        if (!delayCache.ContainsKey(prefabName))
-                        {
-                            var gameObject = ResourcesManager.instance.LoadFromName<GameObject>(prefabName);
-
-                            if (gameObject != null)
-                            {
-                                var spineActionController = gameObject.GetComponent<SpineActionController>();
-                                delayCache[prefabName] = (Il2CppSystem.Decimal)spineActionController.startDelay;
-                            }
-                        }
-
-                        if (delayCache.TryGetValue(prefabName, out var delay))
-                        {
-                            mData.dt = delay;
-                            MusicDataManager.Set(i, mData);
-                        }
-                    }
-
-                    var showTick = mData.tick - mData.dt;
-                    _delay = showTick < _delay ? showTick : _delay;
-                }
-
-                // Process geminis
-                mData.doubleIdx = -1;
-
-                if (mData.noteData.GetNoteType() != NoteType.Monster && mData.noteData.GetNoteType() != NoteType.Hide)
-                    continue;
-
-                if (geminiCache.TryGetValue(mData.tick, out var geminiList))
-                {
-                    var isNoteGemini = Bms.BmsIds[mData.noteData.ibms_id ?? "00"] == Bms.BmsId.Gemini;
-                    var isTargetGemini = false;
-                    var target = Interop.CreateTypeValue<MusicData>();
-
-                    foreach (var gemini in geminiList.Where(gemini => !gemini.isAir || !mData.isAir))
-                    {
-                        target = gemini;
-                        isTargetGemini = Bms.BmsIds[gemini.noteData.ibms_id ?? "00"] == Bms.BmsId.Gemini;
-
-                        if (isNoteGemini && isTargetGemini) break;
-                        if (!isNoteGemini) break;
-                    }
-
-                    if (target.objId > 0)
-                    {
-                        mData.isDouble = isNoteGemini && isTargetGemini;
-                        mData.doubleIdx = target.objId;
-                        target.isDouble = isNoteGemini && isTargetGemini;
-                        target.doubleIdx = mData.objId;
-                    }
-                }
-                else
-                {
-                    geminiCache[mData.tick] = new List<MusicData>();
-                }
-
-                geminiCache[mData.tick].Add(mData);
-            }
-            Logger.Msg("Processed geminis!");
-
-            // Round delay
-            _delay = Il2CppSystem.Decimal.Round(_delay, 3);
-            Logger.Msg("Processed delay!");
-            
             // If the boss is not used for some reason, no need to process animations.
             if (bossData.Count == 0) return;
 
@@ -555,11 +469,12 @@ namespace CustomAlbums
 
                 if (finalNote.isBossNote)
                 {
-                    var startDelay = Il2CppSystem.Decimal.Round((Il2CppSystem.Decimal)GetStartDelay(finalNote.noteData.prefab_name), 3);
-                    var duration = (Il2CppSystem.Decimal)GetAnimationDuration(scene, finalNote.noteData.boss_action);
-                    tick += Il2CppSystem.Decimal.Round(-startDelay + duration, 3);
+                    var startDelay = Decimal.Round((Decimal)GetStartDelay(finalNote.noteData.prefab_name), 3);
+                    var duration = (Decimal)GetAnimationDuration(scene, finalNote.noteData.boss_action);
+                    tick += Decimal.Round(-startDelay + duration, 3);
                 }
-                tick = Il2CppSystem.Decimal.Round(tick + (Il2CppSystem.Decimal)0.1f, 3);
+
+                tick = Decimal.Round(tick + (Decimal)0.1f, 3);
 
                 var exitNoteData = BossData[scene]["out"];
 
@@ -590,7 +505,7 @@ namespace CustomAlbums
 
                 // Find the next boss animation that is not a gear
                 var bossAnimAhead = Interop.CreateTypeValue<MusicData>();
-                bossAnimAhead.configData.time = Il2CppSystem.Decimal.MinValue;
+                bossAnimAhead.configData.time = Decimal.MinValue;
 
                 for (var j = i + 1; j < bossData.Count; j++)
                 {
@@ -602,11 +517,14 @@ namespace CustomAlbums
                 }
 
                 MusicData bossAnimBefore;
-                if (i > 0) bossAnimBefore = bossData[i - 1];
+                if (i > 0)
+                {
+                    bossAnimBefore = bossData[i - 1];
+                }
                 else
                 {
                     bossAnimBefore = Interop.CreateTypeValue<MusicData>();
-                    bossAnimBefore.configData.time = Il2CppSystem.Decimal.MinValue;
+                    bossAnimBefore.configData.time = Decimal.MinValue;
                 }
 
                 var diffToAhead = Math.Abs((float)data.configData.time - (float)bossAnimAhead.configData.time);
@@ -614,7 +532,9 @@ namespace CustomAlbums
                 var ahead = diffToAhead < diffToBefore;
 
                 var stateBehind = i > 0 ? AnimStatesRight[bossAnimBefore.noteData.boss_action] : BossState.OffScreen;
-                var stateAhead = AnimStatesLeft.TryGetValue(bossAnimAhead.noteData.boss_action, out var state) ? state : BossState.OffScreen;
+                var stateAhead = AnimStatesLeft.TryGetValue(bossAnimAhead.noteData.boss_action, out var state)
+                    ? state
+                    : BossState.OffScreen;
                 var usedState = ahead ? stateAhead : stateBehind;
                 var correctState = usedState is BossState.Phase1 or BossState.Phase2;
                 if (!correctState)
@@ -623,13 +543,13 @@ namespace CustomAlbums
                     usedState = ahead ? stateAhead : stateBehind;
                     correctState = usedState is BossState.Phase1 or BossState.Phase2;
                 }
+
                 if (!correctState) continue;
                 if (usedState is not (BossState.Phase1 or BossState.Phase2)) continue;
 
-                if ((ahead && AnimStatesLeft[data.noteData.boss_action] == usedState) 
-                    || (!ahead && AnimStatesRight[data.noteData.boss_action] == usedState)) {
+                if ((ahead && AnimStatesLeft[data.noteData.boss_action] == usedState)
+                    || (!ahead && AnimStatesRight[data.noteData.boss_action] == usedState))
                     continue;
-                }
 
                 var phase = usedState == BossState.Phase1 ? 1 : 2;
 
@@ -639,8 +559,7 @@ namespace CustomAlbums
                     || phaseGearConfig.scene != data.noteData.scene
                     || phaseGearConfig.speed != data.noteData.speed
                     || !phaseGearConfig.boss_action.StartsWith($"boss_far_atk_{phase}"))
-                {
-                    foreach(var d in noteData)
+                    foreach (var d in noteData)
                     {
                         if (d.ibms_id != data.noteData.ibms_id
                             || d.pathway != data.noteData.pathway
@@ -651,7 +570,6 @@ namespace CustomAlbums
                         phaseGearConfig = d;
                         break;
                     }
-                }
 
                 var fixedConfigData = Interop.CreateTypeValue<MusicConfigData>();
                 fixedConfigData.blood = data.configData.blood;
@@ -668,7 +586,7 @@ namespace CustomAlbums
                 fixedGear.isLongPressEnd = data.isLongPressEnd;
                 fixedGear.isLongPressing = data.isLongPressing;
                 fixedGear.noteData = phaseGearConfig;
-                
+
                 MusicDataManager.Set(fixedGear.objId, fixedGear);
                 bossData[i] = fixedGear;
                 Logger.Msg($"Fixed gear at tick {data.tick}.");
@@ -689,23 +607,23 @@ namespace CustomAlbums
 
                     var alignData = alignment == AnimAlignment.Right ? bossData[i] : bossData[i - 1];
 
-                    var rightDelay = (Il2CppSystem.Decimal)GetStartDelay(bossData[i].noteData.prefab_name);
-                    var leftDelay = i == 0 ? 0 : (Il2CppSystem.Decimal)GetStartDelay(bossData[i - 1].noteData.prefab_name);
+                    var rightDelay = (Decimal)GetStartDelay(bossData[i].noteData.prefab_name);
+                    var leftDelay = i == 0 ? 0 : (Decimal)GetStartDelay(bossData[i - 1].noteData.prefab_name);
                     var alignDelay = alignment == AnimAlignment.Left ? leftDelay : rightDelay;
 
-                    var duration = (Il2CppSystem.Decimal)GetAnimationDuration(scene, transfer);
+                    var duration = (Decimal)GetAnimationDuration(scene, transfer);
 
                     var mConfig = Interop.CreateTypeValue<MusicConfigData>();
                     mConfig.note_uid = transferNoteData.uid;
                     mConfig.time =
-                        Il2CppSystem.Decimal.Round(alignData.tick - alignDelay - (duration * (int)alignment), 3);
+                        Decimal.Round(alignData.tick - alignDelay - duration * (int)alignment, 3);
 
                     var mData = Interop.CreateTypeValue<MusicData>();
                     mData.tick = mConfig.time;
                     mData.configData = mConfig;
                     mData.noteData = transferNoteData;
 
-                    var tolerance = (Il2CppSystem.Decimal)0.300f;
+                    var tolerance = (Decimal)0.300f;
                     var fits = alignment switch
                     {
                         AnimAlignment.Left => mData.tick + duration < bossData[i].tick - rightDelay + tolerance,
@@ -731,24 +649,133 @@ namespace CustomAlbums
             Logger.Msg("Processed boss animations!");
         }
 
-        private static float GetStartDelay(string prefab) =>
-            ResourcesManager.instance.LoadFromName<GameObject>(prefab).GetComponent<SpineActionController>().startDelay;
+        private static void ProcessDelay(Bms bms)
+        {
+            var scene = bms.Info["GENRE"]?.GetValue<string>() ?? string.Empty;
+            var sceneIndex = int.Parse(scene.Split('_')[1]);
+            var sceneInfo = Singleton<StageBattleComponent>.instance.sceneInfo;
+            var delayCache = new Dictionary<string, Decimal>();
+
+            for (var i = 0; i < MusicDataManager.Data.Count; i++)
+            {
+                var mData = MusicDataManager.Data[i];
+                if (string.IsNullOrEmpty(mData.noteData.ibms_id)) continue;
+
+                var type = mData.noteData.GetNoteType();
+                if (type == NoteType.SceneChange) sceneIndex = sceneInfo[mData.noteData.ibms_id];
+
+                var prefabName = mData.noteData.prefab_name;
+                if (!string.IsNullOrEmpty(prefabName))
+                {
+                    // If not a pickup type, convert to most recent scene
+                    if (type != NoteType.Hp && type != NoteType.Music)
+                    {
+                        var prefix = prefabName[..2];
+                        if (!new[] { "00", "em", "bo" }.Contains(prefix))
+                            prefabName = prefabName.Remove(0, 2).Insert(0, $"{sceneIndex:D2}");
+                    }
+
+                    if (!delayCache.ContainsKey(prefabName))
+                    {
+                        var gameObject = ResourcesManager.instance.LoadFromName<GameObject>(prefabName);
+
+                        if (gameObject != null)
+                        {
+                            var spineActionController = gameObject.GetComponent<SpineActionController>();
+                            delayCache[prefabName] = (Decimal)spineActionController.startDelay;
+                        }
+                    }
+
+                    if (delayCache.TryGetValue(prefabName, out var delay))
+                    {
+                        mData.dt = delay;
+                        MusicDataManager.Set(i, mData);
+                    }
+                }
+
+                var showTick = mData.tick - mData.dt;
+                _delay = showTick < _delay ? showTick : _delay;
+            }
+
+            // Round delay
+            _delay = Decimal.Round(_delay, 3);
+            Logger.Msg("Processed delay!");
+        }
+
+        private static void ProcessGeminis()
+        {
+            var geminiCache = new Dictionary<Decimal, List<MusicData>>();
+
+            // ReSharper disable once ForCanBeConvertedToForeach
+            // This needs to be a for loop since the list is modified in-loop.
+            for (var i = 0; i < MusicDataManager.Data.Count; i++)
+            {
+                var mData = MusicDataManager.Data[i];
+                // Process geminis
+                mData.doubleIdx = -1;
+
+                if (mData.noteData.GetNoteType() != NoteType.Monster && mData.noteData.GetNoteType() != NoteType.Hide)
+                    continue;
+
+                if (geminiCache.TryGetValue(mData.tick, out var geminiList))
+                {
+                    var isNoteGemini = Bms.BmsIds[mData.noteData.ibms_id ?? "00"] == Bms.BmsId.Gemini;
+                    var isTargetGemini = false;
+                    var target = Interop.CreateTypeValue<MusicData>();
+
+                    foreach (var gemini in geminiList.Where(gemini => !gemini.isAir || !mData.isAir))
+                    {
+                        target = gemini;
+                        isTargetGemini = Bms.BmsIds[gemini.noteData.ibms_id ?? "00"] == Bms.BmsId.Gemini;
+
+                        if (isNoteGemini && isTargetGemini) break;
+                        if (!isNoteGemini) break;
+                    }
+
+                    if (target.objId > 0)
+                    {
+                        mData.isDouble = isNoteGemini && isTargetGemini;
+                        mData.doubleIdx = target.objId;
+                        target.isDouble = isNoteGemini && isTargetGemini;
+                        target.doubleIdx = mData.objId;
+
+                        MusicDataManager.Set(mData.objId, mData);
+                        MusicDataManager.Set(target.objId, target);
+                    }
+                }
+                else
+                {
+                    geminiCache[mData.tick] = new List<MusicData>();
+                }
+
+                geminiCache[mData.tick].Add(mData);
+            }
+
+            Logger.Msg("Processed geminis!");
+        }
+
+        private static float GetStartDelay(string prefab)
+        {
+            return ResourcesManager.instance.LoadFromName<GameObject>(prefab).GetComponent<SpineActionController>()
+                .startDelay;
+        }
 
         private static float GetAnimationDuration(string scene, string animation)
         {
-            var resourceName = Singleton<ConfigManager>.instance.GetConfigStringValue("boss", "scene_name", "boss_name", scene);
-            var controller = ResourcesManager.instance.LoadFromName<GameObject>(resourceName).GetComponent<SpineActionController>();
-            var animations = controller.gameObject.GetComponent<SkeletonAnimation>().skeletonDataAsset.GetSkeletonData(quiet: true).Animations;
+            var resourceName =
+                Singleton<ConfigManager>.instance.GetConfigStringValue("boss", "scene_name", "boss_name", scene);
+            var controller = ResourcesManager.instance.LoadFromName<GameObject>(resourceName)
+                .GetComponent<SpineActionController>();
+            var animations = controller.gameObject.GetComponent<SkeletonAnimation>().skeletonDataAsset
+                .GetSkeletonData(true).Animations;
 
             var arr = new SkeletActionData[controller.actionData.Count];
             controller.actionData.CopyTo(arr, 0);
-            var actionData = new List<SkeletActionData>(arr).Find((SkeletActionData dd) => dd.name == animation);
+            var actionData = new List<SkeletActionData>(arr).Find(dd => dd.name == animation);
             var animName = animation;
             if (actionData is { actionIdx: not null } && actionData.actionIdx.Length != 0)
-            {
                 animName = actionData.actionIdx[0];
-            }
-            return animations.Find((Il2CppSystem.Predicate<Il2CppSpine.Animation>)((Il2CppSpine.Animation a) => a.Name == animName)).Duration;
+            return animations.Find((Il2CppSystem.Predicate<Animation>)((Animation a) => a.Name == animName)).Duration;
         }
     }
 }
