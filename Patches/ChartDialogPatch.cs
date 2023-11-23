@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.WebSockets;
-using System.Text;
-using System.Threading.Tasks;
-using CustomAlbums.Data;
-using CustomAlbums.Managers;
+﻿using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2Cpp;

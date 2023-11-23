@@ -16,6 +16,7 @@ namespace CustomAlbums
             AssetPatch.AttachHook();
             ModSettings.Register();
             AlbumManager.LoadAlbums();
+            SaveManager.LoadSaveFile();
             Logger.Msg("Initialized CustomAlbums!");
         }
 
@@ -23,6 +24,13 @@ namespace CustomAlbums
         {
             base.OnLateInitializeMelon();
             HotReloadManager.OnLateInitializeMelon();
+        }
+
+        public override void OnApplicationQuit()
+        {
+            base.OnApplicationQuit();
+            // TODO: make sure this doesn't kill save :)
+            // SaveManager.SaveSaveFile();
         }
 
         /// <summary>
