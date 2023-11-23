@@ -1,15 +1,10 @@
 ﻿using CustomAlbums.Data;
 using CustomAlbums.Utilities;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
 using HarmonyLib;
 using Il2Cpp;
 using Il2CppAssets.Scripts.Database;
+using System.Text;
+using System.Text.Json;
 
 namespace CustomAlbums.Managers
 {
@@ -27,6 +22,7 @@ namespace CustomAlbums.Managers
         {
             var firstHistory = SaveData.History.FirstOrDefault();
             var firstHighest = SaveData.Highest.FirstOrDefault();
+            var firstFullCombo = SaveData.FullCombo.FirstOrDefault();
 
             // if we need to fix the history
             if (firstHistory.StartsWith("pkg_"))
@@ -65,6 +61,25 @@ namespace CustomAlbums.Managers
                 }
                 SaveData.Highest = fixedDictionary;
             }
+
+            // if we need to fix the fullcombo
+            if (firstFullCombo.Key.StartsWith("pkg_"))
+            {
+                var fixedDictionary = new Dictionary<string, List<int>>(SaveData.FullCombo.Count);
+                var stringBuilder = new StringBuilder();
+                foreach (var (key, value) in SaveData.FullCombo)
+                {
+                    if (key.StartsWith("pkg_"))
+                    {
+                        stringBuilder.Clear();
+                        stringBuilder.Append(key);
+                        stringBuilder.Remove(0, 4);
+                        stringBuilder.Insert(0, "album_");
+                        fixedDictionary.Add(stringBuilder.ToString(), value);
+                    }
+                }
+                SaveData.FullCombo = fixedDictionary;
+            }
         }
 
         internal static void LoadSaveFile()
@@ -89,23 +104,6 @@ namespace CustomAlbums.Managers
             catch (Exception ex)
             {
                 Logger.Warning("Failed to save save file. " + ex.StackTrace);
-            }
-        }
-
-        [HarmonyPatch(typeof(PnlPreparation), nameof(PnlPreparation.OnEnable))]
-        internal class PnlPreparationPatch
-        {
-            private static bool Prefix(PnlPreparation __instance)
-            {
-                var currMusicInfo = GlobalDataBase.s_DbMusicTag.CurMusicInfo();
-                if (currMusicInfo.albumJsonIndex != AlbumManager.UID + 1) return true;
-                var currChartData = SaveData.GetChartSaveDataFromUid(currMusicInfo.uid);
-                
-                foreach (var ball in currChartData)
-                {
-                    Logger.Msg(ball.Key + ": " + ball.Value);
-                }
-                return false; 
             }
         }
     }
