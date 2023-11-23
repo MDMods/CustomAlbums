@@ -6,6 +6,8 @@ using CustomAlbums.Utilities;
 using System.Text.Json.Nodes;
 using Il2CppRewired.UI.ControlMapper;
 using Il2CppAccount;
+using Il2CppFormulaBase;
+using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 
 namespace CustomAlbums.Patches
 {
@@ -135,6 +137,26 @@ namespace CustomAlbums.Patches
             private static bool Prefix(PnlPreparation __instance)
             {
                 return InjectPnlPreparation(__instance, false);
+            }
+        }
+
+        // TODO: Remove this stuff, just don't want saves to actually save yet :)
+
+        [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.OnSaveSelectCallback))]
+        internal class GASSavePatch
+        {
+            private static bool Prefix()
+            {
+                return false;
+            }
+        }
+
+        [HarmonyPatch(typeof(SteamSync), nameof(SteamSync.SaveLocal))]
+        internal class SteamSyncSavePatch
+        {
+            private static bool Prefix()
+            {
+                return false;
             }
         }
     }
