@@ -13,6 +13,9 @@ namespace CustomAlbums
         public override void OnInitializeMelon()
         {
             base.OnInitializeMelon();
+
+            if (!Directory.Exists(AlbumManager.SEARCH_PATH)) Directory.CreateDirectory(AlbumManager.SEARCH_PATH);
+
             AssetPatch.AttachHook();
             ModSettings.Register();
             AlbumManager.LoadAlbums();
