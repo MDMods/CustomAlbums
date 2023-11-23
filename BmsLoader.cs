@@ -278,6 +278,7 @@ namespace CustomAlbums
 
         private static JsonArray GetNoteData(Bms bms)
         {
+            if (bms.NoteData is null || bms.NoteData.Count == 0) bms.InitNoteData();
             var processed = new JsonArray();
 
             var speedAir = int.Parse(bms.Info["PLAYER"]?.GetValue<string>() ?? "0");
@@ -341,7 +342,7 @@ namespace CustomAlbums
 
                 var speed = (pathway == 1) ? speedAir : speedGround;
                 var scene = bms.Info["GENRE"]?.GetValue<string>();
-                if (!NoteData.TryGetValue(Bms.GetNoteDataKey(bmsKey, pathway, speed, scene), out var configData))
+                if (!bms.NoteData!.TryGetValue(Bms.GetNoteDataKey(bmsKey, pathway, speed, scene), out var configData))
                     continue;
 
                 var time = note["time"]?.GetValueAsDecimal() ?? 0M;
@@ -422,18 +423,23 @@ namespace CustomAlbums
                     newNote.tick + configData.length - newNoteData.left_great_range - newNoteData.left_perfect_range,
                     3) / (Il2CppSystem.Decimal)0.001f);
 
-                for (var i = 0; i < newNote.longPressCount; i++)
+                for (var i = 1; i <= newNote.longPressCount; i++)
                 {
                     var holdTick = Interop.CreateTypeValue<MusicData>();
                     holdTick.objId = noteId++;
-                    holdTick.tick = newNote.tick + i == newNote.longPressCount ? configData.length : (Il2CppSystem.Decimal)0.1f * i;
-                    holdTick.noteData = newNoteData;
-                    holdTick.longPressPTick = configData.time;
-                    holdTick.endIndex = endIndex;
+                    holdTick.tick = i == newNote.longPressCount ? newNote.tick + configData.length : newNote.tick + (Il2CppSystem.Decimal)0.1f * i;
+                    holdTick.configData = newNote.configData;
+
+                    // ACTUALLY REQUIRED TO WORK
+                    var dataCopy = holdTick.configData;
+                    dataCopy.length = 0;
+                    holdTick.configData = dataCopy;
+
                     holdTick.isLongPressing = i != newNote.longPressCount;
                     holdTick.isLongPressEnd = i == newNote.longPressCount;
-                    holdTick.configData = configData;
-                    holdTick.configData.length = 0;
+                    holdTick.noteData = newNote.noteData;
+                    holdTick.longPressPTick = newNote.configData.time;
+                    holdTick.endIndex = endIndex;
 
                     MusicDataManager.Add(holdTick);
                 }
@@ -466,17 +472,18 @@ namespace CustomAlbums
                     if (!string.IsNullOrEmpty(prefabName))
                     {
                         // If not a pickup type, convert to most recent scene
-                        // Scene-agnostic, "empty_", and "boss_" types don't convert in this way
-                        if (type is NoteType.Hp or NoteType.Music) continue;
-                        var prefix = prefabName[..2];
-                        if (!(new[] { "00", "em", "bo" }).Contains(prefix)) 
-                            prefabName = prefabName.Remove(0, 2).Insert(0, $"{sceneIndex:D2}");
+                        if (type != NoteType.Hp && type != NoteType.Music)
+                        {
+                            var prefix = prefabName[..2];
+                            if (!(new[] { "00", "em", "bo" }).Contains(prefix))
+                                prefabName = prefabName.Remove(0, 2).Insert(0, $"{sceneIndex:D2}");
+                        }
 
                         if (!delayCache.ContainsKey(prefabName))
                         {
                             var gameObject = ResourcesManager.instance.LoadFromName<GameObject>(prefabName);
 
-                            if (gameObject is not null)
+                            if (gameObject != null)
                             {
                                 var spineActionController = gameObject.GetComponent<SpineActionController>();
                                 delayCache[prefabName] = (Il2CppSystem.Decimal)spineActionController.startDelay;
@@ -573,7 +580,7 @@ namespace CustomAlbums
 
             // Fix incorrect phase gears
             var phaseGearConfig = Interop.CreateTypeValue<NoteConfigData>();
-            phaseGearConfig.ibms_id = "0";
+            phaseGearConfig.ibms_id = "";
 
             for (var i = 0; i < bossData.Count; i++)
             {
@@ -614,9 +621,10 @@ namespace CustomAlbums
                 {
                     ahead = !ahead;
                     usedState = ahead ? stateAhead : stateBehind;
+                    correctState = usedState is BossState.Phase1 or BossState.Phase2;
                 }
+                if (!correctState) continue;
                 if (usedState is not (BossState.Phase1 or BossState.Phase2)) continue;
-
 
                 if ((ahead && AnimStatesLeft[data.noteData.boss_action] == usedState) 
                     || (!ahead && AnimStatesRight[data.noteData.boss_action] == usedState)) {
@@ -660,7 +668,7 @@ namespace CustomAlbums
                 fixedGear.isLongPressEnd = data.isLongPressEnd;
                 fixedGear.isLongPressing = data.isLongPressing;
                 fixedGear.noteData = phaseGearConfig;
-
+                
                 MusicDataManager.Set(fixedGear.objId, fixedGear);
                 bossData[i] = fixedGear;
                 Logger.Msg($"Fixed gear at tick {data.tick}.");

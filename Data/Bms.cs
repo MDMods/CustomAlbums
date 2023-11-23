@@ -5,75 +5,11 @@ using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppFormulaBase;
 using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
-using Decimal = Il2CppSystem.Decimal;
 
 namespace CustomAlbums.Data
 {
     public class Bms
     {
-        public JsonObject Info { get; set; }
-        public JsonArray Notes { get; set; }
-        public JsonArray NotesPercent { get; set; }
-        public string Md5 { get; set; }
-
-        public float Bpm
-        {
-            get
-            {
-                var bpmString = Info["BPM"]?.GetValue<string>() ?? Info["BPM01"]?.GetValue<string>() ?? string.Empty;
-                return !float.TryParse(bpmString, out var bpm) ? 0f : bpm;
-            }
-        }
-
-        [Flags]
-        public enum ChannelType
-        {
-            /// <summary>
-            /// Channel does not support anything.
-            /// </summary>
-            None = 0,
-            /// <summary>
-            /// Channel supports the Ground Lane.
-            /// </summary>
-            Ground = 1,
-            /// <summary>
-            /// Channel supports the Air Lane.
-            /// </summary>
-            Air = 2,
-            /// <summary>
-            /// Channel supports standard events.
-            /// </summary>
-            Event = 4,
-            /// <summary>
-            /// Channel supports scene events.
-            /// </summary>
-            Scene = 8,
-            /// <summary>
-            /// Notes in this channel become Heart Enemies if possible.
-            /// </summary>
-            SpBlood = 16,
-            /// <summary>
-            /// Notes in this channel become Tap Holds if possible.
-            /// </summary>
-            SpTapHolds = 32,
-            /// <summary>
-            /// This channel is used for BPM changes, with the value directly present.
-            /// </summary>
-            SpBpmDirect = 64,
-            /// <summary>
-            /// This channel is used for BPM changes, with the value placed in a lookup table.
-            /// </summary>
-            SpBpmLookup = 128,
-            /// <summary>
-            /// This channel is used for time signature changes.
-            /// </summary>
-            SpTimesig = 256,
-            /// <summary>
-            /// This channel is used for scroll speed changes.
-            /// </summary>
-            SpScroll = 512
-        }
-
         public enum BmsId
         {
             None,
@@ -169,8 +105,68 @@ namespace CustomAlbums.Data
             BossBullet2,
             BossBullet2LaneShift
         }
-        
-        public static readonly Dictionary<string, ChannelType> Channels = new() {
+
+        [Flags]
+        public enum ChannelType
+        {
+            /// <summary>
+            ///     Channel does not support anything.
+            /// </summary>
+            None = 0,
+
+            /// <summary>
+            ///     Channel supports the Ground Lane.
+            /// </summary>
+            Ground = 1,
+
+            /// <summary>
+            ///     Channel supports the Air Lane.
+            /// </summary>
+            Air = 2,
+
+            /// <summary>
+            ///     Channel supports standard events.
+            /// </summary>
+            Event = 4,
+
+            /// <summary>
+            ///     Channel supports scene events.
+            /// </summary>
+            Scene = 8,
+
+            /// <summary>
+            ///     Notes in this channel become Heart Enemies if possible.
+            /// </summary>
+            SpBlood = 16,
+
+            /// <summary>
+            ///     Notes in this channel become Tap Holds if possible.
+            /// </summary>
+            SpTapHolds = 32,
+
+            /// <summary>
+            ///     This channel is used for BPM changes, with the value directly present.
+            /// </summary>
+            SpBpmDirect = 64,
+
+            /// <summary>
+            ///     This channel is used for BPM changes, with the value placed in a lookup table.
+            /// </summary>
+            SpBpmLookup = 128,
+
+            /// <summary>
+            ///     This channel is used for time signature changes.
+            /// </summary>
+            SpTimesig = 256,
+
+            /// <summary>
+            ///     This channel is used for scroll speed changes.
+            /// </summary>
+            SpScroll = 512
+        }
+
+        public static readonly Dictionary<string, ChannelType> Channels = new()
+        {
             ["01"] = ChannelType.Scene,
             ["02"] = ChannelType.SpTimesig,
             ["03"] = ChannelType.SpBpmDirect,
@@ -293,9 +289,81 @@ namespace CustomAlbums.Data
             ["3F"] = BmsId.BossBullet2LaneShift
         };
 
+        public JsonObject Info { get; set; }
+        public JsonArray Notes { get; set; }
+        public JsonArray NotesPercent { get; set; }
+        public string Md5 { get; set; }
+        public Dictionary<string, NoteConfigData> NoteData { get; set; }
+
+        public float Bpm
+        {
+            get
+            {
+                var bpmString = Info["BPM"]?.GetValue<string>() ?? Info["BPM01"]?.GetValue<string>() ?? string.Empty;
+                return !float.TryParse(bpmString, out var bpm) ? 0f : bpm;
+            }
+        }
+
         public static string GetNoteDataKey(string bmsId, int pathway, int speed, string scene)
         {
             return $"{bmsId}-{pathway}-{speed}-{scene}";
+        }
+
+        public void InitNoteData()
+        {
+            NoteData = new Dictionary<string, NoteConfigData>();
+
+            foreach (var config in NoteDataMananger.instance.noteDatas)
+            {
+                // Ignore april fools variants (these are handled elsewhere)
+                if (config.prefab_name.EndsWith("_fool")) continue;
+                // Ignore phase 2 boss gears
+                if (config.GetNoteType() == NoteType.Block && config.boss_action.EndsWith("_atk_2")) continue;
+
+                // Scene setting of "0" is a wildcard
+                var anyScene = config.scene == "0";
+                // Notes with these values are extremely likely to be events, and get registered to all pathways
+                var anyPathway = config.pathway == 0
+                                 && config.score == 0
+                                 && config.fever == 0
+                                 && config.damage == 0;
+                // Boss type, None type, boss mashers, and events get registered to all speeds
+                var anySpeed = config.GetNoteType() == NoteType.Boss
+                               || config.GetNoteType() == NoteType.None
+                               || config.ibms_id == "16"
+                               || config.ibms_id == "17";
+
+                var speeds = new List<int> { config.speed };
+                var scenes = new List<string> { config.scene };
+                var pathways = new List<int> { config.pathway };
+
+                // Use all speeds if any speed
+                if (anySpeed) speeds = new List<int> { 1, 2, 3 };
+                // Use all scenes if any scene
+                if (anyScene)
+                {
+                    scenes = new List<string>();
+                    foreach (var scene in Singleton<StageBattleComponent>.instance.sceneInfo)
+                    {
+                        // Special handling for collectibles in touhou scene
+                        if (config.GetNoteType() is NoteType.Hp or NoteType.Music && scene.Value == 8)
+                            continue;
+
+                        // Fix for 10+ scenes
+                        var sceneSuffix = scene.Value.ToString().Length == 1
+                            ? $"0{scene.Value}"
+                            : scene.Value.ToString();
+                        scenes.Add($"scene_{sceneSuffix}");
+                    }
+                }
+
+                // Use all pathways if any pathway
+                if (anyPathway) pathways = new List<int> { 0, 1 };
+
+                foreach (var key in pathways.SelectMany(pathway => speeds.SelectMany(speed =>
+                             scenes.Select(scene => GetNoteDataKey(config.ibms_id, pathway, speed, scene)))))
+                    NoteData.TryAdd(key, config);
+            }
         }
 
         public Il2CppSystem.Collections.Generic.List<SceneEvent> GetSceneEvents()
@@ -311,26 +379,21 @@ namespace CustomAlbums.Data
                 if (!Channels.TryGetValue(channelTone, out var channel)) continue;
 
                 if (channel.HasFlag(ChannelType.Scene))
-                {
                     sceneEvents.Add(new SceneEvent
                     {
                         time = note["time"].GetValueAsIl2CppDecimal(),
                         uid = $"SceneEvent/{bmsKey}"
                     });
-                }
                 else if (channel.HasFlag(ChannelType.SpBpmDirect) || channel.HasFlag(ChannelType.SpBpmLookup))
-                {
                     sceneEvents.Add(new SceneEvent
                     {
                         time = note["time"].GetValueAsIl2CppDecimal(),
                         uid = "SceneEvent/OnBPMChanged",
                         value = note["value"]?.GetValue<string>() ?? string.Empty
                     });
-                }
             }
 
             return sceneEvents;
         }
     }
 }
-
