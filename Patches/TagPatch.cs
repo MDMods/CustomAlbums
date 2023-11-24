@@ -15,9 +15,6 @@ namespace CustomAlbums.Patches
 {
     internal class TagPatch
     {
-        /// <summary>
-        /// Enables animated album covers.
-        /// </summary>
         [HarmonyPatch(typeof(MusicTagManager), nameof(MusicTagManager.InitAlbumTagInfo))]
         internal class MusicTagPatch
         {

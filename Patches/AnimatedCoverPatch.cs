@@ -19,7 +19,9 @@ namespace CustomAlbums.Patches
 {
     internal class AnimatedCoverPatch
     {
-
+        /// <summary>
+        /// Enables animated album covers.
+        /// </summary>
         [HarmonyPatch(typeof(MusicStageCell), nameof(MusicStageCell.Awake))]
         internal static class MusicStageCellPatch
         {

@@ -32,6 +32,9 @@ namespace CustomAlbums.Patches
         private static readonly Dictionary<string, Func<string, IntPtr, string, IntPtr>> AssetHandler = new();
         private static readonly Logger Logger = new(nameof(AssetPatch));
 
+        private static int LatestAlbumNum = 0;
+        private static bool DoneLoadingAlbumsFlag = false;
+
         /// <summary>
         /// Binds the asset to a new key, while removing the old asset.
         /// </summary>
@@ -79,12 +82,12 @@ namespace CustomAlbums.Patches
                     free = true
                 });
 
-                // create and add the new asset with the CustomAlbums "dlc"
+                // Create and add the new asset with the CustomAlbums "dlc"
                 var newAsset = CreateTextAsset(assetName, JsonSerializer.Serialize(jsonArray));
                 if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
                     Singleton<ConfigManager>.instance.Add(assetName, newAsset.text);
 
-                // set cache and return newAsset's pointer if it non-null
+                // Set cache and return newAsset's pointer if it non-null
                 AssetCache[assetName] = newAsset;
                 return newAsset?.Pointer ?? assetPtr;
             });
@@ -93,7 +96,7 @@ namespace CustomAlbums.Patches
             {
                 var jsonArray = new JsonArray();
 
-                // add each custom charts' data to the album
+                // Add each custom charts' data to the album
                 foreach (var (albumStr, albumObj) in AlbumManager.LoadedAlbums)
                 {
                     var albumInfo = albumObj.Info;
@@ -121,7 +124,7 @@ namespace CustomAlbums.Patches
                     };
                     jsonArray.Add(customChartJson);
 
-                    // configure the searchtaginfo
+                    // Configure the searchtaginfo
                     var config = Singleton<ConfigManager>.instance.GetConfigObject<DBConfigMusicSearchTag>();
                     var searchTag = new MusicSearchTagInfo
                     {
@@ -129,7 +132,7 @@ namespace CustomAlbums.Patches
                         listIndex = config.count
                     };
                      
-                    // create the search tag itself
+                    // Create the search tag itself
                     var tags = new List<string> { "custom albums" };
                     if (albumInfo.SearchTags != null) tags.AddRange(albumInfo.SearchTags);
                     if (!string.IsNullOrEmpty(albumInfo.NameRomanized)) tags.Add(albumInfo.NameRomanized);
@@ -137,17 +140,17 @@ namespace CustomAlbums.Patches
 
                     searchTag.tag = new Il2CppStringArray(tags.ToArray());
 
-                    // add it to the game
+                    // Add it to the game
                     config.m_Dictionary.Add(searchTag.uid, searchTag);
                     config.list.Add(searchTag);
                 }
 
-                // create and add the new asset with the custom charts' data 
+                // Create and add the new asset with the custom charts' data 
                 var newAsset = CreateTextAsset(assetName, JsonSerializer.Serialize(jsonArray));
                 if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
                     Singleton<ConfigManager>.instance.Add(assetName, newAsset.text);
 
-                // set cache and return newAsset's pointer if it non-null
+                // Set cache and return newAsset's pointer if it non-null
                 AssetCache[assetName] = newAsset;
                 return newAsset?.Pointer ?? assetPtr;
             });
@@ -156,7 +159,7 @@ namespace CustomAlbums.Patches
             {
                 var jsonArray = Json.Deserialize<JsonArray>(new TextAsset(assetPtr).text);
 
-                // adds the correct language for the "Custom Albums" album
+                // Adds the correct language for the "Custom Albums" album
                 jsonArray.Add(new
                 {
                     title = AlbumManager.Languages[language],
@@ -176,9 +179,9 @@ namespace CustomAlbums.Patches
             {
                 var jsonArray = new JsonArray();
 
-                // this should technically be written to retreive and add the name of the chart based on your selected language
-                // however this only grabs whatever name is given in the info.json
-                // very likely not a big deal
+                // This should technically be written to retreive and add the name of the chart based on your selected language
+                // However this only grabs whatever name is given in the info.json
+                // Very likely not a big deal
                 foreach (var (_, value) in AlbumManager.LoadedAlbums)
                     jsonArray.Add(new
                     {
@@ -186,12 +189,12 @@ namespace CustomAlbums.Patches
                         author = value.Info.Author
                     });
 
-                // create and add the new asset with the names of each custom chart
+                // Create and add the new asset with the names of each custom chart
                 var newAsset = CreateTextAsset(assetName, JsonSerializer.Serialize(jsonArray));
                 if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
                     Singleton<ConfigManager>.instance.Add(assetName, newAsset.text);
 
-                // set cache and return newAsset's pointer if it non-null
+                // Set cache and return newAsset's pointer if it non-null
                 AssetCache[assetName] = newAsset;
                 return newAsset?.Pointer ?? assetPtr;
             });
@@ -208,12 +211,12 @@ namespace CustomAlbums.Patches
                     if (suffix.StartsWith("_map"))
                     {                       
                         newAsset = album?.Sheets[int.Parse(suffix[^1].ToString())].GetStage();
-                        // do not cache the StageInfos, this should be loaded into memory only when we need it
+                        // Do not cache the StageInfos, this should be loaded into memory only when we need it
                         cache = false;
                     }
                     else
                     {
-                        // set the newAsset to the objects held in the album
+                        // Set the newAsset to the objects held in the album
                         switch (suffix)
                         {
                             case "_demo":
@@ -232,7 +235,7 @@ namespace CustomAlbums.Patches
                     }
                 }
 
-                // set cache if we should and return newAsset's pointer if it non-null
+                // Set cache if we should and return newAsset's pointer if it non-null
                 if (cache) AssetCache[assetName] = newAsset;
                 return newAsset?.Pointer ?? assetPtr;
             });
@@ -261,11 +264,11 @@ namespace CustomAlbums.Patches
                 .GetField("Pointer", BindingFlags.NonPublic | BindingFlags.Static)
                 ?.GetValue(type)!;
 
-            // create a pointer for our new method to be called instead
-            // this is Cdecl because this is going to be called in an unmanaged context
+            // Create a pointer for our new method to be called instead
+            // This is Cdecl because this is going to be called in an unmanaged context
             delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, IntPtr> detourPtr = &LoadFromNamePatch;
 
-            // set the hook so that LoadFromNamePatch runs instead of the original LoadFromName
+            // Set the hook so that LoadFromNamePatch runs instead of the original LoadFromName
             Hook.Detour = (IntPtr)detourPtr;
             Hook.Target = originalLfn;
             Hook.Attach();
@@ -283,13 +286,35 @@ namespace CustomAlbums.Patches
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
         private static IntPtr LoadFromNamePatch(IntPtr instance, IntPtr assetNamePtr, IntPtr nativeMethodInfo)
         {
-            // retrieve the pointer of the asset and the name of the asset
+            // Retrieve the pointer of the asset and the name of the asset
             var assetPtr = Hook.Trampoline(instance, assetNamePtr, nativeMethodInfo);
             var assetName = IL2CPP.Il2CppStringToManaged(assetNamePtr) ?? string.Empty;
             
             Logger.Msg($"Loading {assetName}!");
+            
+            if (assetName.StartsWith("ALBUM") && int.TryParse(assetName.AsSpan(5), out var albumNum) && albumNum != AlbumManager.UID + 1)
+            {
+                // If done loading albums, we've found the maximum actual album
+                // If there's an attempt to load other albums (there will be if you open the tag menu), early return zero pointer
+                // This provides a noticeable speedup when opening tags for the first time
+                if (DoneLoadingAlbumsFlag) 
+                {
+                    if (albumNum > LatestAlbumNum)
+                    {
+                        return IntPtr.Zero;
+                    }
+                }
+                // Otherwise get the maximum number X of ALBUMX
+                else
+                {
+                    LatestAlbumNum = Math.Max(LatestAlbumNum, albumNum);
+                }
+            }
 
-            // if the asset exists in the cache then retrieve it
+            // If we're loading music_search_tag we're done loading albums
+            if (assetName == "music_search_tag") DoneLoadingAlbumsFlag = true;
+
+            // If the asset exists in the cache then retrieve it
             if (AssetCache.TryGetValue(assetName, out var cachedAsset))
             {
                 if (cachedAsset != null)
@@ -302,19 +327,19 @@ namespace CustomAlbums.Patches
                 AssetCache.Remove(assetName);
             }
 
-            // allow original LoadFromName to run with LocalizationSettings
+            // Allow original LoadFromName to run with LocalizationSettings
             if (assetName == "LocalizationSettings") return assetPtr;
 
             var language = SingletonScriptableObject<LocalizationSettings>.instance.GetActiveOption("Language");
 
-            // programmatically alters the asset name to remove the language if the language exists 
+            // Programmatically alters the asset name to remove the language if the language exists 
             var handledAssetName = assetName.StartsWith("albums_") ? "albums_" : assetName;
             handledAssetName = handledAssetName.StartsWith($"{AlbumManager.JsonName}_")
                 ? $"{AlbumManager.JsonName}_"
                 : handledAssetName;
             handledAssetName = handledAssetName.StartsWith("album_") ? "album_" : handledAssetName;
 
-            // get the method from the AssetHandler if it exists and run it, otherwise return assetPtr
+            // Get the method from the AssetHandler if it exists and run it, otherwise return assetPtr
             return AssetHandler.TryGetValue(handledAssetName, out var value)
                 ? value(assetName, assetPtr, language)
                 : assetPtr;

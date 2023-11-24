@@ -108,7 +108,7 @@ namespace CustomAlbums.Patches
             private static readonly Logger Logger = new(nameof(InvokeHideBmsPatch));
             private static bool Prefix(MusicInfo musicInfo, SpecialSongManager __instance)
             {
-                if (musicInfo.uid.StartsWith(AlbumManager.UID.ToString()) && BmsInfoLoadedHiddens.Contains(musicInfo.uid))
+                if (musicInfo.uid.StartsWith($"{AlbumManager.UID}-") && BmsInfoLoadedHiddens.Contains(musicInfo.uid))
                 {
                     var hideBms = __instance.m_HideBmsInfos[musicInfo.uid];
                     __instance.m_IsInvokeHideDic[hideBms.uid] = true;
@@ -133,12 +133,11 @@ namespace CustomAlbums.Patches
                 return true;
             }
 
-            private static bool ActivateHidden(SpecialSongManager.HideBmsInfo hideBms)
+            private static void ActivateHidden(SpecialSongManager.HideBmsInfo hideBms)
             {
-                if (hideBms == null) return false;
+                if (hideBms == null) return;
 
                 var info = GlobalDataBase.dbMusicTag.GetMusicInfoFromAll(hideBms.uid);
-                var success = false;
                 if (hideBms.triggerDiff != 0)
                 {
                     var targetDifficulty = hideBms.triggerDiff;
@@ -182,11 +181,7 @@ namespace CustomAlbums.Patches
                     info.AddMaskValue(difficultyToHide, difficulty);
                     info.AddMaskValue(levelDesignToHide, levelDesignStr);
                     info.SetDifficulty(targetDifficulty, hideBms.m_HideDiff);
-
-                    success = true;
                 }
-
-                return success;
             }
         }
 
@@ -206,7 +201,7 @@ namespace CustomAlbums.Patches
                 Il2CppSystem.Collections.Generic.List<string> newHiddenAlbums = new();
                 foreach (var (_, value) in AlbumManager.LoadedAlbums)
                 {
-                    var uid = $"999-{value.Index}";
+                    var uid = $"{AlbumManager.UID}-{value.Index}";
                     if (value.Sheets.ContainsKey(DifficultyDefine.hide) && TagLoadedHiddens.Add(uid))
                     {
                         newHiddenAlbums.Add(uid);

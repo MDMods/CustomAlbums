@@ -3,6 +3,7 @@ using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2CppAccount;
 using Il2CppAssets.Scripts.Database;
+using Il2CppPeroPeroGames.DataStatistics;
 
 namespace CustomAlbums.Patches
 {
@@ -35,6 +36,19 @@ namespace CustomAlbums.Patches
                         }
                         break;
                 }
+                return true;
+            }
+        }
+
+        /// <summary>
+        /// Prevents the game from sending any analytics if the musicInfo is custom.
+        /// </summary>
+        [HarmonyPatch(typeof(ThinkingDataPeripheralHelper), nameof(ThinkingDataPeripheralHelper.PostToThinkingData))]
+        internal class PostToThinkingDataPatch
+        {
+            private static bool Prefix(string dataStatisticsEventDefinesName, MusicInfo musicInfo)
+            {
+                if (musicInfo.uid.StartsWith($"{AlbumManager.UID}-")) return false;
                 return true;
             }
         }
