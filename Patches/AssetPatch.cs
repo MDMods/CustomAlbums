@@ -1,9 +1,7 @@
-﻿using System.Reflection;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Xml.Linq;
 using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
@@ -12,6 +10,7 @@ using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.GeneralLocalization;
 using Il2CppAssets.Scripts.PeroTools.Managers;
+using Il2CppInterop.Common;
 using Il2CppInterop.Runtime;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppPeroTools2.Resources;
@@ -25,8 +24,6 @@ namespace CustomAlbums.Patches
 {
     internal class AssetPatch
     {
-        private const string LoadFromNameStr = "MethodInfoStoreGeneric_LoadFromName_Public_T_String_0`1";
-
         private static readonly NativeHook<LoadFromNameDelegate> Hook = new();
         private static readonly Dictionary<string, Object> AssetCache = new();
         private static readonly Dictionary<string, Func<string, IntPtr, string, IntPtr>> AssetHandler = new();
@@ -247,11 +244,11 @@ namespace CustomAlbums.Patches
         /// </summary>
         internal static unsafe void AttachHook()
         {
-            var type = typeof(ResourcesManager)
-                .GetNestedType(LoadFromNameStr, BindingFlags.NonPublic)?
-                .MakeGenericType(typeof(TextAsset));
+            var loadFromNameMethod = AccessTools.Method(typeof(ResourcesManager), 
+                nameof(ResourcesManager.LoadFromName), new Type[] { typeof(string) },
+                new Type[] { typeof(TextAsset) });
 
-            if (type is null)
+            if (loadFromNameMethod is null)
             {
                 Logger.Error("FATAL ERROR: AssetPatch failed.");
                 return;
@@ -260,17 +257,16 @@ namespace CustomAlbums.Patches
             // AttachHook should only be ran once; create the handler
             InitializeHandler();
 
-            var originalLfn = *(IntPtr*)(IntPtr)type
-                .GetField("Pointer", BindingFlags.NonPublic | BindingFlags.Static)
-                ?.GetValue(type)!;
+            var loadFromNamePointer = *(IntPtr*)(IntPtr)Il2CppInteropUtils
+                .GetIl2CppMethodInfoPointerFieldForGeneratedMethod(loadFromNameMethod).GetValue(null);
 
             // Create a pointer for our new method to be called instead
             // This is Cdecl because this is going to be called in an unmanaged context
-            delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, IntPtr> detourPtr = &LoadFromNamePatch;
+            delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, IntPtr> detourPointer = &LoadFromNamePatch;
 
             // Set the hook so that LoadFromNamePatch runs instead of the original LoadFromName
-            Hook.Detour = (IntPtr)detourPtr;
-            Hook.Target = originalLfn;
+            Hook.Detour = (IntPtr)detourPointer;
+            Hook.Target = loadFromNamePointer;
             Hook.Attach();
         }
 
@@ -297,18 +293,12 @@ namespace CustomAlbums.Patches
                 // If done loading albums, we've found the maximum actual album
                 // If there's an attempt to load other albums (there will be if you open the tag menu), early return zero pointer
                 // This provides a noticeable speedup when opening tags for the first time
-                if (DoneLoadingAlbumsFlag) 
-                {
-                    if (albumNum > LatestAlbumNum)
-                    {
-                        return IntPtr.Zero;
-                    }
-                }
+                if (DoneLoadingAlbumsFlag && albumNum > LatestAlbumNum)
+                    return IntPtr.Zero;
+                
                 // Otherwise get the maximum number X of ALBUMX
                 else
-                {
                     LatestAlbumNum = Math.Max(LatestAlbumNum, albumNum);
-                }
             }
 
             // If we're loading music_search_tag we're done loading albums
