@@ -108,10 +108,10 @@ namespace CustomAlbums
                             if (type is Bms.ChannelType.SpBpmDirect or Bms.ChannelType.SpBpmLookup)
                             {
                                 // Handle BPM changes
-                                var freqDivide = type == Bms.ChannelType.SpBpmLookup || bpmDict.ContainsKey(note)
+                                var freqDivide = type == Bms.ChannelType.SpBpmLookup && bpmDict.ContainsKey(note)
                                     ? bpmDict[note]
                                     : Convert.ToInt32(note, 16);
-                                var freq = 60f / (freqDivide * 4f);
+                                var freq = 60f / freqDivide * 4f;
 
                                 var obj = new JsonObject
                                 {
@@ -119,6 +119,7 @@ namespace CustomAlbums
                                     { "freq", freq }
                                 };
                                 dataList.Add(obj);
+                                // TODO: figure out how to reverse this witthout causing it to break
                                 dataList.Sort((l, r) =>
                                 {
                                     var tickL = l["tick"].GetValue<float>();
