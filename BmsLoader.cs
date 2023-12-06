@@ -108,8 +108,8 @@ namespace CustomAlbums
                             if (type is Bms.ChannelType.SpBpmDirect or Bms.ChannelType.SpBpmLookup)
                             {
                                 // Handle BPM changes
-                                var freqDivide = type == Bms.ChannelType.SpBpmLookup && bpmDict.ContainsKey(note)
-                                    ? bpmDict[note]
+                                var freqDivide = type == Bms.ChannelType.SpBpmLookup && bpmDict.TryGetValue(note, out var bpm)
+                                    ? bpm
                                     : Convert.ToInt32(note, 16);
                                 var freq = 60f / freqDivide * 4f;
 
@@ -119,13 +119,13 @@ namespace CustomAlbums
                                     { "freq", freq }
                                 };
                                 dataList.Add(obj);
-                                // TODO: figure out how to reverse this witthout causing it to break
+                                // TODO: figure out how to reverse this without causing it to break
                                 dataList.Sort((l, r) =>
                                 {
                                     var tickL = l["tick"].GetValue<float>();
                                     var tickR = r["tick"].GetValue<float>();
 
-                                    return tickL.CompareTo(tickR);
+                                    return tickR.CompareTo(tickL);
                                 });
                             }
                             else
@@ -235,8 +235,6 @@ namespace CustomAlbums
             MusicDataManager.Clear();
             _delay = 0;
 
-            var stageInfo = ScriptableObject.CreateInstance<StageInfo>();
-
             var noteData = GetNoteData(bms);
             Logger.Msg("Got note data");
 
@@ -259,6 +257,7 @@ namespace CustomAlbums
 
             Logger.Msg("Applied Delay");
 
+            var stageInfo = ScriptableObject.CreateInstance<StageInfo>();
             stageInfo.musicDatas = new Il2CppSystem.Collections.Generic.List<MusicData>();
             foreach (var musicData in MusicDataManager.Data)
                 stageInfo.musicDatas.Add(musicData);
@@ -275,7 +274,7 @@ namespace CustomAlbums
                 NoteData.TryAdd(nData.uid, nData);
                 NoteData.TryAdd(Bms.GetNoteDataKey(nData.ibms_id, nData.pathway, nData.speed, nData.scene), nData);
 
-                if (nData.type != 0 || string.IsNullOrEmpty(nData.boss_action) || nData.boss_action == "0") continue;
+                if (nData.GetNoteType() != NoteType.None || string.IsNullOrEmpty(nData.boss_action) || nData.boss_action == "0") continue;
 
                 BossData.TryAdd(nData.scene, new Dictionary<string, NoteConfigData>());
                 BossData[nData.scene].TryAdd(nData.boss_action, nData);
@@ -287,7 +286,7 @@ namespace CustomAlbums
             if (bms.NoteData is null || bms.NoteData.Count == 0) bms.InitNoteData();
             var processed = new JsonArray();
 
-            var speedAir = int.Parse(bms.Info["PLAYER"]?.GetValue<string>() ?? "0");
+            var speedAir = int.Parse(bms.Info["PLAYER"]?.GetValue<string>() ?? "1");
             var speedGround = speedAir;
 
             var objectId = 1;
@@ -404,9 +403,6 @@ namespace CustomAlbums
                 var configData = node.ToMusicConfigData();
                 if (configData.time < 0) continue;
 
-                if (!NoteData.TryGetValue(configData.note_uid, out var newNoteData))
-                    newNoteData = Interop.CreateTypeValue<NoteConfigData>();
-
                 // Create a new note for each configData
                 var newNote = Interop.CreateTypeValue<MusicData>();
                 newNote.objId = noteId++;
@@ -414,7 +410,9 @@ namespace CustomAlbums
                 newNote.configData = configData;
                 newNote.isLongPressEnd = false;
                 newNote.isLongPressing = false;
-                newNote.noteData = newNoteData;
+
+                if (NoteData.TryGetValue(newNote.configData.note_uid, out var newNoteData))
+                    newNote.noteData = newNoteData;
 
                 MusicDataManager.Add(newNote);
 
@@ -423,7 +421,7 @@ namespace CustomAlbums
 
                 // Calculate the index in which the hold note ends
                 var endIndex = (int)(Decimal.Round(
-                    newNote.tick + configData.length - newNoteData.left_great_range - newNoteData.left_perfect_range,
+                    newNote.tick + newNote.configData.length - newNote.noteData.left_great_range - newNote.noteData.left_perfect_range,
                     3) / (Decimal)0.001f);
 
                 for (var i = 1; i <= newNote.longPressCount; i++)
@@ -431,7 +429,7 @@ namespace CustomAlbums
                     var holdTick = Interop.CreateTypeValue<MusicData>();
                     holdTick.objId = noteId++;
                     holdTick.tick = i == newNote.longPressCount
-                        ? newNote.tick + configData.length
+                        ? newNote.tick + newNote.configData.length
                         : newNote.tick + (Decimal)0.1f * i;
                     holdTick.configData = newNote.configData;
 
@@ -485,13 +483,13 @@ namespace CustomAlbums
 
                 var exitMusicData = Interop.CreateTypeValue<MusicData>();
                 exitMusicData.objId = 0;
-                exitMusicData.tick = tick;
+                exitMusicData.tick = exitConfig.time;
                 exitMusicData.configData = exitConfig;
                 exitMusicData.noteData = exitNoteData;
 
                 MusicDataManager.Add(exitMusicData);
                 bossData.Add(exitMusicData);
-                Logger.Msg("Added missing boss exit");
+                Logger.Msg("Added missing boss exit at " + exitConfig.time);
             }
 
             // Fix incorrect phase gears
@@ -548,9 +546,11 @@ namespace CustomAlbums
                 if (!correctState) continue;
                 if (usedState is not (BossState.Phase1 or BossState.Phase2)) continue;
 
-                if ((ahead && AnimStatesLeft[data.noteData.boss_action] == usedState)
-                    || (!ahead && AnimStatesRight[data.noteData.boss_action] == usedState))
+                if ((ahead && AnimStatesLeft[data.noteData.boss_action] == usedState) ||
+                    (!ahead && AnimStatesRight[data.noteData.boss_action] == usedState))
+                {
                     continue;
+                }
 
                 var phase = usedState == BossState.Phase1 ? 1 : 2;
 
@@ -616,8 +616,7 @@ namespace CustomAlbums
 
                     var mConfig = Interop.CreateTypeValue<MusicConfigData>();
                     mConfig.note_uid = transferNoteData.uid;
-                    mConfig.time =
-                        Decimal.Round(alignData.tick - alignDelay - duration * (int)alignment, 3);
+                    mConfig.time = Decimal.Round(alignData.tick - alignDelay - duration * (int)alignment, 3);
 
                     var mData = Interop.CreateTypeValue<MusicData>();
                     mData.tick = mConfig.time;
@@ -660,37 +659,39 @@ namespace CustomAlbums
             for (var i = 0; i < MusicDataManager.Data.Count; i++)
             {
                 var mData = MusicDataManager.Data[i];
-                if (string.IsNullOrEmpty(mData.noteData.ibms_id)) continue;
-
-                var type = mData.noteData.GetNoteType();
-                if (type == NoteType.SceneChange) sceneIndex = sceneInfo[mData.noteData.ibms_id];
-
-                var prefabName = mData.noteData.prefab_name;
-                if (!string.IsNullOrEmpty(prefabName))
+                if (!string.IsNullOrEmpty(mData.noteData.ibms_id))
                 {
-                    // If not a pickup type, convert to most recent scene
-                    if (type != NoteType.Hp && type != NoteType.Music)
-                    {
-                        var prefix = prefabName[..2];
-                        if (!new[] { "00", "em", "bo" }.Contains(prefix))
-                            prefabName = prefabName.Remove(0, 2).Insert(0, $"{sceneIndex:D2}");
-                    }
 
-                    if (!delayCache.ContainsKey(prefabName))
-                    {
-                        var gameObject = ResourcesManager.instance.LoadFromName<GameObject>(prefabName);
+                    var type = mData.noteData.GetNoteType();
+                    if (type == NoteType.SceneChange) sceneIndex = sceneInfo[mData.noteData.ibms_id];
 
-                        if (gameObject != null)
+                    var prefabName = mData.noteData.prefab_name;
+                    if (!string.IsNullOrEmpty(prefabName))
+                    {
+                        // If not a pickup type, convert to most recent scene
+                        if (type != NoteType.Hp && type != NoteType.Music)
                         {
-                            var spineActionController = gameObject.GetComponent<SpineActionController>();
-                            delayCache[prefabName] = (Decimal)spineActionController.startDelay;
+                            var prefix = prefabName[..2];
+                            if (!new[] { "00", "em", "bo" }.Contains(prefix))
+                                prefabName = prefabName.Remove(0, 2).Insert(0, $"{sceneIndex:D2}");
                         }
-                    }
 
-                    if (delayCache.TryGetValue(prefabName, out var delay))
-                    {
-                        mData.dt = delay;
-                        MusicDataManager.Set(i, mData);
+                        if (!delayCache.ContainsKey(prefabName))
+                        {
+                            var gameObject = ResourcesManager.instance.LoadFromName<GameObject>(prefabName);
+
+                            if (gameObject != null)
+                            {
+                                var spineActionController = gameObject.GetComponent<SpineActionController>();
+                                delayCache[prefabName] = (Decimal)spineActionController.startDelay;
+                            }
+                        }
+
+                        if (delayCache.TryGetValue(prefabName, out var delay))
+                        {
+                            mData.dt = delay;
+                            MusicDataManager.Set(i, mData);
+                        }
                     }
                 }
 
@@ -712,8 +713,8 @@ namespace CustomAlbums
             for (var i = 0; i < MusicDataManager.Data.Count; i++)
             {
                 var mData = MusicDataManager.Data[i];
-                // Process geminis
                 mData.doubleIdx = -1;
+                MusicDataManager.Set(i, mData);
 
                 if (mData.noteData.GetNoteType() != NoteType.Monster && mData.noteData.GetNoteType() != NoteType.Hide)
                     continue;
@@ -724,7 +725,7 @@ namespace CustomAlbums
                     var isTargetGemini = false;
                     var target = Interop.CreateTypeValue<MusicData>();
 
-                    foreach (var gemini in geminiList.Where(gemini => !gemini.isAir || !mData.isAir))
+                    foreach (var gemini in geminiList.Where(gemini => mData.isAir != gemini.isAir))
                     {
                         target = gemini;
                         isTargetGemini = Bms.BmsIds[gemini.noteData.ibms_id ?? "00"] == Bms.BmsId.Gemini;
