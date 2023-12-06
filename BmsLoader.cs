@@ -119,7 +119,6 @@ namespace CustomAlbums
                                     { "freq", freq }
                                 };
                                 dataList.Add(obj);
-                                // TODO: figure out how to reverse this without causing it to break
                                 dataList.Sort((l, r) =>
                                 {
                                     var tickL = l["tick"].GetValue<float>();
@@ -160,9 +159,9 @@ namespace CustomAlbums
 
                                         if (k == floorOffset)
                                             off = k + 1 - localOffset;
-                                        else if (k == ceilOffset - 1)
+                                        if (k == ceilOffset - 1)
                                             off = totalOffset - (ceilOffset - 1);
-                                        else if (ceilOffset == floorOffset + 1)
+                                        if (ceilOffset == floorOffset + 1)
                                             off = totalOffset - localOffset;
 
                                         notePercents.TryGetValue(k, out var node);
