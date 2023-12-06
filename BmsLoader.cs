@@ -108,7 +108,8 @@ namespace CustomAlbums
                             if (type is Bms.ChannelType.SpBpmDirect or Bms.ChannelType.SpBpmLookup)
                             {
                                 // Handle BPM changes
-                                var freqDivide = type == Bms.ChannelType.SpBpmLookup && bpmDict.TryGetValue(note, out var bpm)
+                                var freqDivide = type == Bms.ChannelType.SpBpmLookup &&
+                                                 bpmDict.TryGetValue(note, out var bpm)
                                     ? bpm
                                     : Convert.ToInt32(note, 16);
                                 var freq = 60f / freqDivide * 4f;
@@ -234,7 +235,7 @@ namespace CustomAlbums
             MusicDataManager.Clear();
             _delay = 0;
 
-            var noteData = GetNoteData(bms);
+            var noteData = bms.GetNoteData();
             Logger.Msg("Got note data");
 
             LoadMusicData(noteData);
@@ -246,6 +247,7 @@ namespace CustomAlbums
 
             ProcessGeminis();
 
+            // Process the delay for each MusicData
             foreach (var mData in MusicDataManager.Data)
             {
                 mData.tick -= _delay;
@@ -254,8 +256,7 @@ namespace CustomAlbums
                     mData.endIndex -= (int)(_delay / (Decimal)0.001f);
             }
 
-            Logger.Msg("Applied Delay");
-
+            // Transmute the MusicData to a new StageInfo object
             var stageInfo = ScriptableObject.CreateInstance<StageInfo>();
             stageInfo.musicDatas = new Il2CppSystem.Collections.Generic.List<MusicData>();
             foreach (var musicData in MusicDataManager.Data)
@@ -273,118 +274,12 @@ namespace CustomAlbums
                 NoteData.TryAdd(nData.uid, nData);
                 NoteData.TryAdd(Bms.GetNoteDataKey(nData.ibms_id, nData.pathway, nData.speed, nData.scene), nData);
 
-                if (nData.GetNoteType() != NoteType.None || string.IsNullOrEmpty(nData.boss_action) || nData.boss_action == "0") continue;
+                if (nData.GetNoteType() != NoteType.None || string.IsNullOrEmpty(nData.boss_action) ||
+                    nData.boss_action == "0") continue;
 
                 BossData.TryAdd(nData.scene, new Dictionary<string, NoteConfigData>());
                 BossData[nData.scene].TryAdd(nData.boss_action, nData);
             }
-        }
-
-        private static JsonArray GetNoteData(Bms bms)
-        {
-            if (bms.NoteData is null || bms.NoteData.Count == 0) bms.InitNoteData();
-            var processed = new JsonArray();
-
-            var speedAir = int.Parse(bms.Info["PLAYER"]?.GetValue<string>() ?? "1");
-            var speedGround = speedAir;
-
-            var objectId = 1;
-            for (var i = 0; i < bms.Notes.Count; i++)
-            {
-                var note = bms.Notes[i];
-                if (note is null) continue;
-
-                var bmsKey = note["value"]?.GetValue<string>() ?? "00";
-                var bmsId = Bms.BmsIds.TryGetValue(bmsKey, out var bType) ? bType : Bms.BmsId.None;
-                var channel = note["tone"]?.GetValue<string>() ?? string.Empty;
-                var channelType = Bms.Channels.TryGetValue(channel, out var cType) ? cType : Bms.ChannelType.None;
-
-                // Handle lane type
-                var pathway = -1;
-                if (channelType.HasFlag(Bms.ChannelType.Air))
-                    pathway = 1;
-                else if (channelType.HasFlag(Bms.ChannelType.Ground) || channelType.HasFlag(Bms.ChannelType.Event))
-                    pathway = 0;
-                if (pathway == -1) continue;
-
-                // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
-                // ReSharper disable once SwitchStatementMissingSomeEnumCasesNoDefault
-                switch (bmsId)
-                {
-                    // Handle speed changes
-                    case Bms.BmsId.Speed1Both:
-                        speedGround = 1;
-                        speedAir = 1;
-                        break;
-                    case Bms.BmsId.Speed2Both:
-                        speedGround = 2;
-                        speedAir = 2;
-                        break;
-                    case Bms.BmsId.Speed3Both:
-                        speedGround = 3;
-                        speedAir = 3;
-                        break;
-                    case Bms.BmsId.Speed1Low:
-                        speedGround = 1;
-                        break;
-                    case Bms.BmsId.Speed1High:
-                        speedAir = 1;
-                        break;
-                    case Bms.BmsId.Speed2Low:
-                        speedGround = 2;
-                        break;
-                    case Bms.BmsId.Speed2High:
-                        speedAir = 2;
-                        break;
-                    case Bms.BmsId.Speed3Low:
-                        speedGround = 3;
-                        break;
-                    case Bms.BmsId.Speed3High:
-                        speedAir = 3;
-                        break;
-                }
-
-                var speed = pathway == 1 ? speedAir : speedGround;
-                var scene = bms.Info["GENRE"]?.GetValue<string>();
-                if (!bms.NoteData!.TryGetValue(Bms.GetNoteDataKey(bmsKey, pathway, speed, scene), out var configData))
-                    continue;
-
-                var time = note["time"]?.GetValueAsDecimal() ?? 0M;
-
-                // Hold note & masher 
-                var holdLength = 0M;
-                var isHold = configData.GetNoteType() is NoteType.Press or NoteType.Mul;
-                if (isHold)
-                {
-                    if (channelType.HasFlag(Bms.ChannelType.SpTapHolds))
-                        holdLength = 0.001M;
-                    else
-                        for (var j = i + 1; j < bms.Notes.Count; j++)
-                        {
-                            var holdEndNote = bms.Notes[j];
-                            var holdEndTime = holdEndNote?["time"]?.GetValueAsDecimal() ?? 0M;
-                            var holdEndBmsKey = holdEndNote?["value"]?.GetValue<string>() ?? string.Empty;
-                            var holdEndChannel = holdEndNote?["tone"]?.GetValue<string>() ?? string.Empty;
-
-                            if (holdEndBmsKey != bmsKey || holdEndChannel != channel) continue;
-                            holdLength = holdEndTime - time;
-                            bms.Notes[j]!["value"] = "";
-                            break;
-                        }
-                }
-
-                processed.Add(new JsonObject
-                {
-                    ["id"] = objectId++,
-                    ["time"] = time,
-                    ["note_uid"] = configData.uid,
-                    ["length"] = holdLength,
-                    ["pathway"] = pathway,
-                    ["blood"] = !isHold && channelType.HasFlag(Bms.ChannelType.SpBlood)
-                });
-            }
-
-            return processed;
         }
 
         private static void LoadMusicData(JsonArray noteData)
@@ -420,7 +315,8 @@ namespace CustomAlbums
 
                 // Calculate the index in which the hold note ends
                 var endIndex = (int)(Decimal.Round(
-                    newNote.tick + newNote.configData.length - newNote.noteData.left_great_range - newNote.noteData.left_perfect_range,
+                    newNote.tick + newNote.configData.length - newNote.noteData.left_great_range -
+                    newNote.noteData.left_perfect_range,
                     3) / (Decimal)0.001f);
 
                 for (var i = 1; i <= newNote.longPressCount; i++)
@@ -547,9 +443,7 @@ namespace CustomAlbums
 
                 if ((ahead && AnimStatesLeft[data.noteData.boss_action] == usedState) ||
                     (!ahead && AnimStatesRight[data.noteData.boss_action] == usedState))
-                {
                     continue;
-                }
 
                 var phase = usedState == BossState.Phase1 ? 1 : 2;
 
@@ -660,7 +554,6 @@ namespace CustomAlbums
                 var mData = MusicDataManager.Data[i];
                 if (!string.IsNullOrEmpty(mData.noteData.ibms_id))
                 {
-
                     var type = mData.noteData.GetNoteType();
                     if (type == NoteType.SceneChange) sceneIndex = sceneInfo[mData.noteData.ibms_id];
 
@@ -707,9 +600,7 @@ namespace CustomAlbums
         {
             var geminiCache = new Dictionary<Decimal, List<MusicData>>();
 
-            // ReSharper disable once ForCanBeConvertedToForeach
-            // This needs to be a for loop since the list is modified in-loop.
-            for (var i = 0; i < MusicDataManager.Data.Count; i++)
+            for (var i = 1; i < MusicDataManager.Data.Count; i++)
             {
                 var mData = MusicDataManager.Data[i];
                 mData.doubleIdx = -1;
