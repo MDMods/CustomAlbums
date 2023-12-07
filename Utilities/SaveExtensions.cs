@@ -8,6 +8,13 @@ namespace CustomAlbums.Utilities
     public static class SaveExtensions
     {
         private static readonly Logger Logger = new(nameof(SaveExtensions));
+
+        /// <summary>
+        /// Gets the chart save data given the chart UID.
+        /// </summary>
+        /// <param name="save">The save file data class.</param>
+        /// <param name="uid">The chart UID.</param>
+        /// <returns>A JsonObject consisting of score information from the current chart's UID.</returns>
         public static JsonObject GetChartSaveDataFromUid(this CustomAlbumsSave save, string uid)
         {
             var album = AlbumManager.GetByUid(uid);
