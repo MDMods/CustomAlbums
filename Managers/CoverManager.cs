@@ -20,8 +20,8 @@ namespace CustomAlbums.Managers
 {
     public static class CoverManager
     {
-        private static readonly Dictionary<int, Sprite> CachedCovers = new();
-        private static readonly Dictionary<int, AnimatedCover> CachedAnimatedCovers = new();
+        internal static readonly Dictionary<int, Sprite> CachedCovers = new();
+        internal static readonly Dictionary<int, AnimatedCover> CachedAnimatedCovers = new();
         private static readonly Logger Logger = new(nameof(CoverManager));
 
         private static readonly Configuration Config = Configuration.Default;

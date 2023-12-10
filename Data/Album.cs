@@ -63,8 +63,16 @@ namespace CustomAlbums.Data
         {
             if (IsPackaged)
             {
-                using var zip = ZipFile.OpenRead(Path);
-                return zip.GetEntry(name) != null;
+                if (!File.Exists(Path)) return false;
+                try
+                {
+                    using var zip = ZipFile.OpenRead(Path);
+                    return zip.GetEntry(name) != null;
+                }
+                catch (IOException)
+                {
+                    // this is expected in the case of deleting an album
+                }
             }
 
             var path = $"{Path}\\{name}";

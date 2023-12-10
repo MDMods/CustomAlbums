@@ -44,17 +44,18 @@ namespace CustomAlbums.Patches
 
                 foreach (var cell in Cells)
                 {
-                    var index = cell.m_VariableBehaviour.Cast<IVariable>().GetResult<int>();
+                    var index = cell?.m_VariableBehaviour?.Cast<IVariable>().GetResult<int>() ?? -1;
                     
-                    var uid = dbMusicTag.GetShowStageUidByIndex(index);
-                    if (uid == null) continue;
-                    
-                    var musicInfo = dbMusicTag.GetMusicInfoFromAll(uid);
-                    if (musicInfo.albumJsonIndex < AlbumManager.UID) continue;
+                    var uid = dbMusicTag?.GetShowStageUidByIndex(index) ?? "?";
+
+                    var musicInfo = dbMusicTag?.GetMusicInfoFromAll(uid);
+                    if (musicInfo?.albumJsonIndex < AlbumManager.UID) continue;
 
                     if (uid != "?")
                     {
-                        var animatedCover = AlbumManager.GetByUid(uid).AnimatedCover;
+                        var album = AlbumManager.GetByUid(uid);
+                        if (album == default) continue;
+                        var animatedCover = album.AnimatedCover;
                         if (animatedCover is null || animatedCover.FramesPerSecond == 0) continue;
                         var frame = (int)Mathf.Floor(Time.time * 1000) % (animatedCover.FramesPerSecond * animatedCover.FrameCount) / animatedCover.FramesPerSecond;
                         cell.m_StageImg.sprite = animatedCover.Frames[frame];
