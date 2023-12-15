@@ -1,6 +1,7 @@
 ﻿using System.IO.Compression;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
+using Il2CppPeroPeroGames.GlobalDefines;
 using UnityEngine;
 
 namespace CustomAlbums.Data
@@ -10,7 +11,6 @@ namespace CustomAlbums.Data
         public int Index { get; }
         public string Path { get; }
         public bool IsPackaged { get; }
-        public bool[] TalkFileVersionsForDifficulty = new bool[4];
         public AlbumInfo Info { get; }
         public Sprite Cover => this.GetCover();
         public AnimatedCover AnimatedCover => this.GetAnimatedCover();

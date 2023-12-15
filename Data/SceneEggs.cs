@@ -1,0 +1,22 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+
+namespace CustomAlbums.Data
+{
+    public class SceneEgg
+    {
+        public enum SceneEggs
+        {
+            None = -1,
+            Cytus = 0,
+            Wacca = 1,
+            Queen = 2,
+            Touhou = 3,
+            Arknights = 4,
+            Miku = 5
+        }
+    }
+}

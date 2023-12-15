@@ -44,7 +44,9 @@ namespace CustomAlbums
             base.OnUpdate();
             MusicStageCellPatch.AnimateCoversUpdate();
         }
-
+        /// <summary>
+        /// This override adds support for hot reloading.
+        /// </summary>
         public override void OnFixedUpdate()
         {
             base.OnFixedUpdate();

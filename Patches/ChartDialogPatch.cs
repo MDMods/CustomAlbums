@@ -21,13 +21,13 @@ namespace CustomAlbums.Patches
                 if (currentStageUid.StartsWith($"{AlbumManager.UID}-"))
                 {
                     var currentAlbum = AlbumManager.GetByUid(currentStageUid);
-                    if (currentAlbum.TalkFileVersionsForDifficulty[PlayDialogAnimPatch.CurrentStageInfo.difficulty - 1])
+                    if (currentAlbum.Sheets.TryGetValue(PlayDialogAnimPatch.CurrentStageInfo.difficulty - 1, out var sheet) && sheet.TalkFileVersion2)
                     {
                         PlayDialogAnimPatch.HasVersion2 = true;
                     }
                     else
                     {
-                        PlayDialogAnimPatch.HasVersion2 = true;
+                        PlayDialogAnimPatch.HasVersion2 = false;
                     }
                     PlayDialogAnimPatch.IsCustom = true;
                 }

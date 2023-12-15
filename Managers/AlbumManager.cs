@@ -21,19 +21,20 @@ namespace CustomAlbums.Managers
             { "Korean", "커스텀앨범" }
         };
 
+        private static int MaxCount { get; set; } = 0;
         public static Dictionary<string, Album> LoadedAlbums { get; } = new();
         private static readonly Logger Logger = new(nameof(AlbumManager));
         internal static readonly FileSystemWatcher AlbumWatcher = new();
-        public static void LoadOne(string path)
+        public static Album LoadOne(string path)
         {
-            var index = LoadedAlbums.Count;
+            MaxCount = Math.Max(LoadedAlbums.Count, MaxCount);
             var fileName = Path.GetFileNameWithoutExtension(path);
-            if (LoadedAlbums.ContainsKey(fileName)) return;
+            if (LoadedAlbums.ContainsKey(fileName)) return null;
 
             try
             {
-                var album = new Album(path, index);
-                if (album.Info is null) return;
+                var album = new Album(path, MaxCount);
+                if (album.Info is null) return null;
 
                 LoadedAlbums.Add($"album_{fileName}", album);
 
@@ -41,12 +42,14 @@ namespace CustomAlbums.Managers
                     ResourcesManager.instance.LoadFromName<Sprite>($"album_{fileName}_cover").hideFlags |= HideFlags.DontUnloadUnusedAsset;
 
                 Logger.Msg($"Loaded album_{fileName}: {album.Info.Name}");
+                return album;
             }
             catch (Exception ex)
             {
                 Logger.Warning($"Failed to load album at {fileName}. Reason: {ex.Message}");
                 Logger.Warning(ex.StackTrace);
             }
+            return null;
         }
 
         public static void LoadAlbums()

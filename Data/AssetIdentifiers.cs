@@ -11,11 +11,6 @@
             "_map2",
             "_map3",
             "_map4"
-        };
-
-        internal static readonly List<string> CustomPrefixes = new()
-        {
-            "999_"
-        };
+        };     
     }
 }

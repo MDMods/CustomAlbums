@@ -1,4 +1,6 @@
-﻿namespace CustomAlbums.Data
+﻿using static CustomAlbums.Data.SceneEgg;
+
+namespace CustomAlbums.Data
 {
     public class AlbumInfo
     {
@@ -12,15 +14,14 @@
         public string Name { get; set; } = string.Empty;
         public string NameRomanized { get; set; } = string.Empty;
         public string Author { get; set; } = string.Empty;
-
         public string LevelDesigner { get; set; } = string.Empty;
         public string LevelDesigner1 { get; set; } = string.Empty;
         public string LevelDesigner2 { get; set;} = string.Empty;
         public string LevelDesigner3 { get; set;} = string.Empty;
-        public string LevelDesigner4 { get; set;} = string.Empty;
-
+        public string LevelDesigner4 { get; set; } = string.Empty;
         public string Bpm { get; set; } = "0";
         public string Scene { get; set; } = "scene_01";
+        public SceneEggs SceneEgg { get; set; } = SceneEggs.None;
 
         public Dictionary<int, string> Difficulties
         {

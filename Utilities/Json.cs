@@ -1,5 +1,6 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using JsonConvert = Il2CppNewtonsoft.Json.JsonConvert;
 
 namespace CustomAlbums.Utilities
@@ -9,7 +10,11 @@ namespace CustomAlbums.Utilities
         private static readonly JsonSerializerOptions DeserializeOptions = new()
         {
             PropertyNameCaseInsensitive = true,
-            AllowTrailingCommas = true
+            AllowTrailingCommas = true,
+            Converters =
+            {
+                new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
+            }
         };
 
         public static T Deserialize<T>(string json)

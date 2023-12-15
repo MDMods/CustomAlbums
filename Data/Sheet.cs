@@ -16,6 +16,7 @@ namespace CustomAlbums.Data
         public string Md5 { get; }
         public string MapName { get; }
         public int Difficulty { get; }
+        public bool TalkFileVersion2 { get; set; } = false;
 
         private readonly Logger _logger = new(nameof(Sheet));
 
@@ -54,7 +55,7 @@ namespace CustomAlbums.Data
                     if (talkFile.TryGetPropertyValue("version", out var node) && node?.GetValue<int>() == 2)
                     {
                         _logger.Msg("Version 2 talk file!");
-                        ParentAlbum.TalkFileVersionsForDifficulty[Difficulty - 1] = true;
+                        TalkFileVersion2 = true;
                     }
                     talkFile.Remove("version");
                     var dict = Json
