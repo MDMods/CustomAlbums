@@ -26,6 +26,7 @@ namespace CustomAlbums.Patches
 
                 // Adds the scene egg to the buffer
                 sceneEggIdsBuffer.Add((int)album.Info.SceneEgg);
+                Logger.Msg("Added SceneEgg " + Enum.GetName(typeof(SceneEggs), album.Info.SceneEgg) + "!");
 
                 // Removes all scene eggs from the buffer that are not the one that was added
                 // This prevents a hierarchical issue where character choice would be used over chart choice
