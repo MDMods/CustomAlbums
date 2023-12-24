@@ -29,22 +29,19 @@ namespace CustomAlbums.Patches
         private static readonly Dictionary<string, Func<string, IntPtr, string, IntPtr>> AssetHandler = new();
         private static readonly Logger Logger = new(nameof(AssetPatch));
 
-        private static int LatestAlbumNum = 0;
-        private static bool DoneLoadingAlbumsFlag = false;
+        private static int _latestAlbumNum;
+        private static bool _doneLoadingAlbumsFlag;
 
         /// <summary>
         /// Binds the asset to a new key, while removing the old asset.
         /// </summary>
         /// <param name="oldAssetName">The old assetName.</param>
-        /// <param name="newAssetName">The new assetName where the value should be binded.</param>
-        /// <returns>true if the key was successfully binded; otherwise, false.</returns>
+        /// <param name="newAssetName">The new assetName where the value should be bound.</param>
+        /// <returns>true if the key was successfully bound; otherwise, false.</returns>
         internal static bool ModifyCacheKey(string oldAssetName, string newAssetName)
         {
             var success = AssetCache.Remove(oldAssetName, out var asset);
-            if (!success)
-                return false;
-
-            return AssetCache.TryAdd(newAssetName, asset);
+            return success && AssetCache.TryAdd(newAssetName, asset);
         }
 
         /// <summary>
@@ -176,7 +173,7 @@ namespace CustomAlbums.Patches
             {
                 var jsonArray = new JsonArray();
 
-                // This should technically be written to retreive and add the name of the chart based on your selected language
+                // This should technically be written to retrieve and add the name of the chart based on your selected language
                 // However this only grabs whatever name is given in the info.json
                 // Very likely not a big deal
                 foreach (var (_, value) in AlbumManager.LoadedAlbums)
@@ -245,8 +242,8 @@ namespace CustomAlbums.Patches
         internal static unsafe void AttachHook()
         {
             var loadFromNameMethod = AccessTools.Method(typeof(ResourcesManager), 
-                nameof(ResourcesManager.LoadFromName), new Type[] { typeof(string) },
-                new Type[] { typeof(TextAsset) });
+                nameof(ResourcesManager.LoadFromName), new[] { typeof(string) },
+                new[] { typeof(TextAsset) });
 
             if (loadFromNameMethod is null)
             {
@@ -254,11 +251,11 @@ namespace CustomAlbums.Patches
                 return;
             }
 
-            // AttachHook should only be ran once; create the handler
+            // AttachHook should only be run once; create the handler
             InitializeHandler();
 
             var loadFromNamePointer = *(IntPtr*)(IntPtr)Il2CppInteropUtils
-                .GetIl2CppMethodInfoPointerFieldForGeneratedMethod(loadFromNameMethod).GetValue(null);
+                .GetIl2CppMethodInfoPointerFieldForGeneratedMethod(loadFromNameMethod).GetValue(null)!;
 
             // Create a pointer for our new method to be called instead
             // This is Cdecl because this is going to be called in an unmanaged context
@@ -277,7 +274,7 @@ namespace CustomAlbums.Patches
         /// </summary>
         /// <param name="instance">The instance of ResourceManager calling LoadFromName.</param>
         /// <param name="assetNamePtr">The pointer to the string assetName.</param>
-        /// <param name="nativeMethodInfo">Method info used by the orignal method.</param>
+        /// <param name="nativeMethodInfo">Method info used by the original method.</param>
         /// <returns>A pointer of either a newly created asset if it exists or the original asset pointer if a new one was not created.</returns>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
         private static IntPtr LoadFromNamePatch(IntPtr instance, IntPtr assetNamePtr, IntPtr nativeMethodInfo)
@@ -293,16 +290,15 @@ namespace CustomAlbums.Patches
                 // If done loading albums, we've found the maximum actual album
                 // If there's an attempt to load other albums (there will be if you open the tag menu), early return zero pointer
                 // This provides a noticeable speedup when opening tags for the first time
-                if (DoneLoadingAlbumsFlag && albumNum > LatestAlbumNum)
+                if (_doneLoadingAlbumsFlag && albumNum > _latestAlbumNum)
                     return IntPtr.Zero;
-                
+
                 // Otherwise get the maximum number X of ALBUMX
-                else
-                    LatestAlbumNum = Math.Max(LatestAlbumNum, albumNum);
+                _latestAlbumNum = Math.Max(_latestAlbumNum, albumNum);
             }
 
             // If we're loading music_search_tag we're done loading albums
-            if (assetName == "music_search_tag") DoneLoadingAlbumsFlag = true;
+            if (assetName == "music_search_tag") _doneLoadingAlbumsFlag = true;
 
             // If the asset exists in the cache then retrieve it
             if (AssetCache.TryGetValue(assetName, out var cachedAsset))

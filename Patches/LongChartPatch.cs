@@ -12,7 +12,7 @@ namespace CustomAlbums.Patches
     {
         private static void Prefix(FixUpdateTimer __instance)
         {
-            if (__instance.totalTick >= 24000 && __instance.totalTick < int.MaxValue)
+            if (__instance.totalTick is >= 24000 and < int.MaxValue)
             {
                 __instance.totalTick = int.MaxValue;
             }

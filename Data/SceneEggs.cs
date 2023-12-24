@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace CustomAlbums.Data
+﻿namespace CustomAlbums.Data
 {
     public class SceneEgg
     {
@@ -16,7 +10,8 @@ namespace CustomAlbums.Data
             Queen = 2,
             Touhou = 3,
             Arknights = 4,
-            Miku = 5
+            Miku = 5,
+            Christmas = 999
         }
     }
 }

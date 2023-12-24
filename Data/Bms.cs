@@ -30,6 +30,8 @@ namespace CustomAlbums.Data
             Hold,
             Masher,
             Gear,
+            UpsideDownRaider,
+            UpsideDownHammer,
             Speed1Both,
             Speed2Both,
             Speed3Both,
@@ -213,6 +215,8 @@ namespace CustomAlbums.Data
             ["0F"] = BmsId.Hold,
             ["0G"] = BmsId.Masher,
             ["0H"] = BmsId.Gear,
+            ["0I"] = BmsId.UpsideDownRaider,
+            ["0J"] = BmsId.UpsideDownHammer,
             ["0O"] = BmsId.Speed1Both,
             ["0P"] = BmsId.Speed2Both,
             ["0Q"] = BmsId.Speed3Both,
@@ -316,22 +320,16 @@ namespace CustomAlbums.Data
             foreach (var config in NoteDataMananger.instance.noteDatas)
             {
                 // Ignore april fools variants (these are handled elsewhere)
-                if (config.prefab_name.EndsWith("_fool")) continue;
+                if (config.IsAprilFools()) continue;
                 // Ignore phase 2 boss gears
-                if (config.GetNoteType() == NoteType.Block && config.boss_action.EndsWith("_atk_2")) continue;
+                if (config.IsPhase2BossGear()) continue;
 
                 // Scene setting of "0" is a wildcard
-                var anyScene = config.scene == "0";
+                var anyScene = config.IsAnyScene();
                 // Notes with these values are extremely likely to be events, and get registered to all pathways
-                var anyPathway = config.pathway == 0
-                                 && config.score == 0
-                                 && config.fever == 0
-                                 && config.damage == 0;
+                var anyPathway = config.IsAnyPathway();
                 // Boss type, None type, boss mashers, and events get registered to all speeds
-                var anySpeed = config.GetNoteType() == NoteType.Boss
-                               || config.GetNoteType() == NoteType.None
-                               || config.ibms_id == "16"
-                               || config.ibms_id == "17";
+                var anySpeed = config.IsAnySpeed();
 
                 var speeds = new List<int> { config.speed };
                 var scenes = new List<string> { config.scene };
@@ -411,9 +409,9 @@ namespace CustomAlbums.Data
                 if (note is null) continue;
 
                 var bmsKey = note["value"]?.GetValue<string>() ?? "00";
-                var bmsId = BmsIds.TryGetValue(bmsKey, out var bType) ? bType : BmsId.None;
+                var bmsId = BmsIds.GetValueOrDefault(bmsKey, BmsId.None);
                 var channel = note["tone"]?.GetValue<string>() ?? string.Empty;
-                var channelType = Channels.TryGetValue(channel, out var cType) ? cType : ChannelType.None;
+                var channelType = Channels.GetValueOrDefault(channel, ChannelType.None);
 
                 // Handle lane type
                 var pathway = -1;

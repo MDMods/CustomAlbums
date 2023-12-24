@@ -1,7 +1,6 @@
 ﻿using System.Text.Json.Nodes;
 using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
-using MelonLoader;
 
 namespace CustomAlbums.Utilities
 {
@@ -18,6 +17,9 @@ namespace CustomAlbums.Utilities
 
         public static bool IsAnyPathway(this NoteConfigData config) =>
             config.pathway == 0 && config.score == 0 && config.fever == 0 && config.damage == 0;
+
+        public static bool IsPhase2BossGear(this NoteConfigData config) =>
+            config.GetNoteType() == NoteType.Block && config.boss_action.EndsWith("_atk_2");
 
         public static bool IsAnySpeed(this NoteConfigData config) =>
             config.GetNoteType() == NoteType.Boss

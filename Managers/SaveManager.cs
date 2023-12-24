@@ -1,8 +1,5 @@
 ﻿using CustomAlbums.Data;
 using CustomAlbums.Utilities;
-using HarmonyLib;
-using Il2Cpp;
-using Il2CppAssets.Scripts.Database;
 using System.Text;
 using System.Text.Json;
 
@@ -10,7 +7,7 @@ namespace CustomAlbums.Managers
 {
     internal class SaveManager
     {
-        private const string SAVE_LOCATION = "UserData";
+        private const string SaveLocation = "UserData";
         internal static CustomAlbumsSave SaveData;
         internal static Logger Logger = new(nameof(SaveManager));
 
@@ -23,75 +20,64 @@ namespace CustomAlbums.Managers
             var firstHistory = SaveData.History.FirstOrDefault();
             var firstHighest = SaveData.Highest.FirstOrDefault();
             var firstFullCombo = SaveData.FullCombo.FirstOrDefault();
+            var stringBuilder = new StringBuilder();
 
             // if we need to fix the history
-            if (firstHistory.StartsWith("pkg_"))
+            if (firstHistory != null && firstHistory.StartsWith("pkg_"))
             {
                 var fixedQueue = new Queue<string>(SaveData.History.Count);
-                var stringBuilder = new StringBuilder();
-                foreach (var history in SaveData.History)
+                foreach (var history in SaveData.History.Where(history => history.StartsWith("pkg_")))
                 {
-                    if (history.StartsWith("pkg_"))
-                    {
-                        stringBuilder.Clear();
-                        stringBuilder.Append(history);
-                        stringBuilder.Remove(0, 4);
-                        stringBuilder.Insert(0, "album_");
-                        fixedQueue.Enqueue(stringBuilder.ToString());
-                    }
+                    stringBuilder.Clear();
+                    stringBuilder.Append(history);
+                    stringBuilder.Remove(0, 4);
+                    stringBuilder.Insert(0, "album_");
+                    fixedQueue.Enqueue(stringBuilder.ToString());
                 }
                 SaveData.History = fixedQueue;
             }
             
-            // if we need to fix the highest
+            // If we need to fix the highest
             if (firstHighest.Key.StartsWith("pkg_"))
             {
-                var fixedDictionary = new Dictionary<string, Dictionary<int, CustomChartSave>>(SaveData.Highest.Count);
-                var stringBuilder = new StringBuilder();
-                foreach (var (key, value) in SaveData.Highest)
+                var fixedDictionaryHighest = new Dictionary<string, Dictionary<int, CustomChartSave>>(SaveData.Highest.Count);
+                foreach (var (key, value) in SaveData.Highest.Where(kv => kv.Key.StartsWith("pkg_")))
                 {
-                    if (key.StartsWith("pkg_"))
-                    {
-                        stringBuilder.Clear();
-                        stringBuilder.Append(key);
-                        stringBuilder.Remove(0, 4);
-                        stringBuilder.Insert(0, "album_");
-                        fixedDictionary.Add(stringBuilder.ToString(), value);
-                    }
+                    stringBuilder.Clear();
+                    stringBuilder.Append(key);
+                    stringBuilder.Remove(0, 4);
+                    stringBuilder.Insert(0, "album_");
+                    fixedDictionaryHighest.Add(stringBuilder.ToString(), value);
                 }
-                SaveData.Highest = fixedDictionary;
+                SaveData.Highest = fixedDictionaryHighest;
             }
 
-            // if we need to fix the fullcombo
-            if (firstFullCombo.Key.StartsWith("pkg_"))
+            // If we don't need to fix the FullCombo then return
+            if (!firstFullCombo.Key.StartsWith("pkg_")) return;
+            
+            var fixedDictionaryFc = new Dictionary<string, List<int>>(SaveData.FullCombo.Count);
+            foreach (var (key, value) in SaveData.FullCombo.Where(kv => kv.Key.StartsWith("pkg_")))
             {
-                var fixedDictionary = new Dictionary<string, List<int>>(SaveData.FullCombo.Count);
-                var stringBuilder = new StringBuilder();
-                foreach (var (key, value) in SaveData.FullCombo)
-                {
-                    if (key.StartsWith("pkg_"))
-                    {
-                        stringBuilder.Clear();
-                        stringBuilder.Append(key);
-                        stringBuilder.Remove(0, 4);
-                        stringBuilder.Insert(0, "album_");
-                        fixedDictionary.Add(stringBuilder.ToString(), value);
-                    }
-                }
-                SaveData.FullCombo = fixedDictionary;
+                if (!key.StartsWith("pkg_")) continue;
+                stringBuilder.Clear();
+                stringBuilder.Append(key);
+                stringBuilder.Remove(0, 4);
+                stringBuilder.Insert(0, "album_");
+                fixedDictionaryFc.Add(stringBuilder.ToString(), value);
             }
+            SaveData.FullCombo = fixedDictionaryFc;
         }
 
         internal static void LoadSaveFile()
         {
             try
             {
-                SaveData = Json.Deserialize<CustomAlbumsSave>(File.ReadAllText(Path.Join(SAVE_LOCATION, "CustomAlbums.json")));
+                SaveData = Json.Deserialize<CustomAlbumsSave>(File.ReadAllText(Path.Join(SaveLocation, "CustomAlbums.json")));
                 FixSaveFile();
             }
             catch (Exception ex)
             {
-                if (ex is FileNotFoundException) SaveData = new(); 
+                if (ex is FileNotFoundException) SaveData = new CustomAlbumsSave(); 
                 else Logger.Warning("Failed to load save file. " + ex.StackTrace);
             }
         }
@@ -99,7 +85,7 @@ namespace CustomAlbums.Managers
         {
             try
             {
-                File.WriteAllText(Path.Join(SAVE_LOCATION, "CustomAlbums.json"), JsonSerializer.Serialize(SaveData));
+                File.WriteAllText(Path.Join(SaveLocation, "CustomAlbums.json"), JsonSerializer.Serialize(SaveData));
             }
             catch (Exception ex)
             {

@@ -1,12 +1,5 @@
-﻿using Il2CppGameLogic;
-using Il2CppInterop.Runtime;
-using System;
-using System.Collections.Generic;
+﻿
 using System.Collections.ObjectModel;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace CustomAlbums.Utilities
 {
@@ -86,6 +79,18 @@ namespace CustomAlbums.Utilities
             {
                 il2cpp.Add(item);
             }
+        }
+
+        public static bool TryGetValuePossibleNullKey<TKey, TValue>(this Il2CppSystem.Collections.Generic.Dictionary<TKey, TValue> dict, TKey key, out TValue outValue)
+        {
+            if (key != null)
+            {
+                var result = dict.TryGetValue(key, out var value);
+                outValue = value;
+                return result;
+            }
+            outValue = default;
+            return false;
         }
     }
 }

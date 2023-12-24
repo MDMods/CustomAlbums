@@ -45,25 +45,24 @@ namespace CustomAlbums.Patches
         internal class PlayDialogAnimPatch
         {
             private static readonly Logger Logger = new(nameof(PlayDialogAnimPatch));
-            internal static int Index { get; set; } = 0;
+            internal static int Index { get; set; }
             internal static StageInfo CurrentStageInfo { get; set; }
-            internal static bool IsCustom { get; set; } = false;
-            internal static bool HasVersion2 { get; set; } = false;
+            internal static bool IsCustom { get; set; }
+            internal static bool HasVersion2 { get; set; }
             internal static string CurrentLanguage { get; set; } = string.Empty;
             private static void Prefix(DialogSubControl __instance)
             {
-                if (IsCustom && HasVersion2)
+                if (!IsCustom || !HasVersion2) return;
+                
+                if (CurrentStageInfo.dialogEvents.ContainsKey(CurrentLanguage))
                 {
-                    if (CurrentStageInfo.dialogEvents.ContainsKey(CurrentLanguage))
-                    {
-                        var dialogEvents = CurrentStageInfo.dialogEvents[CurrentLanguage];
-                        __instance.m_BgImg.color = dialogEvents[Index++].bgColor;
-                    } 
-                    else
-                    {
-                        var dialogEvents = CurrentStageInfo.dialogEvents["English"];
-                        __instance.m_BgImg.color = dialogEvents[Index++].bgColor;
-                    }
+                    var dialogEvents = CurrentStageInfo.dialogEvents[CurrentLanguage];
+                    __instance.m_BgImg.color = dialogEvents[Index++].bgColor;
+                } 
+                else
+                {
+                    var dialogEvents = CurrentStageInfo.dialogEvents["English"];
+                    __instance.m_BgImg.color = dialogEvents[Index++].bgColor;
                 }
             }
         } 

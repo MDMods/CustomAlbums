@@ -7,6 +7,9 @@ using System.Text.Json.Nodes;
 using Il2CppAccount;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Il2CppAssets.Scripts.UI.Controls;
+using System.Globalization;
+using Il2CppAssets.Scripts.PeroTools.Commons;
+using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums.Patches
 {
@@ -15,7 +18,7 @@ namespace CustomAlbums.Patches
         internal static readonly Logger Logger = new(nameof(SavePatch));
 
         // A mapping of Evaluate->letter grade
-        internal static readonly string[] EvalToGrade = new string[]
+        internal static readonly string[] EvalToGrade = 
         {
             "D",
             "C",
@@ -42,20 +45,20 @@ namespace CustomAlbums.Patches
                 panel.txtCombo.color = panel.gradeColor[6];
             }
 
-            // Sets all of the PnlRecord data to custom chart data.
-            var evaluate = data["Evaluate"].GetValue<int>();
-            panel.txtAccuracy.text = data["AccuracyStr"].GetValue<string>();
-            panel.txtClear.text = data["Clear"].GetValue<float>().ToString();
-            panel.txtCombo.text = data["Combo"].GetValue<int>().ToString();
+            // Sets all the PnlRecord data to custom chart data.
+            var evaluate = data["Evaluate"]!.GetValue<int>();
+            panel.txtAccuracy.text = data["AccuracyStr"]!.GetValue<string>();
+            panel.txtClear.text = data["Clear"]!.GetValue<float>().ToString(CultureInfo.InvariantCulture);
+            panel.txtCombo.text = data["Combo"]!.GetValue<int>().ToString(CultureInfo.InvariantCulture);
             panel.txtGrade.text = EvalToGrade[evaluate];
             panel.txtGrade.color = panel.gradeColor[evaluate];
-            panel.txtScore.text = data["Score"].GetValue<int>().ToString();
+            panel.txtScore.text = data["Score"]!.GetValue<int>().ToString(CultureInfo.InvariantCulture);
         }
 
         /// <summary>
-        /// Clears the current pnlRecord and and refreshes the panel if needed.
+        /// Clears the current pnlRecord and refreshes the panel if needed.
         /// <param name="panelPreparation">The PnlPreparation instance.</param>
-        /// <param name="reload">Whether or not panelPreparation should force reload the leaderboards.</param>
+        /// <param name="reload">Whether panelPreparation should force reload the leaderboards.</param>
         /// </summary>
         private static void ClearAndRefreshPanels(PnlPreparation panelPreparation, bool reload)
         {
@@ -65,12 +68,28 @@ namespace CustomAlbums.Patches
                 panel.Refresh(reload);
             }
         }
+        /// <summary>
+        /// Gets the correct current difficulty for the selected chart, accounting for hidden activation.
+        /// </summary>
+        /// <param name="musicInfo">The musicInfo of the chart.</param>
+        /// <returns>The current difficulty of the selected chart.</returns>
+        private static int GetDifficulty(MusicInfo musicInfo)
+        {
+            Singleton<SpecialSongManager>.instance.m_HideBmsInfos.TryGetValue(musicInfo.uid, out var hideBms);
+            var hiddenDict = Singleton<SpecialSongManager>.instance.m_IsInvokeHideDic;
+            var selectedIndex = GlobalDataBase.s_DbMusicTag.selectedDiffTglIndex;
+            if (hiddenDict.TryGetValuePossibleNullKey(hideBms?.uid, out var currentlyHidden) && currentlyHidden && selectedIndex == hideBms!.triggerDiff)
+            {
+                return hideBms!.m_HideDiff;
+            }
+            return selectedIndex;
+        }
         
         /// <summary>
         /// Grabs the custom chart data and injects the PnlRecord with the chart data.
         /// </summary>
         /// <param name="__instance">The PnlPreparation instance.</param>
-        /// <param name="forceReload">Whether or not the PnlPreparation instance should force reload the leaderboards.</param>
+        /// <param name="forceReload">Whether the PnlPreparation instance should force reload the leaderboards.</param>
         /// <returns></returns>
         private static bool InjectPnlPreparation(PnlPreparation __instance, bool forceReload)
         {
@@ -82,31 +101,38 @@ namespace CustomAlbums.Patches
             // Reset the panel to its default
             ClearAndRefreshPanels(__instance, forceReload);
 
-            // Get the chart's save data and get the PnlRecord of the current PnlPreparation
-            var currentChartData = SaveManager.SaveData.GetChartSaveDataFromUid(currentMusicInfo.uid);
             var recordPanel = __instance.pnlRecord;
-
+            var currentChartData = SaveManager.SaveData.GetChartSaveDataFromUid(currentMusicInfo.uid);
             var highestExists = currentChartData.TryGetPropertyValue("Highest", out var currentChartHighest);
             
             // If no highest data exists then early return
-            if (!highestExists || currentChartHighest is null) return false;
+            if (!highestExists || currentChartHighest is null)
+            {
+                Logger.Msg($"No save data found for {currentMusicInfo.uid}, nothing to inject");
+                return false;
+            }
 
-            var difficulty = GlobalDataBase.s_DbMusicTag.selectedDiffTglIndex;
+            var difficulty = GetDifficulty(currentMusicInfo);
 
             currentChartData.TryGetPropertyValue("FullCombo", out var currentChartFullCombo);
 
             // LINQ query to see if difficulty is in the full combo list
             // If currentChartFullCombo is null then there is no full combo so isFullCombo is false
-            bool isFullCombo = currentChartFullCombo?.AsArray().Any(x => (int)x == difficulty) ?? false;
+            var isFullCombo = currentChartFullCombo?.AsArray().Any(x => (int)x == difficulty) ?? false;
 
             // Get the highest score for the difficulty that is selected
             currentChartHighest = currentChartHighest[difficulty.ToString()];
 
             // If the current chart has no data for the selected difficulty then early return
-            if (currentChartHighest is null) return false;
+            if (currentChartHighest is null)
+            {
+                Logger.Msg($"Save data was found for the chart, but not for difficulty {difficulty}");
+                return false;
+            }
 
             // Set the panel with the custom score data
             SetPanelWithData(recordPanel, currentChartHighest, isFullCombo);
+            Logger.Msg($"Injecting {currentMusicInfo.uid} with difficulty {difficulty}"); ;
             return false;
         }
 
@@ -135,15 +161,13 @@ namespace CustomAlbums.Patches
         {
             private static bool Prefix(DBMusicTag __instance, MusicInfo musicInfo)
             {
-                if (musicInfo.uid.StartsWith($"{AlbumManager.UID}-"))
-                {
-                    var fileName = $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path) ?? string.Empty}";
-                    SaveManager.SaveData.Hides.Add(fileName);
-                    // TODO: Attempt to deal with this without touching vanilla save
-                    ShowText.ShowInfo(DBConfigTip.GetTip("hideSuccess"));
-                    return false;
-                }
-                return true;
+                if (!musicInfo.uid.StartsWith($"{AlbumManager.UID}-")) return true;
+                
+                var fileName = $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path) ?? string.Empty}";
+                SaveManager.SaveData.Hides.Add(fileName);
+                // TODO: Attempt to deal with this without touching vanilla save
+                ShowText.ShowInfo(DBConfigTip.GetTip("hideSuccess"));
+                return false;
             }
         }
 

@@ -19,7 +19,7 @@ namespace CustomAlbums.Utilities
         {
             var album = AlbumManager.GetByUid(uid);
             var key = $"album_{Path.GetFileNameWithoutExtension(album.Path)}";
-            return new JsonObject()
+            return new JsonObject
             {
                 { nameof(save.Highest), JsonNode.Parse(JsonSerializer.Serialize(save.Highest.GetValueOrDefault(key))) },
                 { nameof(save.FullCombo), JsonNode.Parse(JsonSerializer.Serialize(save.FullCombo.GetValueOrDefault(key))) }
