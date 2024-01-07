@@ -4,6 +4,7 @@ using HarmonyLib;
 using Il2Cpp;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore;
+using Il2CppGameLogic;
 
 namespace CustomAlbums.Patches
 {
