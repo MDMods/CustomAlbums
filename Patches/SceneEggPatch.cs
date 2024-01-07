@@ -1,16 +1,36 @@
-﻿using CustomAlbums.Managers;
+﻿using CustomAlbums.Data;
+using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2Cpp;
 using Il2CppAssets.Scripts.Common.SceneEgg;
 using Il2CppAssets.Scripts.Database;
 using Il2CppGameLogic;
+using Il2CppAssets.Scripts.TouhouLogic;
+using UnityEngine.Assertions;
 using static CustomAlbums.Data.SceneEgg;
+using System.Reflection;
+using UnityEngine.SceneManagement;
 
 namespace CustomAlbums.Patches
 {
     internal class SceneEggPatch
     {
+        internal static bool IgnoreSceneEggs(out Album outAlbum, params SceneEggs[] sceneEggs)
+        {
+            outAlbum = null;
+            // If the chart is not custom then leave
+            var uid = DataHelper.selectedMusicUid;
+            if (!uid.StartsWith($"{AlbumManager.UID}-")) return false;
+
+            // If the album doesn't exist (?) or if there are no SceneEggs or if it's christmas SceneEgg (not really a SceneEgg) then leave
+            var album = AlbumManager.GetByUid(uid);
+            if (album is null) return false;
+            
+            outAlbum = album;
+            return sceneEggs.Any(sceneEgg => sceneEgg == album.Info.SceneEgg);
+        }
+
         private static readonly Logger Logger = new(nameof(SceneEggPatch));
         /// <summary>
         /// Adds support for SceneEggs.
@@ -20,13 +40,7 @@ namespace CustomAlbums.Patches
         {
             private static void Prefix(Il2CppSystem.Collections.Generic.List<int> sceneEggIdsBuffer)
             {
-                // If the chart is not custom then leave
-                var uid = DataHelper.selectedMusicUid;
-                if (!uid.StartsWith($"{AlbumManager.UID}-")) return;
-
-                // If the album doesn't exist (?) or if there are no SceneEggs or if it's christmas SceneEgg (not really a SceneEgg) then leave
-                var album = AlbumManager.GetByUid(uid);
-                if (album is null || album.Info.SceneEgg is SceneEggs.None or SceneEggs.Christmas) return;
+                if (IgnoreSceneEggs(out var album, SceneEggs.None, SceneEggs.Christmas, SceneEggs.BadApple)) return;
 
                 // Adds the scene egg to the buffer
                 sceneEggIdsBuffer.Add((int)album.Info.SceneEgg);
@@ -39,24 +53,21 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        /// Makes scene_05 be scene_05_christmas if the Christmas SceneEgg is enabled.
+        /// Makes scene_05 be scene_05_christmas if the Christmas SceneEgg is enabled or scene_08 be scene_touhou_black if BadApple is enabled.
         /// </summary>
         [HarmonyPatch(typeof(GameMusicScene), nameof(GameMusicScene.SceneFestival))]
         internal class SceneFestivalPatch
         {
             private static bool Prefix(string sceneFestivalName, ref string __result)
             {
-                // If the scene is not scene_05 then there is no Christmas
+                // If the scene is not scene_05 or scene_08 then there is no Christmas or Bad Apple
                 if (sceneFestivalName != "scene_05") return true;
-               
-                // If the chart isn't custom then it's already handled properly
-                var uid = DataHelper.selectedMusicUid;
-                if (!uid.StartsWith($"{AlbumManager.UID}-")) return true;
 
-                // If the custom chart doesn't have Christmas SceneEgg then we don't care
-                if (AlbumManager.GetByUid(uid)?.Info.SceneEgg is not SceneEggs.Christmas) return true;
+                // Ignore the actual SceneEggs (and BadApple)
+                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.Miku, SceneEggs.None, 
+                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.BadApple)) return true;
 
-                __result = "scene_05_christmas";
+                if (sceneFestivalName == "scene_05") __result = "scene_05_christmas";
                 return false;
             }
         }
@@ -71,17 +82,32 @@ namespace CustomAlbums.Patches
             {
                 // If the boss is not 0501_boss then there is no Christmas
                 if (bossFestivalName != "0501_boss") return true;
-
-                // If the chart isn't custom then it's already handled properly
-                var uid = DataHelper.selectedMusicUid;
-                if (!uid.StartsWith($"{AlbumManager.UID}-")) return true;
-                 
-                // If the custom chart doesn't have Christmas SceneEgg then we don't care
-                if (AlbumManager.GetByUid(uid)?.Info.SceneEgg is not SceneEggs.Christmas) return true;
+                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.Miku, SceneEggs.None, 
+                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.BadApple)) return true;
 
                 __result = "0501_boss_christmas";
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Makes the game think (temporarily) that the chart is Bad Apple when the BadApple SceneEgg is enabled to load all the assets properly.
+        /// </summary>
+        [HarmonyPatch(typeof(DBTouhou), nameof(DBTouhou.AwakeInit))]
+        internal class BadApplePatch
+        {
+            private static void Postfix(ref string __state)
+            {
+                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.Miku, SceneEggs.None,
+                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Christmas)) return;
+
+                GlobalDataBase.dbTouhou.isBadApple = true;
+                
+                GlobalDataBase.s_DbOther.m_HpFx = TouhouLogic.ReplaceBadAppleString("fx_hp_ground");
+                GlobalDataBase.s_DbOther.m_MusicFx = TouhouLogic.ReplaceBadAppleString("fx_score_ground");
+                GlobalDataBase.s_DbOther.m_DustFx = TouhouLogic.ReplaceBadAppleString("dust_fx");
+            }
+
         }
 
     }

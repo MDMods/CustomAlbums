@@ -2,7 +2,6 @@
 using CustomAlbums.Utilities;
 using System.Text;
 using System.Text.Json;
-
 namespace CustomAlbums.Managers
 {
     internal class SaveManager
@@ -91,6 +90,14 @@ namespace CustomAlbums.Managers
             {
                 Logger.Warning("Failed to save save file. " + ex.StackTrace);
             }
+        }
+
+        internal static void SaveScore(string uid, int score, float accuracy, int maxCombo, string evaluate, int miss)
+        {
+            var chartSaveData = SaveData.GetChartSaveDataFromUid(uid);
+            var customsSave = SaveData;
+            // TODO: finish this please :)
+
         }
     }
 }

@@ -18,6 +18,9 @@ namespace CustomAlbums.Utilities
         public static JsonObject GetChartSaveDataFromUid(this CustomAlbumsSave save, string uid)
         {
             var album = AlbumManager.GetByUid(uid);
+
+            if (album is null) return null;
+
             var key = $"album_{Path.GetFileNameWithoutExtension(album.Path)}";
             return new JsonObject
             {

@@ -18,14 +18,12 @@ namespace CustomAlbums.Managers
             try
             {
                 using var fileStream = File.Open(path, FileMode.Open);
-                if (fileStream.Length > 0)
-                {
-                    Logger.Msg("The added album is ready to be read!");
-                    return true;
-                }
-                return false;
+                if (fileStream.Length <= 0) return false;
+                
+                Logger.Msg("The added album is ready to be read!");
+                return true;
             }
-            catch (Exception ex) when (ex is FileNotFoundException || ex is IOException)
+            catch (Exception ex) when (ex is FileNotFoundException or IOException)
             {
                 return false;
             }
@@ -54,7 +52,7 @@ namespace CustomAlbums.Managers
             // TODO: Remove the album information from the Custom Albums tag menu
             
             // TODO: Only change the selected album if the selected album was the album that was deleted
-            Logger.Msg("Sucessfully removed from cache!");
+            Logger.Msg("Successfully removed from cache!");
         }
 
         private static void RenameAllCachedAssets(string oldAlbumName, string newAlbumName)
@@ -69,15 +67,15 @@ namespace CustomAlbums.Managers
             AssetPatch.ModifyCacheKey($"{oldAlbumName}_music", $"{newAlbumName}_music");
             AssetPatch.ModifyCacheKey($"{oldAlbumName}_cover", $"{newAlbumName}_cover");
 
-            Logger.Msg("Sucessfully modified cache!");
+            Logger.Msg("Successfully modified cache!");
         }
 
         private static void AddNewAlbums(int previousSize)
         {
-            int index = previousSize;
-            for (int i = previousSize; i < AlbumManager.LoadedAlbums.Count; i++)
+            var index = previousSize;
+            for (var i = previousSize; i < AlbumManager.LoadedAlbums.Count; i++)
             {
-                // TODO: write added album hot reloading logic here
+                // TODO: Write added album hot reloading logic here
             }
             PnlStageInstance.m_MusicRootAnimator?.Play(PnlStageInstance.animNameAlbumIn);
             PnlStageInstance.RefreshMusicFSV();
@@ -100,14 +98,14 @@ namespace CustomAlbums.Managers
         }
 
         /// <summary>
-        /// Initalizes the AlbumWatcher for adding/deleting/renaming new custom charts.
+        /// Initializes the AlbumWatcher for adding/deleting/renaming new custom charts.
         /// </summary>
         internal static void OnLateInitializeMelon()
         {
             AlbumManager.AlbumWatcher.Path = AlbumManager.SEARCH_PATH;
             AlbumManager.AlbumWatcher.Filter = AlbumManager.SEARCH_PATTERN;
 
-            AlbumManager.AlbumWatcher.Created += (s, e) =>
+            AlbumManager.AlbumWatcher.Created += (_, e) =>
             {
                 Logger.Msg("Added file " + e.Name);
                 while (!IsFileUnlocked(e.FullPath)) 
@@ -128,7 +126,7 @@ namespace CustomAlbums.Managers
                 RenameAllCachedAssets($"album_{Path.GetFileNameWithoutExtension(e.OldName)}", $"album_{Path.GetFileNameWithoutExtension(e.Name)}");
             };
            
-            // starts the AlbumWatcher
+            // Start the AlbumWatcher
             AlbumManager.AlbumWatcher.EnableRaisingEvents = true;
         }
 

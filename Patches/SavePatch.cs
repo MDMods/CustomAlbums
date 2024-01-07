@@ -10,6 +10,7 @@ using Il2CppAssets.Scripts.UI.Controls;
 using System.Globalization;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Logger = CustomAlbums.Utilities.Logger;
+using Il2CppPeroPeroGames.DataStatistics;
 
 namespace CustomAlbums.Patches
 {
@@ -18,7 +19,7 @@ namespace CustomAlbums.Patches
         internal static readonly Logger Logger = new(nameof(SavePatch));
 
         // A mapping of Evaluate->letter grade
-        internal static readonly string[] EvalToGrade = 
+        internal static readonly string[] EvalToGrade =
         {
             "D",
             "C",
@@ -84,7 +85,7 @@ namespace CustomAlbums.Patches
             }
             return selectedIndex;
         }
-        
+
         /// <summary>
         /// Grabs the custom chart data and injects the PnlRecord with the chart data.
         /// </summary>
@@ -104,7 +105,7 @@ namespace CustomAlbums.Patches
             var recordPanel = __instance.pnlRecord;
             var currentChartData = SaveManager.SaveData.GetChartSaveDataFromUid(currentMusicInfo.uid);
             var highestExists = currentChartData.TryGetPropertyValue("Highest", out var currentChartHighest);
-            
+
             // If no highest data exists then early return
             if (!highestExists || currentChartHighest is null)
             {
@@ -162,17 +163,37 @@ namespace CustomAlbums.Patches
             private static bool Prefix(DBMusicTag __instance, MusicInfo musicInfo)
             {
                 if (!musicInfo.uid.StartsWith($"{AlbumManager.UID}-")) return true;
-                
+
                 var fileName = $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path) ?? string.Empty}";
                 SaveManager.SaveData.Hides.Add(fileName);
-                // TODO: Attempt to deal with this without touching vanilla save
                 ShowText.ShowInfo(DBConfigTip.GetTip("hideSuccess"));
                 return false;
             }
         }
 
-        // TODO: Remove this stuff, just don't want saves to actually save yet :)
+        [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.PrepareUploadScore))]
+        internal class UploadScorePatch
+        {
+            private static void Postfix(string musicUid, int musicDifficulty, string characterUid, string elfinUid, int hp, int score, float acc, int maximumCombo, string evaluate, int miss)
+            {
+                if (!musicUid.StartsWith($"{AlbumManager.UID}-")) return;
+                SaveManager.SaveScore(musicUid, score, acc, maximumCombo, evaluate, miss);
+            }
+        }
 
+        [HarmonyPatch(typeof(ThinkingDataBattleHelper), nameof(ThinkingDataBattleHelper.SendMDSuccessfulEvent))]
+        internal class SendMDPatch
+        {
+            private static bool Prefix()
+            {
+                if (!BattleHelper.MusicInfo().uid.StartsWith($"{AlbumManager.UID}-")) return true;
+
+                Logger.Msg("Not sending score!");
+                return false;
+            }
+        }
+
+        // TODO: Remove these, these are safeguards to stop the game from saving :)
         [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.OnSaveSelectCallback))]
         internal class GASSavePatch
         {

@@ -11,7 +11,8 @@
             Touhou = 3,
             Arknights = 4,
             Miku = 5,
-            Christmas = 999
+            BadApple = 129,
+            Christmas = 999,
         }
     }
 }
