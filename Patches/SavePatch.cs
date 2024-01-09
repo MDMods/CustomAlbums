@@ -23,8 +23,8 @@ namespace CustomAlbums.Patches
         {
             "D",
             "C",
-            "A",
             "B",
+            "A",
             "S",
             "S",
             "S"

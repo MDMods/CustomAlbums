@@ -1,7 +1,9 @@
-﻿using CustomAlbums.Data;
+﻿using System.Globalization;
+using CustomAlbums.Data;
 using CustomAlbums.Utilities;
 using System.Text;
 using System.Text.Json;
+
 namespace CustomAlbums.Managers
 {
     internal class SaveManager
@@ -92,12 +94,66 @@ namespace CustomAlbums.Managers
             }
         }
 
-        internal static void SaveScore(string uid, int score, float accuracy, int maxCombo, string evaluate, int miss)
+        /// <summary>
+        /// Saves custom score given scoring information.
+        /// </summary>
+        /// <param name="uid">The UID of the chart.</param>
+        /// <param name="musicDifficulty">The difficulty index of the chart played.</param>
+        /// <param name="score">The score of the play.</param>
+        /// <param name="accuracy">The accuracy of the play.</param>
+        /// <param name="maxCombo">The maximum combo of the play.</param>
+        /// <param name="evaluate">The judgement ranking of the play.</param>
+        /// <param name="miss">The amount of misses in the play.</param>
+        internal static void SaveScore(string uid, int musicDifficulty, int score, float accuracy, int maxCombo, string evaluate, int miss)
         {
-            var chartSaveData = SaveData.GetChartSaveDataFromUid(uid);
-            var customsSave = SaveData;
-            // TODO: finish this please :)
+            if (!ModSettings.SavingEnabled) return;
 
+            var album = AlbumManager.GetByUid(uid);
+            if (album is null) return;
+
+            var newEvaluate = evaluate switch
+            {
+                "sss" => 6,
+                "ss" => 5,
+                "s" => 4,
+                "a" => 3,
+                "b" => 2,
+                "c" => 1,
+                _ => 0
+            };
+
+            var albumName = $"album_{Path.GetFileNameWithoutExtension(album.Path)}";
+
+            // Create new album save 
+            if (!SaveData.Highest.ContainsKey(albumName)) 
+                SaveData.Highest.Add(albumName, new Dictionary<int, CustomChartSave>());
+
+            var currChartScore = SaveData.Highest[albumName];
+            
+            // Create new save data if the difficulty doesn't exist
+            if (!currChartScore.ContainsKey(musicDifficulty)) 
+                currChartScore.Add(musicDifficulty, new CustomChartSave());
+            
+            // Set the correct new score, taking the max of everything
+            var newScore = currChartScore[musicDifficulty];
+            newScore.Passed = true;
+            newScore.Accuracy = Math.Max(accuracy, newScore.Accuracy);
+            newScore.Score = Math.Max(score, newScore.Score);
+            newScore.Combo = Math.Max(maxCombo, newScore.Combo);
+            newScore.Evaluate = Math.Max(newEvaluate, newScore.Evaluate);
+            newScore.AccuracyStr = string.Create(CultureInfo.InvariantCulture, $"{newScore.Accuracy / 100:P2}");
+            newScore.Clear++;
+
+            if (miss != 0) return;
+            
+            // If there were no misses then add the chart/difficulty to the FullCombo list
+            if (!SaveData.FullCombo.ContainsKey(albumName)) 
+                SaveData.FullCombo.Add(albumName, new List<int>());
+
+            if (!SaveData.FullCombo[albumName].Contains(musicDifficulty)) 
+                SaveData.FullCombo[albumName].Add(musicDifficulty);
+
+            // SaveSaveFile();
         }
     }
 }
