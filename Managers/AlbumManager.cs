@@ -1,5 +1,6 @@
 ﻿using CustomAlbums.Data;
 using Il2CppPeroTools2.Resources;
+using Il2CppSystem.Text;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
 
@@ -7,11 +8,11 @@ namespace CustomAlbums.Managers
 {
     public static class AlbumManager
     {
-        public const int UID = 999;
-        public const string SEARCH_PATH = "Custom_Albums";
-        public const string SEARCH_PATTERN = "*.mdm";
-        public static readonly string JsonName = $"ALBUM{UID + 1}";
-        public static readonly string MusicPackage = $"music_package_{UID}";
+        public const int Uid = 999;
+        public const string SearchPath = "Custom_Albums";
+        public const string SearchPattern = "*.mdm";
+        public static readonly string JsonName = $"ALBUM{Uid + 1}";
+        public static readonly string MusicPackage = $"music_package_{Uid}";
         public static readonly Dictionary<string, string> Languages = new()
         {
             { "English", "Custom Albums" },
@@ -57,8 +58,8 @@ namespace CustomAlbums.Managers
             LoadedAlbums.Clear();
 
             var files = new List<string>();
-            files.AddRange(Directory.GetFiles(SEARCH_PATH, SEARCH_PATTERN));
-            files.AddRange(Directory.GetDirectories(SEARCH_PATH));
+            files.AddRange(Directory.GetFiles(SearchPath, SearchPattern));
+            files.AddRange(Directory.GetDirectories(SearchPath));
 
             foreach (var file in files)
             {
@@ -69,9 +70,15 @@ namespace CustomAlbums.Managers
         }
 
         public static IEnumerable<string> GetAllUid() =>
-            LoadedAlbums.Select(album => $"{UID}-{album.Value.Index}");
+            LoadedAlbums.Select(album => $"{Uid}-{album.Value.Index}");
 
         public static Album GetByUid(string uid) =>
             LoadedAlbums.FirstOrDefault(album => album.Value.Index == int.Parse(uid[4..])).Value;
+
+        public static IEnumerable<string> GetAlbumUidsFromNames(this IEnumerable<string> albumNames) 
+        {
+            return albumNames.Where(name => LoadedAlbums.ContainsKey(name))
+                .Select(name => $"{Uid}-{LoadedAlbums[name].Index}");
+        }
     }
 }

@@ -3,6 +3,7 @@ using CustomAlbums.Data;
 using CustomAlbums.Utilities;
 using System.Text;
 using System.Text.Json;
+using Il2CppDiscord;
 
 namespace CustomAlbums.Managers
 {
@@ -11,6 +12,7 @@ namespace CustomAlbums.Managers
         private const string SaveLocation = "UserData";
         internal static CustomAlbumsSave SaveData;
         internal static Logger Logger = new(nameof(SaveManager));
+        internal static string PreviousScore { get; set; } = "-";
 
         /// <summary>
         /// Fixes the save file since this version of CAM uses a different naming scheme.
@@ -18,6 +20,7 @@ namespace CustomAlbums.Managers
         /// </summary>
         internal static void FixSaveFile()
         {
+            if (!ModSettings.SavingEnabled) return;
             var firstHistory = SaveData.History.FirstOrDefault();
             var firstHighest = SaveData.Highest.FirstOrDefault();
             var firstFullCombo = SaveData.FullCombo.FirstOrDefault();
@@ -71,6 +74,7 @@ namespace CustomAlbums.Managers
 
         internal static void LoadSaveFile()
         {
+            if (!ModSettings.SavingEnabled) return;
             try
             {
                 SaveData = Json.Deserialize<CustomAlbumsSave>(File.ReadAllText(Path.Join(SaveLocation, "CustomAlbums.json")));
@@ -84,6 +88,7 @@ namespace CustomAlbums.Managers
         }
         internal static void SaveSaveFile()
         {
+            if (!ModSettings.SavingEnabled) return;
             try
             {
                 File.WriteAllText(Path.Join(SaveLocation, "CustomAlbums.json"), JsonSerializer.Serialize(SaveData));
@@ -133,9 +138,12 @@ namespace CustomAlbums.Managers
             // Create new save data if the difficulty doesn't exist
             if (!currChartScore.ContainsKey(musicDifficulty)) 
                 currChartScore.Add(musicDifficulty, new CustomChartSave());
-            
-            // Set the correct new score, taking the max of everything
+
+            // Set previous score for PnlVictory logic
             var newScore = currChartScore[musicDifficulty];
+            PreviousScore = newScore.Passed ? newScore.Score.ToString() : "-";
+
+            // Set the correct new score, taking the max of everything
             newScore.Passed = true;
             newScore.Accuracy = Math.Max(accuracy, newScore.Accuracy);
             newScore.Score = Math.Max(score, newScore.Score);
@@ -153,7 +161,7 @@ namespace CustomAlbums.Managers
             if (!SaveData.FullCombo[albumName].Contains(musicDifficulty)) 
                 SaveData.FullCombo[albumName].Add(musicDifficulty);
 
-            // SaveSaveFile();
+            SaveSaveFile();
         }
     }
 }

@@ -21,7 +21,7 @@ namespace CustomAlbums.Patches
             outAlbum = null;
             // If the chart is not custom then leave
             var uid = DataHelper.selectedMusicUid;
-            if (!uid.StartsWith($"{AlbumManager.UID}-")) return true;
+            if (!uid.StartsWith($"{AlbumManager.Uid}-")) return true;
 
             // If the album doesn't exist (?) or if there are no SceneEggs or if it's christmas SceneEgg (not really a SceneEgg) then leave
             var album = AlbumManager.GetByUid(uid);

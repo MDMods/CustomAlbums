@@ -5,10 +5,13 @@ using HarmonyLib;
 using CustomAlbums.Utilities;
 using System.Text.Json.Nodes;
 using Il2CppAccount;
-using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
-using Il2CppAssets.Scripts.UI.Controls;
 using System.Globalization;
+using Il2CppAssets.Scripts.GameCore.HostComponent;
+using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
+using Il2CppAssets.Scripts.PeroTools.Nice.Datas;
+using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
+using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Logger = CustomAlbums.Utilities.Logger;
 using Il2CppPeroPeroGames.DataStatistics;
 
@@ -29,6 +32,10 @@ namespace CustomAlbums.Patches
             "S",
             "S"
         };
+
+        //
+        // PANEL INJECTION SECTION
+        //
 
         /// <summary>
         /// Sets the PnlRecord (score, combo, accuracy) to the custom chart data.
@@ -97,7 +104,8 @@ namespace CustomAlbums.Patches
             var currentMusicInfo = GlobalDataBase.s_DbMusicTag.CurMusicInfo();
 
             // If the chart is not custom, run the original method, otherwise continue and don't run the original method
-            if (currentMusicInfo.albumJsonIndex != AlbumManager.UID + 1) return true;
+            if (currentMusicInfo.albumJsonIndex != AlbumManager.Uid + 1) return true;
+            if (!ModSettings.SavingEnabled) return false;
 
             // Reset the panel to its default
             ClearAndRefreshPanels(__instance, forceReload);
@@ -157,58 +165,245 @@ namespace CustomAlbums.Patches
             }
         }
 
+        //
+        // ACCOUNT SECTION
+        //
+
+        // TODO: Figure all of this out without using vanilla save
         [HarmonyPatch(typeof(DBMusicTag), nameof(DBMusicTag.AddHide))]
         internal class AddHidePatch
         {
-            private static bool Prefix(DBMusicTag __instance, MusicInfo musicInfo)
+            private static bool Prefix(MusicInfo musicInfo)
             {
-                if (!musicInfo.uid.StartsWith($"{AlbumManager.UID}-")) return true;
+                if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
+                if (!ModSettings.SavingEnabled) return false;
+                
+                var albumName =
+                    $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path ?? string.Empty)}";
 
-                var fileName = $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path) ?? string.Empty}";
-                SaveManager.SaveData.Hides.Add(fileName);
-                ShowText.ShowInfo(DBConfigTip.GetTip("hideSuccess"));
-                return false;
+                SaveManager.SaveData.Hides.Add(albumName);
+                return true;
             }
         }
 
+        [HarmonyPatch(typeof(DBMusicTag), nameof(DBMusicTag.RemoveHide))]
+        internal class RemoveHidePatch
+        {
+            private static bool Prefix(MusicInfo musicInfo)
+            {
+                if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
+                if (!ModSettings.SavingEnabled) return false;
+
+                var albumName =
+                    $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path ?? string.Empty)}";
+
+                SaveManager.SaveData.Hides.Remove(albumName);
+                return true;
+            }
+        }
+
+        [HarmonyPatch(typeof(DBMusicTag), nameof(DBMusicTag.AddCollection))]
+        internal class AddCollectionPatch
+        {
+            private static bool Prefix(MusicInfo musicInfo)
+            {
+                if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
+                if (!ModSettings.SavingEnabled) return false;
+
+                var albumName =
+                    $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path ?? string.Empty)}";
+
+                SaveManager.SaveData.Collections.Add(albumName);
+                return true;
+            }
+        }
+
+        [HarmonyPatch(typeof(DBMusicTag), nameof(DBMusicTag.RemoveCollection))]
+        internal class RemoveCollectionPatch
+        {
+            private static bool Prefix(MusicInfo musicInfo)
+            {
+                if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
+                if (!ModSettings.SavingEnabled) return false;
+
+                var albumName =
+                    $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path ?? string.Empty)}";
+
+                SaveManager.SaveData.Collections.Remove(albumName);
+                return true;
+            }
+        }
+
+        [HarmonyPatch(typeof(DBMusicTag), nameof(DBMusicTag.AddHistory))]
+        internal class AddHistoryPatch
+        {
+            private static bool Prefix(string musicUid)
+            {
+                if (!musicUid.StartsWith($"{AlbumManager.Uid}-")) return true;
+                if (!ModSettings.SavingEnabled) return false;
+
+                var albumName =
+                    $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicUid)?.Path ?? string.Empty)}";
+
+                if (SaveManager.SaveData.History.Count == 10)
+                    SaveManager.SaveData.History.Dequeue();
+
+                SaveManager.SaveData.History.Enqueue(albumName);
+                return true;
+            }
+        }
+
+        //
+        // SCORE SECTION
+        //
+
+        /// <summary>
+        /// Gets the score data of the custom chart and sends it to SaveManager for processing.
+        /// </summary>
         [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.PrepareUploadScore))]
         internal class UploadScorePatch
         {
             private static void Postfix(string musicUid, int musicDifficulty, string characterUid, string elfinUid, int hp, int score, float acc, int maximumCombo, string evaluate, int miss)
             {
-                if (!musicUid.StartsWith($"{AlbumManager.UID}-")) return;
-                SaveManager.SaveScore(musicUid, score, acc, maximumCombo, evaluate, miss);
+                if (!musicUid.StartsWith($"{AlbumManager.Uid}-")) return;
+                SaveManager.SaveScore(musicUid, musicDifficulty, score, acc, maximumCombo, evaluate, miss);
             }
         }
 
+        /// <summary>
+        /// Stops the game from sending analytics of custom charts.
+        /// </summary>
         [HarmonyPatch(typeof(ThinkingDataBattleHelper), nameof(ThinkingDataBattleHelper.SendMDSuccessfulEvent))]
         internal class SendMDPatch
         {
             private static bool Prefix()
             {
-                if (!BattleHelper.MusicInfo().uid.StartsWith($"{AlbumManager.UID}-")) return true;
-
-                Logger.Msg("Not sending score!");
-                return false;
+                return !BattleHelper.MusicInfo().uid.StartsWith($"{AlbumManager.Uid}-");
             }
         }
 
-        // TODO: Remove these, these are safeguards to stop the game from saving :)
-        [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.OnSaveSelectCallback))]
-        internal class GASSavePatch
+        /// <summary>
+        /// Stops the game from saving custom chart score data.
+        /// </summary>
+        [HarmonyPatch(typeof(AchievementManager), nameof(AchievementManager.RecordBattleArgs))]
+        internal class StopSavingPatch
         {
             private static bool Prefix()
             {
-                return false;
+                return !GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-");
             }
         }
+
+        /// <summary>
+        /// Enables the PnlVictory screen logic when the chart is custom.
+        /// </summary>
+        [HarmonyPatch(typeof(PnlVictory), nameof(PnlVictory.SetScore))]
+        internal class SetScorePatch
+        {
+            private static void Postfix(PnlVictory __instance)
+            {
+                if (!ModSettings.SavingEnabled) return;
+
+                var albumName = $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(GlobalDataBase.dbBattleStage.musicUid)?.Path) ?? string.Empty}";
+                if (!SaveManager.SaveData.Highest.TryGetValue(albumName, out var highest))
+                    return;
+
+                // If the chart has been played then enable the "HI-SCORE" UI element
+                var difficulty = GlobalDataBase.s_DbBattleStage.m_MapDifficulty;
+                __instance.m_CurControls.highScoreTitle.enabled = SaveManager.PreviousScore != "-";
+                __instance.m_CurControls.highScoreTxt.enabled = SaveManager.PreviousScore != "-";
+
+                // Gets the current run score
+                var score = Singleton<TaskStageTarget>.instance.GetScore();
+
+                // Enable "New Best!!" UI element if the chart hasn't been played, or the new play is a higher score
+                if (!highest.ContainsKey(difficulty))
+                    __instance.m_CurControls.newBest.SetActive(true);
+                if (SaveManager.PreviousScore != "-")
+                    __instance.m_CurControls.newBest.SetActive(score > int.Parse(SaveManager.PreviousScore));
+
+                __instance.m_CurControls.highScoreTxt.text = SaveManager.PreviousScore;
+            }
+        }
+
+        //
+        // HACK SECTION
+        //
+
+        // TODO: Find a way to inject hidden and favorite charts without using vanilla save, below are workarounds for quick release
+        private static void CleanCustomData()
+        {
+            if (!ModSettings.SavingEnabled) return;
+
+            Singleton<DataManager>.instance["Account"]["Hides"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
+            Singleton<DataManager>.instance["Account"]["History"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
+            Singleton<DataManager>.instance["Account"]["Collections"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
+        }
+
+        private static void InjectCustomData()
+        {
+            if (!ModSettings.SavingEnabled) return;
+
+            Singleton<DataManager>.instance["Account"]["Hides"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().AddManagedRange(SaveManager.SaveData.Hides.GetAlbumUidsFromNames());
+            Singleton<DataManager>.instance["Account"]["History"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().AddManagedRange(SaveManager.SaveData.History.GetAlbumUidsFromNames());
+            Singleton<DataManager>.instance["Account"]["Collections"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().AddManagedRange(SaveManager.SaveData.Collections.GetAlbumUidsFromNames());
+        }
+
 
         [HarmonyPatch(typeof(SteamSync), nameof(SteamSync.SaveLocal))]
-        internal class SteamSyncSavePatch
+        internal class SaveLocalPatch
         {
-            private static bool Prefix()
+            private static void Prefix()
             {
-                return false;
+                if (!ModSettings.SavingEnabled) return;
+                SaveManager.SaveSaveFile();
+                CleanCustomData();
+            }
+
+            private static void Postfix()
+            {
+                if (!ModSettings.SavingEnabled) return;
+                InjectCustomData();
+            }
+        }
+
+        [HarmonyPatch(typeof(SteamSync), nameof(SteamSync.LoadLocal))]
+        internal class LoadLocalPatch
+        {
+            private static void Postfix()
+            {
+                if (!ModSettings.SavingEnabled) return;
+                InjectCustomData();
+            }
+        }
+
+        [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.RefreshDatas))]
+        internal class RefreshDatasPatch
+        {
+            private static void Prefix()
+            {
+                if (!ModSettings.SavingEnabled) return;
+                SaveManager.SaveSaveFile();
+                CleanCustomData();
+                InjectCustomData();
+            }
+        }
+
+        [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.OnSaveSelectCallback))]
+        internal class OnSaveSelectPatch
+        {
+            private static void Prefix(ref bool isLocal)
+            {
+                if (!ModSettings.SavingEnabled || !isLocal) return;
+                
+                SaveManager.SaveSaveFile();
+                CleanCustomData();
+            }
+
+            private static void Postfix(ref bool isLocal)
+            {
+                if (!ModSettings.SavingEnabled|| !isLocal) return;
+                InjectCustomData();
             }
         }
     }

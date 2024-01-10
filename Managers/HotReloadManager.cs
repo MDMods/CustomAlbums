@@ -44,7 +44,7 @@ namespace CustomAlbums.Managers
             AssetPatch.RemoveFromCache($"album_{albumName}_cover");
 
             // Get the music info from the UID, remove it from the ShowMusic list, and refresh the UI
-            var musicInfo = GlobalDataBase.s_DbMusicTag.GetMusicInfoFromAll($"{AlbumManager.UID}-{album.Index}");
+            var musicInfo = GlobalDataBase.s_DbMusicTag.GetMusicInfoFromAll($"{AlbumManager.Uid}-{album.Index}");
             GlobalDataBase.s_DbMusicTag.RemoveShowMusicUid(musicInfo);
             PnlStageInstance.m_MusicRootAnimator?.Play(PnlStageInstance.animNameAlbumIn);
             PnlStageInstance.RefreshMusicFSV();
@@ -102,8 +102,8 @@ namespace CustomAlbums.Managers
         /// </summary>
         internal static void OnLateInitializeMelon()
         {
-            AlbumManager.AlbumWatcher.Path = AlbumManager.SEARCH_PATH;
-            AlbumManager.AlbumWatcher.Filter = AlbumManager.SEARCH_PATTERN;
+            AlbumManager.AlbumWatcher.Path = AlbumManager.SearchPath;
+            AlbumManager.AlbumWatcher.Filter = AlbumManager.SearchPattern;
 
             AlbumManager.AlbumWatcher.Created += (_, e) =>
             {

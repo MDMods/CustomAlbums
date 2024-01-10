@@ -69,7 +69,7 @@ namespace CustomAlbums.Patches
                 {
                     uid = AlbumManager.MusicPackage,
                     title = "Custom Albums",
-                    prefabsName = $"AlbumDisco{AlbumManager.UID}",
+                    prefabsName = $"AlbumDisco{AlbumManager.Uid}",
                     price = "¥25.00",
                     jsonName = AlbumManager.JsonName,
                     needPurchase = false,
@@ -96,7 +96,7 @@ namespace CustomAlbums.Patches
                     var albumInfo = albumObj.Info;
                     var customChartJson = new
                     {
-                        uid = $"{AlbumManager.UID}-{albumObj.Index}",
+                        uid = $"{AlbumManager.Uid}-{albumObj.Index}",
                         name = albumInfo.Name,
                         author = albumInfo.Author,
                         bpm = albumInfo.Bpm,
@@ -285,7 +285,7 @@ namespace CustomAlbums.Patches
             
             Logger.Msg($"Loading {assetName}!");
             
-            if (assetName.StartsWith("ALBUM") && int.TryParse(assetName.AsSpan(5), out var albumNum) && albumNum != AlbumManager.UID + 1)
+            if (assetName.StartsWith("ALBUM") && int.TryParse(assetName.AsSpan(5), out var albumNum) && albumNum != AlbumManager.Uid + 1)
             {
                 // If done loading albums, we've found the maximum actual album
                 // If there's an attempt to load other albums (there will be if you open the tag menu), early return zero pointer

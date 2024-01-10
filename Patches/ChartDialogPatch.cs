@@ -19,7 +19,7 @@ namespace CustomAlbums.Patches
                 Logger.Msg("Setting talk file values.");
                 var currentStageUid = GlobalDataBase.dbBattleStage.musicUid;
                 PlayDialogAnimPatch.CurrentStageInfo = GlobalDataBase.dbStageInfo.m_StageInfo;
-                if (currentStageUid.StartsWith($"{AlbumManager.UID}-"))
+                if (currentStageUid.StartsWith($"{AlbumManager.Uid}-"))
                 {
                     var currentAlbum = AlbumManager.GetByUid(currentStageUid);
                     if (currentAlbum is null)

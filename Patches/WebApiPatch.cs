@@ -22,21 +22,21 @@ namespace CustomAlbums.Patches
                 switch (url)
                 {
                     case "statistics/pc-play-statistics-feedback":
-                        if (datas["music_uid"].ToString().StartsWith($"{AlbumManager.UID}"))
+                        if (datas["music_uid"].ToString().StartsWith($"{AlbumManager.Uid}"))
                         {
                             Logger.Msg("Blocked play feedback upload: " + datas["music_uid"].ToString());
                             return false;
                         }
                         break;
                     case "musedash/v2/pcleaderboard/high-score":
-                        if (GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.UID}"))
+                        if (GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}"))
                         {
                             Logger.Msg("Blocked high score upload v2: " + GlobalDataBase.dbBattleStage.musicUid);
                             return false;
                         }
                         break;
                     case "musedash/v3/pcleaderboard/high-score":
-                        if (GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.UID}"))
+                        if (GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}"))
                         {
                             Logger.Msg("Blocked high score upload v3: " + GlobalDataBase.dbBattleStage.musicUid);
                             return false;
@@ -55,7 +55,7 @@ namespace CustomAlbums.Patches
         {
             private static bool Prefix(string dataStatisticsEventDefinesName, MusicInfo musicInfo)
             {
-                return !musicInfo.uid.StartsWith($"{AlbumManager.UID}-");
+                return !musicInfo.uid.StartsWith($"{AlbumManager.Uid}-");
             }
         }
 
@@ -67,7 +67,7 @@ namespace CustomAlbums.Patches
         {
             private static bool Prefix(string dataStatisticsEventDefinesNameMusicInfo, MusicInfo musicInfo)
             {
-                return !musicInfo.uid.StartsWith($"{AlbumManager.UID}-");
+                return !musicInfo.uid.StartsWith($"{AlbumManager.Uid}-");
             }
         }
     }

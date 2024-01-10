@@ -50,7 +50,7 @@ namespace CustomAlbums.Patches
                     if (uid == "?") continue;
 
                     var musicInfo = dbMusicTag?.GetMusicInfoFromAll(uid);
-                    if (musicInfo?.albumJsonIndex < AlbumManager.UID) continue;
+                    if (musicInfo?.albumJsonIndex < AlbumManager.Uid) continue;
 
                     
                     var album = AlbumManager.GetByUid(uid);

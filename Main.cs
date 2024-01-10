@@ -8,32 +8,32 @@ namespace CustomAlbums
 {
     public class Main : MelonMod
     {
-        private static readonly Logger Logger = new(nameof(Main));
+        private static readonly Logger Logger = new("CustomAlbums");
 
         public override void OnInitializeMelon()
         {
             base.OnInitializeMelon();
 
-            if (!Directory.Exists(AlbumManager.SEARCH_PATH)) Directory.CreateDirectory(AlbumManager.SEARCH_PATH);
+            if (!Directory.Exists(AlbumManager.SearchPath)) Directory.CreateDirectory(AlbumManager.SearchPath);
 
             AssetPatch.AttachHook();
             ModSettings.Register();
             AlbumManager.LoadAlbums();
             SaveManager.LoadSaveFile();
-            Logger.Msg("Initialized CustomAlbums!");
+            Logger.Msg("Initialized CustomAlbums!", false);
         }
 
         public override void OnLateInitializeMelon()
         {
             base.OnLateInitializeMelon();
-            HotReloadManager.OnLateInitializeMelon();
+            // TODO: Actually write HotReload
+            // HotReloadManager.OnLateInitializeMelon();
         }
 
         public override void OnApplicationQuit()
         {
+            if (ModSettings.SavingEnabled) SaveManager.SaveSaveFile();
             base.OnApplicationQuit();
-            // TODO: make sure this doesn't kill save :)
-            // SaveManager.SaveSaveFile();
         }
 
         /// <summary>
