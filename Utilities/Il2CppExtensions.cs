@@ -86,8 +86,7 @@ namespace CustomAlbums.Utilities
         public static bool TryGetValuePossibleNullKey<TKey, TValue>(this Il2CppSystem.Collections.Generic.Dictionary<TKey, TValue> dict, TKey key, out TValue outValue)
         {
             outValue = default;
-            if (key == null) return false;
-            if (!dict.ContainsKey(key)) return false;
+            if (key == null || !dict.ContainsKey(key)) return false;
             outValue = dict[key];
             return true;
         }
