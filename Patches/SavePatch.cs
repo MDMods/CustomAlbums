@@ -84,7 +84,7 @@ namespace CustomAlbums.Patches
         /// <returns>The current difficulty of the selected chart.</returns>
         private static int GetDifficulty(MusicInfo musicInfo)
         {
-            Singleton<SpecialSongManager>.instance.m_HideBmsInfos.TryGetValue(musicInfo.uid, out var hideBms);
+            Singleton<SpecialSongManager>.instance.m_HideBmsInfos.TryGetValuePossibleNullKey(musicInfo.uid, out var hideBms);
             var hiddenDict = Singleton<SpecialSongManager>.instance.m_IsInvokeHideDic;
             var selectedIndex = GlobalDataBase.s_DbMusicTag.selectedDiffTglIndex;
             if (hiddenDict.TryGetValuePossibleNullKey(hideBms?.uid, out var currentlyHidden) && currentlyHidden && selectedIndex == hideBms!.triggerDiff)

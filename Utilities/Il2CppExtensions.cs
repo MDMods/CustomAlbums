@@ -18,8 +18,9 @@ namespace CustomAlbums.Utilities
 
         public static Il2CppSystem.Collections.Generic.List<T> ToIl2Cpp<T>(this IEnumerable<T> list)
         {
-            var il2Cpp = new Il2CppSystem.Collections.Generic.List<T>(list.Count());
-            foreach (var item in list)
+            var array = list.ToArray();
+            var il2Cpp = new Il2CppSystem.Collections.Generic.List<T>(array.Length);
+            foreach (var item in array)
             {
                 il2Cpp.Add(item);
             }
@@ -74,8 +75,9 @@ namespace CustomAlbums.Utilities
 
         public static void AddManagedRange<T>(this Il2CppSystem.Collections.Generic.List<T> il2cpp, IEnumerable<T> managed)
         {
-            il2cpp.Capacity += managed.Count();
-            foreach (var item in managed)
+            var array = managed.ToArray();
+            il2cpp.Capacity += array.Length;
+            foreach (var item in array)
             {
                 il2cpp.Add(item);
             }
@@ -83,14 +85,11 @@ namespace CustomAlbums.Utilities
 
         public static bool TryGetValuePossibleNullKey<TKey, TValue>(this Il2CppSystem.Collections.Generic.Dictionary<TKey, TValue> dict, TKey key, out TValue outValue)
         {
-            if (key != null)
-            {
-                var result = dict.TryGetValue(key, out var value);
-                outValue = value;
-                return result;
-            }
             outValue = default;
-            return false;
+            if (key == null) return false;
+            if (!dict.ContainsKey(key)) return false;
+            outValue = dict[key];
+            return true;
         }
     }
 }
