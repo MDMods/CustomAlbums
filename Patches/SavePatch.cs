@@ -14,6 +14,7 @@ using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Logger = CustomAlbums.Utilities.Logger;
 using Il2CppPeroPeroGames.DataStatistics;
+using System.Reflection;
 
 namespace CustomAlbums.Patches
 {
@@ -273,9 +274,14 @@ namespace CustomAlbums.Patches
         /// <summary>
         /// Stops the game from sending analytics of custom charts.
         /// </summary>
-        [HarmonyPatch(typeof(ThinkingDataBattleHelper), nameof(ThinkingDataBattleHelper.SendMDSuccessfulEvent))]
+        [HarmonyPatch(typeof(ThinkingDataBattleHelper))]
         internal class SendMDPatch
         {
+            private static MethodInfo[] TargetMethods()
+            {
+                return typeof(ThinkingDataBattleHelper).GetMethods(BindingFlags.Instance | BindingFlags.Public)
+                    .Where(method => method.Name.StartsWith("Send")).ToArray();
+            }
             private static bool Prefix()
             {
                 return !BattleHelper.MusicInfo().uid.StartsWith($"{AlbumManager.Uid}-");
@@ -285,11 +291,14 @@ namespace CustomAlbums.Patches
         /// <summary>
         /// Stops the game from saving custom chart score data.
         /// </summary>
+        
+        // TODO: Make sure this actually stops the game from saving high score data to vanilla save
         [HarmonyPatch(typeof(AchievementManager), nameof(AchievementManager.RecordBattleArgs))]
         internal class StopSavingPatch
         {
             private static bool Prefix()
             {
+                if (GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-")) Logger.Msg($"Custom chart {GlobalDataBase.dbBattleStage}, not saving");
                 return !GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-");
             }
         }
@@ -330,7 +339,7 @@ namespace CustomAlbums.Patches
         // HACK SECTION
         //
 
-        // TODO: Find a way to inject hidden and favorite charts without using vanilla save, below are workarounds for quick release
+        // TODO: Find a way to inject hidden and favorite charts without using vanilla save -- below are workarounds for quick release.
         private static void CleanCustomData()
         {
             if (!ModSettings.SavingEnabled) return;
@@ -353,16 +362,18 @@ namespace CustomAlbums.Patches
         [HarmonyPatch(typeof(SteamSync), nameof(SteamSync.SaveLocal))]
         internal class SaveLocalPatch
         {
+            private static bool BackedUp { get; set; }
             private static void Prefix()
             {
                 if (!ModSettings.SavingEnabled) return;
                 SaveManager.SaveSaveFile();
-                CleanCustomData();
             }
 
             private static void Postfix()
             {
                 if (!ModSettings.SavingEnabled) return;
+                if (!BackedUp) Backup.InitBackups();
+                BackedUp = true;
                 InjectCustomData();
             }
         }
@@ -383,6 +394,7 @@ namespace CustomAlbums.Patches
             private static void Prefix()
             {
                 if (!ModSettings.SavingEnabled) return;
+                Backup.InitBackups();
                 SaveManager.SaveSaveFile();
                 CleanCustomData();
                 InjectCustomData();
