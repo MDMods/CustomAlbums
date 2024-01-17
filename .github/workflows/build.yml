@@ -1,0 +1,40 @@
+name: Build CustomAlbums
+
+on:
+  push:
+    branches: 
+      - master
+  pull_request:
+    branches: 
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+
+    - name: Install .NET Core
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: 6.0.x
+
+    - name: Download Dependencies
+      run: |
+        wget -O dependencies.zip https://mdmc.moe/cdn/cadeps.zip
+        unzip dependencies.zip -d dependencies
+
+    - name: Restore and Build
+      run: |
+        dotnet restore CustomAlbums.sln
+        dotnet build "/p:MelonNET6=./dependencies;WORKER=GitHub" CustomAlbums.sln
+
+    - name: Upload Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: CustomAlbums.dll
+        path: ./Output/Debug/CustomAlbums.dll
