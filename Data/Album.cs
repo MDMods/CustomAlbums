@@ -105,7 +105,7 @@ namespace CustomAlbums.Data
         private void GetSheets()
         {
             // Adds to the Sheets dictionary
-            foreach (var difficulty in Info.Difficulties.Keys)
+            foreach (var difficulty in Info.Difficulties.Keys.Where(difficulty => HasFile($"map{difficulty}.bms")))
             {
                 using var stream = OpenFileStream($"map{difficulty}.bms");
                 var hash = stream.GetHash();
