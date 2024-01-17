@@ -246,7 +246,7 @@ namespace CustomAlbums.Patches
         /// <summary>
         /// Gets the score data of the custom chart and sends it to SaveManager for processing.
         /// </summary>
-        [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.PrepareUploadScore))]
+        [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.UploadScore))]
         internal class UploadScorePatch
         {
             private static void Postfix(string musicUid, int musicDifficulty, string characterUid, string elfinUid, int hp, int score, float acc, int maximumCombo, string evaluate, int miss)
@@ -399,7 +399,7 @@ namespace CustomAlbums.Patches
 
             private static void Postfix(ref bool isLocal)
             {
-                if (!ModSettings.SavingEnabled|| !isLocal) return;
+                if (!ModSettings.SavingEnabled || !isLocal) return;
                 InjectCustomData();
             }
         }
