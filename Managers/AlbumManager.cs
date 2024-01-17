@@ -1,7 +1,5 @@
 ﻿using CustomAlbums.Data;
-using Il2CppAssets.Scripts.Database;
 using Il2CppPeroTools2.Resources;
-using Il2CppSystem.Text;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
 
