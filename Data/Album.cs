@@ -30,8 +30,8 @@ namespace CustomAlbums.Data
                     _logger.Error($"Could not find info.json at: {path}\\info.json");
                     throw new FileNotFoundException();
                 }
-
-                Info = Json.Deserialize<AlbumInfo>(File.ReadAllText($"{path}\\info.json"));
+                using var fileStream = File.OpenRead($"{path}\\info.json");
+                Info = Json.Deserialize<AlbumInfo>(fileStream);
             }
             else if (File.Exists(path))
             {
@@ -44,7 +44,8 @@ namespace CustomAlbums.Data
                     throw new FileNotFoundException();
                 }
 
-                Info = Json.Deserialize<AlbumInfo>(new StreamReader(info.Open()).ReadToEnd());
+                using var stream = info.Open();
+                Info = Json.Deserialize<AlbumInfo>(stream);
                 IsPackaged = true;
             }
             else

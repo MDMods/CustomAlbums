@@ -22,6 +22,11 @@ namespace CustomAlbums.Utilities
             return JsonSerializer.Deserialize<T>(json, DeserializeOptions);
         }
 
+        public static T Deserialize<T>(Stream stream)
+        {
+            return JsonSerializer.Deserialize<T>(stream, DeserializeOptions);
+        }
+
         public static JsonArray ToJsonArray(this IEnumerable<object> list)
         {
             var array = new JsonArray();

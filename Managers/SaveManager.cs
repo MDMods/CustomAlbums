@@ -6,6 +6,8 @@ using System.Text.Json;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Nice.Datas;
 using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
+using Il2CppToolGood.Words;
+using static UnityEngine.SpookyHash;
 
 namespace CustomAlbums.Managers
 {
@@ -44,7 +46,7 @@ namespace CustomAlbums.Managers
             }
             
             // If we need to fix the highest
-            if (firstHighest.Key.StartsWith("pkg_"))
+            if (!firstHighest.Equals(default(KeyValuePair<string, Dictionary<int, CustomChartSave>>)) && firstHighest.Key.StartsWith("pkg_"))
             {
                 var fixedDictionaryHighest = new Dictionary<string, Dictionary<int, CustomChartSave>>(SaveData.Highest.Count);
                 foreach (var (key, value) in SaveData.Highest.Where(kv => kv.Key.StartsWith("pkg_")))
@@ -59,7 +61,7 @@ namespace CustomAlbums.Managers
             }
 
             // If we don't need to fix the FullCombo then return
-            if (!firstFullCombo.Key.StartsWith("pkg_")) return;
+            if (!firstFullCombo.Equals(default(KeyValuePair<string, List<int>>)) && !firstFullCombo.Key.StartsWith("pkg_")) return;
             
             var fixedDictionaryFc = new Dictionary<string, List<int>>(SaveData.FullCombo.Count);
             foreach (var (key, value) in SaveData.FullCombo.Where(kv => kv.Key.StartsWith("pkg_")))
@@ -79,7 +81,8 @@ namespace CustomAlbums.Managers
             if (!ModSettings.SavingEnabled) return;
             try
             {
-                SaveData = Json.Deserialize<CustomAlbumsSave>(File.ReadAllText(Path.Join(SaveLocation, "CustomAlbums.json")));
+                using var fileStream = File.OpenRead(Path.Join(SaveLocation, "CustomAlbums.json"));
+                SaveData = Json.Deserialize<CustomAlbumsSave>(fileStream);
                 FixSaveFile();
             }
             catch (Exception ex)
@@ -165,7 +168,7 @@ namespace CustomAlbums.Managers
                 _ => 0
             };
 
-            var albumName = $"album_{Path.GetFileNameWithoutExtension(album.Path)}";
+            var albumName = album.GetAlbumName();
 
             // Create new album save 
             if (!SaveData.Highest.ContainsKey(albumName)) 

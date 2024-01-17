@@ -1,4 +1,5 @@
 ﻿using CustomAlbums.Data;
+using Il2CppAssets.Scripts.Database;
 using Il2CppPeroTools2.Resources;
 using Il2CppSystem.Text;
 using UnityEngine;
@@ -22,7 +23,7 @@ namespace CustomAlbums.Managers
             { "Korean", "커스텀앨범" }
         };
 
-        private static int MaxCount { get; set; } = 0;
+        private static int MaxCount { get; set; }
         public static Dictionary<string, Album> LoadedAlbums { get; } = new();
         private static readonly Logger Logger = new(nameof(AlbumManager));
         internal static readonly FileSystemWatcher AlbumWatcher = new();
@@ -37,12 +38,13 @@ namespace CustomAlbums.Managers
                 var album = new Album(path, MaxCount);
                 if (album.Info is null) return null;
 
-                LoadedAlbums.Add($"album_{fileName}", album);
+                var albumName = album.GetAlbumName();
+                LoadedAlbums.Add(albumName, album);
 
                 if (album.HasFile("cover.png") || album.HasFile("cover.gif"))
-                    ResourcesManager.instance.LoadFromName<Sprite>($"album_{fileName}_cover").hideFlags |= HideFlags.DontUnloadUnusedAsset;
+                    ResourcesManager.instance.LoadFromName<Sprite>($"{albumName}_cover").hideFlags |= HideFlags.DontUnloadUnusedAsset;
 
-                Logger.Msg($"Loaded album_{fileName}: {album.Info.Name}");
+                Logger.Msg($"Loaded {albumName}: {album.Info.Name}");
                 return album;
             }
             catch (Exception ex)
@@ -75,10 +77,22 @@ namespace CustomAlbums.Managers
         public static Album GetByUid(string uid) =>
             LoadedAlbums.FirstOrDefault(album => album.Value.Index == int.Parse(uid[4..])).Value;
 
+        public static string GetAlbumName(this Album album) =>
+            album.IsPackaged ? $"album_{Path.GetFileNameWithoutExtension(album.Path)}" : $"album_{Path.GetFileNameWithoutExtension(album.Path)}_folder";
+
+        public static string GetAlbumNameFromUid(string uid)
+        {
+            var album = GetByUid(uid);
+            if (album is null) return string.Empty;
+            return album.IsPackaged ? $"album_{Path.GetFileNameWithoutExtension(album.Path)}" : $"album_{Path.GetFileNameWithoutExtension(album.Path)}_folder";
+        }
+            
         public static IEnumerable<string> GetAlbumUidsFromNames(this IEnumerable<string> albumNames) 
         {
             return albumNames.Where(name => LoadedAlbums.ContainsKey(name))
                 .Select(name => $"{Uid}-{LoadedAlbums[name].Index}");
         }
+
+            
     }
 }

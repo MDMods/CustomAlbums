@@ -179,10 +179,7 @@ namespace CustomAlbums.Patches
                 if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
                 
-                var albumName =
-                    $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path ?? string.Empty)}";
-
-                SaveManager.SaveData.Hides.Add(albumName);
+                SaveManager.SaveData.Hides.Add(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
                 return true;
             }
         }
@@ -195,10 +192,7 @@ namespace CustomAlbums.Patches
                 if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
 
-                var albumName =
-                    $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path ?? string.Empty)}";
-
-                SaveManager.SaveData.Hides.Remove(albumName);
+                SaveManager.SaveData.Hides.Remove(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
                 return true;
             }
         }
@@ -211,10 +205,7 @@ namespace CustomAlbums.Patches
                 if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
 
-                var albumName =
-                    $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path ?? string.Empty)}";
-
-                SaveManager.SaveData.Collections.Add(albumName);
+                SaveManager.SaveData.Collections.Add(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
                 return true;
             }
         }
@@ -227,10 +218,7 @@ namespace CustomAlbums.Patches
                 if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
 
-                var albumName =
-                    $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicInfo.uid)?.Path ?? string.Empty)}";
-
-                SaveManager.SaveData.Collections.Remove(albumName);
+                SaveManager.SaveData.Collections.Remove(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
                 return true;
             }
         }
@@ -243,13 +231,10 @@ namespace CustomAlbums.Patches
                 if (!musicUid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
 
-                var albumName =
-                    $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(musicUid)?.Path ?? string.Empty)}";
-
                 if (SaveManager.SaveData.History.Count == 10)
                     SaveManager.SaveData.History.Dequeue();
 
-                SaveManager.SaveData.History.Enqueue(albumName);
+                SaveManager.SaveData.History.Enqueue(AlbumManager.GetAlbumNameFromUid(musicUid));
                 return true;
             }
         }
@@ -313,7 +298,7 @@ namespace CustomAlbums.Patches
             {
                 if (!ModSettings.SavingEnabled) return;
 
-                var albumName = $"album_{Path.GetFileNameWithoutExtension(AlbumManager.GetByUid(GlobalDataBase.dbBattleStage.musicUid)?.Path) ?? string.Empty}";
+                var albumName = AlbumManager.GetAlbumNameFromUid(GlobalDataBase.dbBattleStage.musicUid);
                 if (!SaveManager.SaveData.Highest.TryGetValue(albumName, out var highest))
                     return;
 

@@ -48,10 +48,9 @@ namespace CustomAlbums.Data
             if (ParentAlbum.HasFile($"map{Difficulty}.talk"))
             {
                 using var talkStream = ParentAlbum.OpenFileStream($"map{Difficulty}.talk");
-                var data = talkStream.ReadFully();
-                if (data != null)
+                if (talkStream.Length > 0)
                 {
-                    var talkFile = Json.Deserialize<JsonObject>(Encoding.UTF8.GetString(data));
+                    var talkFile = Json.Deserialize<JsonObject>(talkStream);
                     if (talkFile.TryGetPropertyValue("version", out var node) && node?.GetValue<int>() == 2)
                     {
                         _logger.Msg("Version 2 talk file!");
