@@ -39,7 +39,8 @@ namespace CustomAlbums.Patches
                     (currentAlbum?.Sheets.TryGetValue(PlayDialogAnimPatch.CurrentStageInfo.difficulty, out var sheet) ?? false) && sheet.TalkFileVersion2;
                 PlayDialogAnimPatch.Index = 0;
                 PlayDialogAnimPatch.CurrentLanguage = DataHelper.userLanguage;
-                
+
+                if (PlayDialogAnimPatch.CurrentStageInfo.dialogEvents == null) return;
                 // Set this here to avoid repeatedly checking a dictionary
                 PlayDialogAnimPatch.DialogEvents =
                     PlayDialogAnimPatch.CurrentStageInfo.dialogEvents.ContainsKey(PlayDialogAnimPatch.CurrentLanguage)
@@ -63,7 +64,7 @@ namespace CustomAlbums.Patches
             internal static Il2CppSystem.Collections.Generic.List<GameDialogArgs> DialogEvents { get; set; }
             private static void Prefix(DialogSubControl __instance)
             {
-                if (!HasVersion2) return;
+                if (!HasVersion2 || DialogEvents == null) return;
 
                 __instance.m_BgImg.color = DialogEvents[Index++].bgColor;
             }
