@@ -284,7 +284,7 @@ namespace CustomAlbums.Patches
         {
             private static bool Prefix()
             {
-                if (GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-")) Logger.Msg($"Custom chart {GlobalDataBase.dbBattleStage}, not saving");
+                if (GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-")) Logger.Msg($"Custom chart {GlobalDataBase.dbBattleStage.musicUid}, not saving");
                 return !GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-");
             }
         }
@@ -343,7 +343,6 @@ namespace CustomAlbums.Patches
 
             if (DataHelper.selectedMusicUidFromInfoList.StartsWith($"{AlbumManager.Uid}-"))
             {
-                Logger.Msg(DataHelper.selectedMusicUidFromInfoList, false);
                 SaveData.SelectedAlbum = AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList);
                 DataHelper.selectedMusicUidFromInfoList = "0-0";
             }
