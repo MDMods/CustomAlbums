@@ -6,6 +6,7 @@ using System.Text.Json;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Nice.Datas;
 using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
+using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Il2CppToolGood.Words;
 using static UnityEngine.SpookyHash;
 
@@ -109,38 +110,6 @@ namespace CustomAlbums.Managers
             }
         }
 
-        /// <summary>
-        /// Cleans out all custom data from the vanilla save file since this data should not be stored in the vanilla save.
-        /// </summary>
-        
-        // TODO: Remove this once it's we verify that saving is not occurring after completing a custom chart.
-        internal static void SanitizeVanilla()
-        {
-            var gameCollections = Singleton<DataManager>.instance["Account"]["Collections"];
-            var gameHides = Singleton<DataManager>.instance["Account"]["Hides"];
-            var gameHistory = Singleton<DataManager>.instance["Account"]["History"];
-            var gameHighest = Singleton<DataManager>.instance["Achievement"]["highest"];
-            var gameFailCount = Singleton<DataManager>.instance["Achievement"]["fail_count"];
-            var gameEasyPass = Singleton<DataManager>.instance["Achievement"]["easy_pass"];
-            var gameHardPass = Singleton<DataManager>.instance["Achievement"]["hard_pass"];
-            var gameMasterPass = Singleton<DataManager>.instance["Achievement"]["master_pass"];
-            var gameFullComboMusic = Singleton<DataManager>.instance["Achievement"]["full_combo_music"];
-            var gameUnlockMasters = Singleton<DataManager>.instance["Account"]["UnlockMasters"];
-
-            Logger.Msg("Sanitizing Vanilla save!");
-            gameCollections.GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
-            gameHides.GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
-            gameHistory.GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
-            gameHighest.GetResult<Il2CppSystem.Collections.Generic.List<IData>>().RemoveAll((Il2CppSystem.Predicate<IData>)(data => data["uid"].GetResult<string>().StartsWith($"{AlbumManager.Uid}-")));
-            gameFailCount.GetResult<Il2CppSystem.Collections.Generic.List<IData>>().RemoveAll((Il2CppSystem.Predicate<IData>)(data => data["uid"].GetResult<string>().StartsWith($"{AlbumManager.Uid}-")));
-            gameEasyPass.GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
-            gameHardPass.GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
-            gameMasterPass.GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
-            gameFullComboMusic.GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
-            gameUnlockMasters.GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
-        }
-
-        /// <summary>
         /// Saves custom score given scoring information.
         /// </summary>
         /// <param name="uid">The UID of the chart.</param>

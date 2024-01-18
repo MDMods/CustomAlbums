@@ -1,4 +1,6 @@
-﻿using static CustomAlbums.Data.SceneEgg;
+﻿using System.Text.Json.Serialization;
+using CustomAlbums.Utilities;
+using static CustomAlbums.Data.SceneEgg;
 
 namespace CustomAlbums.Data
 {
@@ -41,6 +43,7 @@ namespace CustomAlbums.Data
         public string Difficulty4 { get; set; } = "0";
 
         public string HideBmsMode { get; set; } = "CLICK";
+        [JsonConverter(typeof(Converters.NumberConverter))]
         public string HideBmsDifficulty { get; set; } = "0";
         public string HideBmsMessage { get; set; } = string.Empty;
         

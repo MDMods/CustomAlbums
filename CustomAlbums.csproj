@@ -43,7 +43,8 @@
     <ILRepack
       LibraryPath="@(IlRepackLibs)"
       OutputFile="$(OutputPath)/$(AssemblyName).dll"
-      InputAssemblies="@(InputAssemblies)" />
+      InputAssemblies="@(InputAssemblies)" 
+      Parallel="true"/>
   </Target>
   
   <Target Name="ILRepackCopy" AfterTargets="ILRepacker" Condition="'$(WORKER)' != 'GitHub'">

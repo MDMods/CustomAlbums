@@ -13,7 +13,6 @@ namespace CustomAlbums.Data
     public class CustomAlbumsSave
     {
         public string SelectedAlbum { get; set; } = string.Empty;
-        public int SelectedDifficulty { get; set; } = 2;
         public HashSet<string> Collections { get; set; } = new();
         public HashSet<string> Hides { get; set; } = new();
         public Queue<string> History { get; set; } = new();

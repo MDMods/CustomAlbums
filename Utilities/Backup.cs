@@ -22,6 +22,7 @@ namespace CustomAlbums.Utilities
 
         internal static void InitBackups()
         {
+            // TODO: FIX THIS c:
             Directory.CreateDirectory(BackupPath);
 
             CompressBackups();
@@ -29,7 +30,6 @@ namespace CustomAlbums.Utilities
             CreateBackup(BackupVanillaDebug, JsonSerializer.Serialize(ToJsonDict(Singleton<DataManager>.instance.datas)));
             CreateBackup(BackupCustom, SaveManager.SaveData);
             ClearOldBackups();
-            SaveManager.SanitizeVanilla();
         }
         private static void CreateBackup(string filePath, object data)
         {

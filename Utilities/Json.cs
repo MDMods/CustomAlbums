@@ -11,6 +11,10 @@ namespace CustomAlbums.Utilities
         {
             PropertyNameCaseInsensitive = true,
             AllowTrailingCommas = true,
+            
+            // God this sucks
+            ReadCommentHandling = JsonCommentHandling.Skip,
+           
             Converters =
             {
                 new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)

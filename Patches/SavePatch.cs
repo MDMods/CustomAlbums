@@ -15,6 +15,7 @@ using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Logger = CustomAlbums.Utilities.Logger;
 using Il2CppPeroPeroGames.DataStatistics;
 using System.Reflection;
+using static CustomAlbums.Managers.SaveManager;
 
 namespace CustomAlbums.Patches
 {
@@ -112,7 +113,7 @@ namespace CustomAlbums.Patches
             ClearAndRefreshPanels(__instance, forceReload);
 
             var recordPanel = __instance.pnlRecord;
-            var currentChartData = SaveManager.SaveData.GetChartSaveDataFromUid(currentMusicInfo.uid);
+            var currentChartData = SaveData.GetChartSaveDataFromUid(currentMusicInfo.uid);
             var highestExists = currentChartData.TryGetPropertyValue("Highest", out var currentChartHighest);
 
             // If no highest data exists then early return
@@ -179,7 +180,7 @@ namespace CustomAlbums.Patches
                 if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
                 
-                SaveManager.SaveData.Hides.Add(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
+                SaveData.Hides.Add(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
                 return true;
             }
         }
@@ -192,7 +193,7 @@ namespace CustomAlbums.Patches
                 if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
 
-                SaveManager.SaveData.Hides.Remove(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
+                SaveData.Hides.Remove(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
                 return true;
             }
         }
@@ -205,7 +206,7 @@ namespace CustomAlbums.Patches
                 if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
 
-                SaveManager.SaveData.Collections.Add(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
+                SaveData.Collections.Add(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
                 return true;
             }
         }
@@ -218,7 +219,7 @@ namespace CustomAlbums.Patches
                 if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
 
-                SaveManager.SaveData.Collections.Remove(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
+                SaveData.Collections.Remove(AlbumManager.GetAlbumNameFromUid(musicInfo.uid));
                 return true;
             }
         }
@@ -231,10 +232,10 @@ namespace CustomAlbums.Patches
                 if (!musicUid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
 
-                if (SaveManager.SaveData.History.Count == 10)
-                    SaveManager.SaveData.History.Dequeue();
+                if (SaveData.History.Count == 10)
+                    SaveData.History.Dequeue();
 
-                SaveManager.SaveData.History.Enqueue(AlbumManager.GetAlbumNameFromUid(musicUid));
+                SaveData.History.Enqueue(AlbumManager.GetAlbumNameFromUid(musicUid));
                 return true;
             }
         }
@@ -252,7 +253,7 @@ namespace CustomAlbums.Patches
             private static void Postfix(string musicUid, int musicDifficulty, string characterUid, string elfinUid, int hp, int score, float acc, int maximumCombo, string evaluate, int miss)
             {
                 if (!musicUid.StartsWith($"{AlbumManager.Uid}-")) return;
-                SaveManager.SaveScore(musicUid, musicDifficulty, score, acc, maximumCombo, evaluate, miss);
+                SaveScore(musicUid, musicDifficulty, score, acc, maximumCombo, evaluate, miss);
             }
         }
 
@@ -299,13 +300,13 @@ namespace CustomAlbums.Patches
                 if (!ModSettings.SavingEnabled) return;
 
                 var albumName = AlbumManager.GetAlbumNameFromUid(GlobalDataBase.dbBattleStage.musicUid);
-                if (!SaveManager.SaveData.Highest.TryGetValue(albumName, out var highest))
+                if (!SaveData.Highest.TryGetValue(albumName, out var highest))
                     return;
 
                 // If the chart has been played then enable the "HI-SCORE" UI element
                 var difficulty = GlobalDataBase.s_DbBattleStage.m_MapDifficulty;
-                __instance.m_CurControls.highScoreTitle.enabled = SaveManager.PreviousScore != "-";
-                __instance.m_CurControls.highScoreTxt.enabled = SaveManager.PreviousScore != "-";
+                __instance.m_CurControls.highScoreTitle.enabled = PreviousScore != "-";
+                __instance.m_CurControls.highScoreTxt.enabled = PreviousScore != "-";
 
                 // Gets the current run score
                 var score = Singleton<TaskStageTarget>.instance.GetScore();
@@ -313,10 +314,10 @@ namespace CustomAlbums.Patches
                 // Enable "New Best!!" UI element if the chart hasn't been played, or the new play is a higher score
                 if (!highest.ContainsKey(difficulty))
                     __instance.m_CurControls.newBest.SetActive(true);
-                if (SaveManager.PreviousScore != "-")
-                    __instance.m_CurControls.newBest.SetActive(score > int.Parse(SaveManager.PreviousScore));
+                if (PreviousScore != "-")
+                    __instance.m_CurControls.newBest.SetActive(score > int.Parse(PreviousScore));
 
-                __instance.m_CurControls.highScoreTxt.text = SaveManager.PreviousScore;
+                __instance.m_CurControls.highScoreTxt.text = PreviousScore;
             }
         }
 
@@ -329,18 +330,46 @@ namespace CustomAlbums.Patches
         {
             if (!ModSettings.SavingEnabled) return;
 
-            Singleton<DataManager>.instance["Account"]["Hides"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
-            Singleton<DataManager>.instance["Account"]["History"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
-            Singleton<DataManager>.instance["Account"]["Collections"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
+            DataHelper.hides.RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
+            DataHelper.history.RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
+            DataHelper.collections.RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
+            DataHelper.tasks.RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
+            
+            if (DataHelper.selectedAlbumUid == "music_package_999") 
+                DataHelper.selectedAlbumUid = "music_package_0";
+            
+            if (DataHelper.selectedAlbumTagIndex == AlbumManager.Uid) 
+                DataHelper.selectedAlbumTagIndex = 0;
+
+            if (DataHelper.selectedMusicUidFromInfoList.StartsWith($"{AlbumManager.Uid}-"))
+            {
+                DataHelper.selectedMusicUidFromInfoList = "0-0";
+                SaveData.SelectedAlbum = AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList);
+            }
+            else
+            {
+                SaveData.SelectedAlbum = string.Empty;
+            }
+
+            foreach (var task in DataHelper.tasks)
+            {
+                Singleton<DataManager>.instance["Task"][task].GetResult<Il2CppSystem.Collections.Generic.List<IData>>().RemoveAll((Il2CppSystem.Predicate<IData>)(data => data["uid"].GetResult<string>().StartsWith($"{AlbumManager.Uid}")));
+            }
         }
 
         private static void InjectCustomData()
         {
             if (!ModSettings.SavingEnabled) return;
 
-            Singleton<DataManager>.instance["Account"]["Hides"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().AddManagedRange(SaveManager.SaveData.Hides.GetAlbumUidsFromNames());
-            Singleton<DataManager>.instance["Account"]["History"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().AddManagedRange(SaveManager.SaveData.History.GetAlbumUidsFromNames());
-            Singleton<DataManager>.instance["Account"]["Collections"].GetResult<Il2CppSystem.Collections.Generic.List<string>>().AddManagedRange(SaveManager.SaveData.Collections.GetAlbumUidsFromNames());
+            DataHelper.hides.AddManagedRange(SaveData.Hides.GetAlbumUidsFromNames());
+            DataHelper.history.AddManagedRange(SaveData.History.GetAlbumUidsFromNames());
+            DataHelper.collections.AddManagedRange(SaveData.Collections.GetAlbumUidsFromNames());
+
+            if (!SaveData.SelectedAlbum.StartsWith($"{AlbumManager.Uid}-")) return;
+            
+            DataHelper.selectedAlbumUid = "music_package_999";
+            DataHelper.selectedAlbumTagIndex = 999;
+            DataHelper.selectedMusicUidFromInfoList = SaveData.SelectedAlbum ?? "0-0";
         }
 
 
@@ -351,7 +380,12 @@ namespace CustomAlbums.Patches
             private static void Prefix()
             {
                 if (!ModSettings.SavingEnabled) return;
-                SaveManager.SaveSaveFile();
+
+                if (DataHelper.selectedMusicUidFromInfoList.StartsWith($"{AlbumManager.Uid}-"))
+                    SaveData.SelectedAlbum = $"{AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList)}";
+
+                SaveSaveFile();
+                CleanCustomData();
             }
 
             private static void Postfix()
@@ -380,7 +414,7 @@ namespace CustomAlbums.Patches
             {
                 if (!ModSettings.SavingEnabled) return;
                 Backup.InitBackups();
-                SaveManager.SaveSaveFile();
+                SaveSaveFile();
                 CleanCustomData();
                 InjectCustomData();
             }
@@ -393,7 +427,7 @@ namespace CustomAlbums.Patches
             {
                 if (!ModSettings.SavingEnabled || !isLocal) return;
                 
-                SaveManager.SaveSaveFile();
+                SaveSaveFile();
                 CleanCustomData();
             }
 
