@@ -343,8 +343,9 @@ namespace CustomAlbums.Patches
 
             if (DataHelper.selectedMusicUidFromInfoList.StartsWith($"{AlbumManager.Uid}-"))
             {
-                DataHelper.selectedMusicUidFromInfoList = "0-0";
+                Logger.Msg(DataHelper.selectedMusicUidFromInfoList, false);
                 SaveData.SelectedAlbum = AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList);
+                DataHelper.selectedMusicUidFromInfoList = "0-0";
             }
             else
             {
