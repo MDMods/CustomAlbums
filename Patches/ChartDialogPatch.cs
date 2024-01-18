@@ -4,12 +4,18 @@ using HarmonyLib;
 using Il2Cpp;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore;
+using Il2CppAssets.Scripts.Structs;
 using Il2CppGameLogic;
+using Il2CppSystem.Runtime.Remoting.Messaging;
 
 namespace CustomAlbums.Patches
 {
     internal class ChartDialogPatch
     {
+
+        /// <summary>
+        /// This method runs once when the chart loads, so init basic values to avoid computing again
+        /// </summary>
         [HarmonyPatch(typeof(DialogMasterControl), nameof(DialogMasterControl.Init))]
         internal class InitPatch
         {
@@ -19,33 +25,33 @@ namespace CustomAlbums.Patches
                 Logger.Msg("Setting talk file values.");
                 var currentStageUid = GlobalDataBase.dbBattleStage.musicUid;
                 PlayDialogAnimPatch.CurrentStageInfo = GlobalDataBase.dbStageInfo.m_StageInfo;
-                if (currentStageUid.StartsWith($"{AlbumManager.Uid}-"))
-                {
-                    var currentAlbum = AlbumManager.GetByUid(currentStageUid);
-                    if (currentAlbum is null)
-                    {
-                        Logger.Warning("Could not find current album. This is likely a result of deleting the chart while it is loading.");
-                        PlayDialogAnimPatch.HasVersion2 = false;
-                        return;
-                    }
-                    if (currentAlbum.Sheets.TryGetValue(PlayDialogAnimPatch.CurrentStageInfo.difficulty - 1, out var sheet) && sheet.TalkFileVersion2)
-                    {
-                        PlayDialogAnimPatch.HasVersion2 = true;
-                    }
-                    else
-                    {
-                        PlayDialogAnimPatch.HasVersion2 = false;
-                    }
-                }
-                else
+                
+                if (!currentStageUid.StartsWith($"{AlbumManager.Uid}-"))
                 {
                     PlayDialogAnimPatch.HasVersion2 = false;
+                    return;
                 }
+
+                var currentAlbum = AlbumManager.GetByUid(currentStageUid);
+
+                // Reset values that may have changed
+                PlayDialogAnimPatch.HasVersion2 =
+                    (currentAlbum?.Sheets.TryGetValue(PlayDialogAnimPatch.CurrentStageInfo.difficulty, out var sheet) ?? false) && sheet.TalkFileVersion2;
                 PlayDialogAnimPatch.Index = 0;
                 PlayDialogAnimPatch.CurrentLanguage = DataHelper.userLanguage;
+                
+                // Set this here to avoid repeatedly checking a dictionary
+                PlayDialogAnimPatch.DialogEvents =
+                    PlayDialogAnimPatch.CurrentStageInfo.dialogEvents.ContainsKey(PlayDialogAnimPatch.CurrentLanguage)
+                        ? PlayDialogAnimPatch.CurrentStageInfo.dialogEvents[PlayDialogAnimPatch.CurrentLanguage]
+                        : PlayDialogAnimPatch.CurrentStageInfo.dialogEvents["English"];
             }
         }
 
+
+        /// <summary>
+        /// This patch allows support for setting the transparency of dialog boxes. Eventually, this patch will allow stronger control of dialog boxes using the "version": 2 property.
+        /// </summary>
         [HarmonyPatch(typeof(DialogSubControl), nameof(DialogSubControl.PlayDialogAnim))]
         internal class PlayDialogAnimPatch
         {
@@ -54,12 +60,12 @@ namespace CustomAlbums.Patches
             internal static StageInfo CurrentStageInfo { get; set; }
             internal static bool HasVersion2 { get; set; }
             internal static string CurrentLanguage { get; set; } = string.Empty;
+            internal static Il2CppSystem.Collections.Generic.List<GameDialogArgs> DialogEvents { get; set; }
             private static void Prefix(DialogSubControl __instance)
             {
                 if (!HasVersion2) return;
 
-                var dialogEvents = CurrentStageInfo.dialogEvents.ContainsKey(CurrentLanguage) ? CurrentStageInfo.dialogEvents[CurrentLanguage] : CurrentStageInfo.dialogEvents["English"];
-                __instance.m_BgImg.color = dialogEvents[Index++].bgColor;
+                __instance.m_BgImg.color = DialogEvents[Index++].bgColor;
             }
         } 
     }

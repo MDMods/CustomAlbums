@@ -109,13 +109,12 @@ namespace CustomAlbums.Utilities
             {
                 using var zip = ZipFile.Open(BackupZip, ZipArchiveMode.Update);
 
-                var files = Directory.EnumerateFiles(BackupPath).Where(name => Path.GetExtension(name) != ".zip") as string[];
-
-                if (files?.Any() ?? false)
+                var filesList = Directory.EnumerateFiles(BackupPath).Where(name => Path.GetExtension(name) != ".zip").ToList();
+                if (filesList.Any())
                 {
-                    Array.ForEach(files, entry =>
+                    filesList.ForEach(entry =>
                     {
-                        var newFileName = Directory.GetLastWriteTime(entry).ToString("yyyy_MM_dd_H_mm_ss-") + Path.GetFileName(Path.GetFileName(entry)); ;
+                        var newFileName = Directory.GetLastWriteTime(entry).ToString("yyyy_MM_dd_H_mm_ss-") + Path.GetFileName(Path.GetFileName(entry));
                         zip.CreateEntryFromFile(entry, newFileName);
                         File.Delete(entry);
                     });
