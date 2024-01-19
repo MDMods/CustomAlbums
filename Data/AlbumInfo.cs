@@ -18,8 +18,8 @@ namespace CustomAlbums.Data
         public string Author { get; set; } = string.Empty;
         public string LevelDesigner { get; set; } = string.Empty;
         public string LevelDesigner1 { get; set; } = string.Empty;
-        public string LevelDesigner2 { get; set;} = string.Empty;
-        public string LevelDesigner3 { get; set;} = string.Empty;
+        public string LevelDesigner2 { get; set; } = string.Empty;
+        public string LevelDesigner3 { get; set; } = string.Empty;
         public string LevelDesigner4 { get; set; } = string.Empty;
         public string Bpm { get; set; } = "0";
         public string Scene { get; set; } = "scene_01";
@@ -37,16 +37,19 @@ namespace CustomAlbums.Data
                 return dict;
             }
         }
+
         public string Difficulty1 { get; set; } = "0";
         public string Difficulty2 { get; set; } = "0";
         public string Difficulty3 { get; set; } = "0";
         public string Difficulty4 { get; set; } = "0";
 
         public string HideBmsMode { get; set; } = "CLICK";
+
         [JsonConverter(typeof(Converters.NumberConverter))]
         public string HideBmsDifficulty { get; set; } = "0";
+
         public string HideBmsMessage { get; set; } = string.Empty;
-        
+
         public string[] SearchTags { get; set; } = Array.Empty<string>();
     }
 }

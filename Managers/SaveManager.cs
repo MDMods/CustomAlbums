@@ -1,14 +1,8 @@
 ﻿using System.Globalization;
-using CustomAlbums.Data;
-using CustomAlbums.Utilities;
 using System.Text;
 using System.Text.Json;
-using Il2CppAssets.Scripts.PeroTools.Commons;
-using Il2CppAssets.Scripts.PeroTools.Nice.Datas;
-using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
-using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
-using Il2CppToolGood.Words;
-using static UnityEngine.SpookyHash;
+using CustomAlbums.Data;
+using CustomAlbums.Utilities;
 
 namespace CustomAlbums.Managers
 {
@@ -20,8 +14,8 @@ namespace CustomAlbums.Managers
         internal static string PreviousScore { get; set; } = "-";
 
         /// <summary>
-        /// Fixes the save file since this version of CAM uses a different naming scheme.
-        /// This allows cross-compatibility between CAM 3 and CAM 4, but not from CAM 4 to CAM 3.
+        ///     Fixes the save file since this version of CAM uses a different naming scheme.
+        ///     This allows cross-compatibility between CAM 3 and CAM 4, but not from CAM 4 to CAM 3.
         /// </summary>
         internal static void FixSaveFile()
         {
@@ -43,13 +37,16 @@ namespace CustomAlbums.Managers
                     stringBuilder.Insert(0, "album_");
                     fixedQueue.Enqueue(stringBuilder.ToString());
                 }
+
                 SaveData.History = fixedQueue;
             }
-            
+
             // If we need to fix the highest
-            if (!firstHighest.Equals(default(KeyValuePair<string, Dictionary<int, CustomChartSave>>)) && firstHighest.Key.StartsWith("pkg_"))
+            if (!firstHighest.Equals(default(KeyValuePair<string, Dictionary<int, CustomChartSave>>)) &&
+                firstHighest.Key.StartsWith("pkg_"))
             {
-                var fixedDictionaryHighest = new Dictionary<string, Dictionary<int, CustomChartSave>>(SaveData.Highest.Count);
+                var fixedDictionaryHighest =
+                    new Dictionary<string, Dictionary<int, CustomChartSave>>(SaveData.Highest.Count);
                 foreach (var (key, value) in SaveData.Highest.Where(kv => kv.Key.StartsWith("pkg_")))
                 {
                     stringBuilder.Clear();
@@ -58,12 +55,14 @@ namespace CustomAlbums.Managers
                     stringBuilder.Insert(0, "album_");
                     fixedDictionaryHighest.Add(stringBuilder.ToString(), value);
                 }
+
                 SaveData.Highest = fixedDictionaryHighest;
             }
 
             // If we don't need to fix the FullCombo then return
-            if (!firstFullCombo.Equals(default(KeyValuePair<string, List<int>>)) && !firstFullCombo.Key.StartsWith("pkg_")) return;
-            
+            if (!firstFullCombo.Equals(default(KeyValuePair<string, List<int>>)) &&
+                !firstFullCombo.Key.StartsWith("pkg_")) return;
+
             var fixedDictionaryFc = new Dictionary<string, List<int>>(SaveData.FullCombo.Count);
             foreach (var (key, value) in SaveData.FullCombo.Where(kv => kv.Key.StartsWith("pkg_")))
             {
@@ -74,6 +73,7 @@ namespace CustomAlbums.Managers
                 stringBuilder.Insert(0, "album_");
                 fixedDictionaryFc.Add(stringBuilder.ToString(), value);
             }
+
             SaveData.FullCombo = fixedDictionaryFc;
         }
 
@@ -88,10 +88,11 @@ namespace CustomAlbums.Managers
             }
             catch (Exception ex)
             {
-                if (ex is FileNotFoundException) SaveData = new CustomAlbumsSave(); 
+                if (ex is FileNotFoundException) SaveData = new CustomAlbumsSave();
                 else Logger.Warning("Failed to load save file. " + ex.StackTrace);
             }
         }
+
         internal static void SaveSaveFile()
         {
             if (!ModSettings.SavingEnabled) return;
@@ -102,6 +103,7 @@ namespace CustomAlbums.Managers
                     Logger.Warning("Trying to save null data, not saving.");
                     return;
                 }
+
                 File.WriteAllText(Path.Join(SaveLocation, "CustomAlbums.json"), JsonSerializer.Serialize(SaveData));
             }
             catch (Exception ex)
@@ -119,7 +121,8 @@ namespace CustomAlbums.Managers
         /// <param name="maxCombo">The maximum combo of the play.</param>
         /// <param name="evaluate">The judgement ranking of the play.</param>
         /// <param name="miss">The amount of misses in the play.</param>
-        internal static void SaveScore(string uid, int musicDifficulty, int score, float accuracy, int maxCombo, string evaluate, int miss)
+        internal static void SaveScore(string uid, int musicDifficulty, int score, float accuracy, int maxCombo,
+            string evaluate, int miss)
         {
             if (!ModSettings.SavingEnabled) return;
 
@@ -140,13 +143,13 @@ namespace CustomAlbums.Managers
             var albumName = album.GetAlbumName();
 
             // Create new album save 
-            if (!SaveData.Highest.ContainsKey(albumName)) 
+            if (!SaveData.Highest.ContainsKey(albumName))
                 SaveData.Highest.Add(albumName, new Dictionary<int, CustomChartSave>());
 
             var currChartScore = SaveData.Highest[albumName];
-            
+
             // Create new save data if the difficulty doesn't exist
-            if (!currChartScore.ContainsKey(musicDifficulty)) 
+            if (!currChartScore.ContainsKey(musicDifficulty))
                 currChartScore.Add(musicDifficulty, new CustomChartSave());
 
             // Set previous score for PnlVictory logic
@@ -163,16 +166,15 @@ namespace CustomAlbums.Managers
             newScore.Clear++;
 
             if (miss != 0) return;
-            
+
             // If there were no misses then add the chart/difficulty to the FullCombo list
-            if (!SaveData.FullCombo.ContainsKey(albumName)) 
+            if (!SaveData.FullCombo.ContainsKey(albumName))
                 SaveData.FullCombo.Add(albumName, new List<int>());
 
-            if (!SaveData.FullCombo[albumName].Contains(musicDifficulty)) 
+            if (!SaveData.FullCombo[albumName].Contains(musicDifficulty))
                 SaveData.FullCombo[albumName].Add(musicDifficulty);
 
             SaveSaveFile();
         }
     }
 }
-

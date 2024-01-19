@@ -1,23 +1,13 @@
-﻿using System.Text;
-using System.Text.Json.Nodes;
+﻿using System.Text.Json.Nodes;
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore;
 using Il2CppAssets.Scripts.Structs;
-using Il2CppGameLogic;
-using UnityEngine;
-using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums.Data
 {
     public class Sheet
     {
-        public Album ParentAlbum { get; }
-        public string Md5 { get; }
-        public string MapName { get; }
-        public int Difficulty { get; }
-        public bool TalkFileVersion2 { get; set; } = false;
-
         private readonly Logger _logger = new(nameof(Sheet));
 
         public Sheet(string md5, Album parentAlbum, int difficulty)
@@ -27,6 +17,12 @@ namespace CustomAlbums.Data
             Difficulty = difficulty;
             MapName = $"album_{Path.GetFileNameWithoutExtension(parentAlbum.Path)}_map{difficulty}";
         }
+
+        public Album ParentAlbum { get; }
+        public string Md5 { get; }
+        public string MapName { get; }
+        public int Difficulty { get; }
+        public bool TalkFileVersion2 { get; set; }
 
         public StageInfo GetStage()
         {
@@ -56,16 +52,16 @@ namespace CustomAlbums.Data
                         _logger.Msg("Version 2 talk file!");
                         TalkFileVersion2 = true;
                     }
+
                     talkFile.Remove("version");
                     var dict = Json
                         .Il2CppJsonDeserialize<
                             Il2CppSystem.Collections.Generic.Dictionary<string,
                                 Il2CppSystem.Collections.Generic.List<GameDialogArgs>>>(talkFile.ToJsonString());
-                    stageInfo.dialogEvents = new Il2CppSystem.Collections.Generic.Dictionary<string, Il2CppSystem.Collections.Generic.List<GameDialogArgs>>();
-                    foreach (var dialogEvent in dict)
-                    {
-                        stageInfo.dialogEvents.Add(dialogEvent.Key, dialogEvent.Value);
-                    }
+                    stageInfo.dialogEvents =
+                        new Il2CppSystem.Collections.Generic.Dictionary<string,
+                            Il2CppSystem.Collections.Generic.List<GameDialogArgs>>();
+                    foreach (var dialogEvent in dict) stageInfo.dialogEvents.Add(dialogEvent.Key, dialogEvent.Value);
                 }
             }
 

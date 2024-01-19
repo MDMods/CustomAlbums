@@ -1,19 +1,10 @@
 ﻿using CustomAlbums.Data;
 using CustomAlbums.Utilities;
-using Il2Cpp;
-using Il2CppAssets.Scripts.PeroTools.Commons;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
-using Il2CppSystem.Linq.Expressions;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Advanced;
 using SixLabors.ImageSharp.Formats;
 using SixLabors.ImageSharp.PixelFormats;
 using SixLabors.ImageSharp.Processing;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
 using UnityEngine;
-using static Il2CppSystem.Linq.Expressions.Interpreter.OrInstruction;
-using static UnityEngine.PostProcessing.MotionBlurComponent.FrameBlendingFilter;
 using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums.Managers
@@ -59,7 +50,7 @@ namespace CustomAlbums.Managers
             // for some reason Unity loads textures upside down?
             // flip the frames
             gif.Mutate(c => c.Flip(FlipMode.Vertical));
-       
+
             var sprites = new Sprite[gif.Frames.Count];
 
             for (var i = 0; i < gif.Frames.Count; i++)
@@ -80,18 +71,21 @@ namespace CustomAlbums.Managers
                     Logger.Error("Failed to get pixel data.");
                     return null;
                 }
+
                 using var handle = memory.Pin();
-                
+
                 // create the textures
                 var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
                 texture.LoadRawTextureData((IntPtr)handle.Pointer, memory.Length * sizeof(IntPtr));
                 texture.Apply(false);
 
                 // create the sprite with the given texture and add it to the sprites array
-                var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
+                    new Vector2(0.5f, 0.5f));
                 sprite.hideFlags |= HideFlags.DontUnloadUnusedAsset;
                 sprites[i] = sprite;
             }
+
             // create and add cover to cache
             var cover = new AnimatedCover(sprites, gif.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay * 10);
             CachedAnimatedCovers.Add(album.Index, cover);

@@ -33,7 +33,7 @@ namespace CustomAlbums.Patches
         private static bool _doneLoadingAlbumsFlag;
 
         /// <summary>
-        /// Binds the asset to a new key, while removing the old asset.
+        ///     Binds the asset to a new key, while removing the old asset.
         /// </summary>
         /// <param name="oldAssetName">The old assetName.</param>
         /// <param name="newAssetName">The new assetName where the value should be bound.</param>
@@ -45,7 +45,7 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        /// Removes a KeyValuePair from the asset cache.
+        ///     Removes a KeyValuePair from the asset cache.
         /// </summary>
         /// <param name="key">The key corresponding to the value to be removed.</param>
         /// <returns>true if the entry was successfully removed; otherwise, false.</returns>
@@ -55,8 +55,8 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        /// Adds methods to the <c>AssetHandler</c>.
-        /// The <c>AssetHandler</c> modifies certain assets based on their name.
+        ///     Adds methods to the <c>AssetHandler</c>.
+        ///     The <c>AssetHandler</c> modifies certain assets based on their name.
         /// </summary>
         internal static void InitializeHandler()
         {
@@ -125,7 +125,7 @@ namespace CustomAlbums.Patches
                         uid = customChartJson.uid,
                         listIndex = config.count
                     };
-                     
+
                     // Create the search tag itself
                     var tags = new List<string> { "custom albums" };
                     if (albumInfo.SearchTags != null) tags.AddRange(albumInfo.SearchTags);
@@ -156,7 +156,7 @@ namespace CustomAlbums.Patches
                 // Adds the correct language for the "Custom Albums" album
                 jsonArray.Add(new
                 {
-                    title = AlbumManager.Languages[language],
+                    title = AlbumManager.Languages[language]
                 });
 
                 // create and add the new asset with the correct lingual name of "Custom Albums"
@@ -194,7 +194,7 @@ namespace CustomAlbums.Patches
             });
 
             AssetHandler.Add("album_", (assetName, assetPtr, _) =>
-            {              
+            {
                 var cache = true;
                 Object newAsset = null;
                 var suffix = AssetIdentifiers.AssetSuffixes.FirstOrDefault(assetName.EndsWith);
@@ -203,7 +203,7 @@ namespace CustomAlbums.Patches
                     var albumKey = assetName.Remove(assetName.Length - suffix.Length);
                     AlbumManager.LoadedAlbums.TryGetValue(albumKey, out var album);
                     if (suffix.StartsWith("_map"))
-                    {                       
+                    {
                         newAsset = album?.Sheets[int.Parse(suffix[^1].ToString())].GetStage();
                         // Do not cache the StageInfos, this should be loaded into memory only when we need it
                         cache = false;
@@ -236,12 +236,12 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        /// Gets <c>LoadFromName&lt;TextAsset&gt;</c> and detours it using a 
-        /// <c>NativeHook&lt;LoadFromNameDelegate&gt;</c> to <c>LoadFromNamePatch</c>.
+        ///     Gets <c>LoadFromName&lt;TextAsset&gt;</c> and detours it using a
+        ///     <c>NativeHook&lt;LoadFromNameDelegate&gt;</c> to <c>LoadFromNamePatch</c>.
         /// </summary>
         internal static unsafe void AttachHook()
         {
-            var loadFromNameMethod = AccessTools.Method(typeof(ResourcesManager), 
+            var loadFromNameMethod = AccessTools.Method(typeof(ResourcesManager),
                 nameof(ResourcesManager.LoadFromName), new[] { typeof(string) },
                 new[] { typeof(TextAsset) });
 
@@ -269,23 +269,27 @@ namespace CustomAlbums.Patches
 
 
         /// <summary>
-        /// Modifies certain game data as it get loaded.
-        /// The game data that is modified directly adds support for custom albums.
+        ///     Modifies certain game data as it get loaded.
+        ///     The game data that is modified directly adds support for custom albums.
         /// </summary>
         /// <param name="instance">The instance of ResourceManager calling LoadFromName.</param>
         /// <param name="assetNamePtr">The pointer to the string assetName.</param>
         /// <param name="nativeMethodInfo">Method info used by the original method.</param>
-        /// <returns>A pointer of either a newly created asset if it exists or the original asset pointer if a new one was not created.</returns>
+        /// <returns>
+        ///     A pointer of either a newly created asset if it exists or the original asset pointer if a new one was not
+        ///     created.
+        /// </returns>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
         private static IntPtr LoadFromNamePatch(IntPtr instance, IntPtr assetNamePtr, IntPtr nativeMethodInfo)
         {
             // Retrieve the pointer of the asset and the name of the asset
             var assetPtr = Hook.Trampoline(instance, assetNamePtr, nativeMethodInfo);
             var assetName = IL2CPP.Il2CppStringToManaged(assetNamePtr) ?? string.Empty;
-            
+
             Logger.Msg($"Loading {assetName}!");
-            
-            if (assetName.StartsWith("ALBUM") && int.TryParse(assetName.AsSpan(5), out var albumNum) && albumNum != AlbumManager.Uid + 1)
+
+            if (assetName.StartsWith("ALBUM") && int.TryParse(assetName.AsSpan(5), out var albumNum) &&
+                albumNum != AlbumManager.Uid + 1)
             {
                 // If done loading albums, we've found the maximum actual album
                 // If there's an attempt to load other albums (there will be if you open the tag menu), early return zero pointer
@@ -309,6 +313,7 @@ namespace CustomAlbums.Patches
                     AudioManager.SwitchLoad(assetName);
                     return cachedAsset.Pointer;
                 }
+
                 Logger.Msg("Removing null asset from cache");
                 AssetCache.Remove(assetName);
             }
@@ -332,7 +337,7 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        /// Simple helper method to create a TextAsset.
+        ///     Simple helper method to create a TextAsset.
         /// </summary>
         /// <param name="name"></param>
         /// <param name="text"></param>

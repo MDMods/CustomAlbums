@@ -12,7 +12,7 @@
             Arknights = 4,
             Miku = 5,
             BadApple = 129,
-            Christmas = 999,
+            Christmas = 999
         }
     }
 }

@@ -4,11 +4,10 @@ namespace CustomAlbums
 {
     internal static class ModSettings
     {
-        public static bool VerboseLogging => _verboseLogging.Value;
-        public static bool SavingEnabled => _savingEnabled.Value;
-
         private static MelonPreferences_Entry<bool> _verboseLogging;
         private static MelonPreferences_Entry<bool> _savingEnabled;
+        public static bool VerboseLogging => _verboseLogging.Value;
+        public static bool SavingEnabled => _savingEnabled.Value;
 
 
         internal static void Register()

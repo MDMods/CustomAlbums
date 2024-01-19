@@ -1,18 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Threading.Tasks;
-using CustomAlbums.Data;
-using CustomAlbums.Managers;
+﻿using CustomAlbums.Managers;
 using HarmonyLib;
 using Il2Cpp;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
-using MelonLoader;
 using UnityEngine;
-using static MelonLoader.MelonLogger;
 using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums.Patches
@@ -20,7 +11,7 @@ namespace CustomAlbums.Patches
     internal class AnimatedCoverPatch
     {
         /// <summary>
-        /// Enables animated album covers.
+        ///     Enables animated album covers.
         /// </summary>
         [HarmonyPatch(typeof(MusicStageCell), nameof(MusicStageCell.Awake))]
         internal static class MusicStageCellPatch
@@ -35,28 +26,25 @@ namespace CustomAlbums.Patches
                 if (dbMusicTag == null) return;
 
                 for (var i = Cells.Count - 1; i >= 0; i--)
-                {
                     if (Cells[i] == null || !Cells[i].enabled)
-                    {
                         Cells.RemoveAt(i);
-                    }
-                }
 
                 foreach (var cell in Cells)
                 {
                     var index = cell?.m_VariableBehaviour?.Cast<IVariable>().GetResult<int>() ?? -1;
-                    
+
                     var uid = dbMusicTag?.GetShowStageUidByIndex(index) ?? "?";
                     if (uid == "?") continue;
 
                     var musicInfo = dbMusicTag?.GetMusicInfoFromAll(uid);
                     if (musicInfo?.albumJsonIndex < AlbumManager.Uid) continue;
 
-                    
+
                     var album = AlbumManager.GetByUid(uid);
                     var animatedCover = album?.AnimatedCover;
                     if (animatedCover is null || animatedCover.FramesPerSecond == 0) continue;
-                    var frame = (int)Mathf.Floor(Time.time * 1000) % (animatedCover.FramesPerSecond * animatedCover.FrameCount) / animatedCover.FramesPerSecond;
+                    var frame = (int)Mathf.Floor(Time.time * 1000) %
+                        (animatedCover.FramesPerSecond * animatedCover.FrameCount) / animatedCover.FramesPerSecond;
                     if (cell != null) cell.m_StageImg.sprite = animatedCover.Frames[frame];
                 }
             }

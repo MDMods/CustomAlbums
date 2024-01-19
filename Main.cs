@@ -1,8 +1,8 @@
 ﻿using CustomAlbums.Managers;
 using CustomAlbums.Patches;
+using CustomAlbums.Utilities;
 using MelonLoader;
 using static CustomAlbums.Patches.AnimatedCoverPatch;
-using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums
 {
@@ -37,15 +37,16 @@ namespace CustomAlbums
         }
 
         /// <summary>
-        /// This override adds support for animated covers.
+        ///     This override adds support for animated covers.
         /// </summary>
         public override void OnUpdate()
         {
             base.OnUpdate();
             MusicStageCellPatch.AnimateCoversUpdate();
         }
+
         /// <summary>
-        /// This override adds support for hot reloading.
+        ///     This override adds support for hot reloading.
         /// </summary>
         public override void OnFixedUpdate()
         {

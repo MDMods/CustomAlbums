@@ -1,13 +1,12 @@
 ﻿using System.Collections.ObjectModel;
 using CustomAlbums.Utilities;
 using Il2CppGameLogic;
+using Decimal = Il2CppSystem.Decimal;
 
 namespace CustomAlbums.Managers
 {
     internal static class MusicDataManager
     {
-        public static ReadOnlyCollection<MusicData> Data => MusicDataList.AsReadOnly();
-
         private static readonly List<MusicData> MusicDataList = new();
         private static readonly Logger Logger = new(nameof(MusicDataManager));
 
@@ -16,6 +15,8 @@ namespace CustomAlbums.Managers
             // Add an empty music data to the list as a placeholder
             MusicDataList.Add(Interop.CreateTypeValue<MusicData>());
         }
+
+        public static ReadOnlyCollection<MusicData> Data => MusicDataList.AsReadOnly();
 
         public static void Add(MusicData data)
         {
@@ -43,7 +44,7 @@ namespace CustomAlbums.Managers
             for (var i = 1; i < MusicDataList.Count; i++)
             {
                 var musicData = MusicDataList[i];
-                musicData.tick = Il2CppSystem.Decimal.Round(musicData.tick, 3);
+                musicData.tick = Decimal.Round(musicData.tick, 3);
                 musicData.objId = (short)i;
 
                 MusicDataList[i] = musicData;

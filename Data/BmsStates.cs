@@ -18,7 +18,6 @@
 
         public static readonly Dictionary<string, BossState> AnimStatesLeft = new()
         {
-
             { "in", BossState.OffScreen },
             { "out", BossState.Idle },
             { "boss_close_atk_1", BossState.Idle },

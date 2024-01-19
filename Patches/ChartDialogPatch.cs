@@ -5,27 +5,25 @@ using Il2Cpp;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore;
 using Il2CppAssets.Scripts.Structs;
-using Il2CppGameLogic;
-using Il2CppSystem.Runtime.Remoting.Messaging;
 
 namespace CustomAlbums.Patches
 {
     internal class ChartDialogPatch
     {
-
         /// <summary>
-        /// This method runs once when the chart loads, so init basic values to avoid computing again
+        ///     This method runs once when the chart loads, so init basic values to avoid computing again
         /// </summary>
         [HarmonyPatch(typeof(DialogMasterControl), nameof(DialogMasterControl.Init))]
         internal class InitPatch
         {
             private static readonly Logger Logger = new(nameof(InitPatch));
+
             private static void Prefix(DialogMasterControl __instance)
             {
                 Logger.Msg("Setting talk file values.");
                 var currentStageUid = GlobalDataBase.dbBattleStage.musicUid;
                 PlayDialogAnimPatch.CurrentStageInfo = GlobalDataBase.dbStageInfo.m_StageInfo;
-                
+
                 if (!currentStageUid.StartsWith($"{AlbumManager.Uid}-"))
                 {
                     PlayDialogAnimPatch.HasVersion2 = false;
@@ -36,7 +34,8 @@ namespace CustomAlbums.Patches
 
                 // Reset values that may have changed
                 PlayDialogAnimPatch.HasVersion2 =
-                    (currentAlbum?.Sheets.TryGetValue(PlayDialogAnimPatch.CurrentStageInfo.difficulty, out var sheet) ?? false) && sheet.TalkFileVersion2;
+                    (currentAlbum?.Sheets.TryGetValue(PlayDialogAnimPatch.CurrentStageInfo.difficulty, out var sheet) ??
+                     false) && sheet.TalkFileVersion2;
                 PlayDialogAnimPatch.Index = 0;
                 PlayDialogAnimPatch.CurrentLanguage = DataHelper.userLanguage;
 
@@ -51,7 +50,8 @@ namespace CustomAlbums.Patches
 
 
         /// <summary>
-        /// This patch allows support for setting the transparency of dialog boxes. Eventually, this patch will allow stronger control of dialog boxes using the "version": 2 property.
+        ///     This patch allows support for setting the transparency of dialog boxes. Eventually, this patch will allow stronger
+        ///     control of dialog boxes using the "version": 2 property.
         /// </summary>
         [HarmonyPatch(typeof(DialogSubControl), nameof(DialogSubControl.PlayDialogAnim))]
         internal class PlayDialogAnimPatch
@@ -62,12 +62,13 @@ namespace CustomAlbums.Patches
             internal static bool HasVersion2 { get; set; }
             internal static string CurrentLanguage { get; set; } = string.Empty;
             internal static Il2CppSystem.Collections.Generic.List<GameDialogArgs> DialogEvents { get; set; }
+
             private static void Prefix(DialogSubControl __instance)
             {
                 if (!HasVersion2 || DialogEvents == null) return;
 
                 __instance.m_BgImg.color = DialogEvents[Index++].bgColor;
             }
-        } 
+        }
     }
 }

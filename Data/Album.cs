@@ -1,24 +1,14 @@
 ﻿using System.IO.Compression;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
-using Il2CppPeroPeroGames.GlobalDefines;
 using UnityEngine;
+using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums.Data
 {
     public class Album
     {
-        public int Index { get; }
-        public string Path { get; }
-        public bool IsPackaged { get; }
-        public AlbumInfo Info { get; }
-        public Sprite Cover => this.GetCover();
-        public AnimatedCover AnimatedCover => this.GetAnimatedCover();
-        public AudioClip Music => this.GetAudio();
-        public AudioClip Demo => this.GetAudio("demo");
-        public Dictionary<int, Sheet> Sheets { get; } = new();
-
-        private readonly Utilities.Logger _logger = new(nameof(Album));
+        private readonly Logger _logger = new(nameof(Album));
 
         public Album(string path, int index)
         {
@@ -30,6 +20,7 @@ namespace CustomAlbums.Data
                     _logger.Error($"Could not find info.json at: {path}\\info.json");
                     throw new FileNotFoundException();
                 }
+
                 using var fileStream = File.OpenRead($"{path}\\info.json");
                 Info = Json.Deserialize<AlbumInfo>(fileStream);
             }
@@ -59,6 +50,16 @@ namespace CustomAlbums.Data
 
             GetSheets();
         }
+
+        public int Index { get; }
+        public string Path { get; }
+        public bool IsPackaged { get; }
+        public AlbumInfo Info { get; }
+        public Sprite Cover => this.GetCover();
+        public AnimatedCover AnimatedCover => this.GetAnimatedCover();
+        public AudioClip Music => this.GetAudio();
+        public AudioClip Demo => this.GetAudio("demo");
+        public Dictionary<int, Sheet> Sheets { get; } = new();
 
         public bool HasFile(string name)
         {

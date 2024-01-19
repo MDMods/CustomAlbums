@@ -12,7 +12,7 @@ namespace CustomAlbums.Utilities
 
         public static byte[] ReadFully(this MemoryStream stream)
         {
-            var buffer = new byte[1024*16];
+            var buffer = new byte[1024 * 16];
             int read;
 
             using var ms = new MemoryStream();

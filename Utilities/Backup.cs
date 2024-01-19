@@ -1,12 +1,12 @@
 ﻿using System.IO.Compression;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Nice.Datas;
 using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
-using System.Text.Json;
-using System.Text.Json.Nodes;
-using CustomAlbums.Data;
+using Il2CppInterop.Runtime.InteropTypes.Arrays;
 
 namespace CustomAlbums.Utilities
 {
@@ -26,10 +26,12 @@ namespace CustomAlbums.Utilities
 
             CompressBackups();
             CreateBackup(BackupVanilla, Singleton<DataManager>.instance.ToBytes());
-            CreateBackup(BackupVanillaDebug, JsonSerializer.Serialize(ToJsonDict(Singleton<DataManager>.instance.datas)));
+            CreateBackup(BackupVanillaDebug,
+                JsonSerializer.Serialize(ToJsonDict(Singleton<DataManager>.instance.datas)));
             CreateBackup(BackupCustom, SaveManager.SaveData);
             ClearOldBackups();
         }
+
         private static void CreateBackup(string filePath, object data)
         {
             try
@@ -39,8 +41,9 @@ namespace CustomAlbums.Utilities
                     Logger.Warning("Could not create backup of null data!");
                     return;
                 }
+
                 var wroteFile = false;
-                
+
                 switch (data)
                 {
                     case string str:
@@ -51,8 +54,8 @@ namespace CustomAlbums.Utilities
                     case byte[] bytes:
                         File.WriteAllBytes(filePath, bytes);
                         wroteFile = true;
-                        break; 
-                        
+                        break;
+
                     case Il2CppStructArray<byte> ilBytes:
                         File.WriteAllBytes(filePath, ilBytes);
                         wroteFile = true;
@@ -81,16 +84,20 @@ namespace CustomAlbums.Utilities
             try
             {
                 var backups = Directory.EnumerateFiles(BackupPath).ToList();
-                foreach (var backup in from backup in backups let backupDate = Directory.GetLastWriteTime(backup) where (DateTime.Now - backupDate).Duration() > MaxBackupTime.Duration() select backup)
+                foreach (var backup in from backup in backups
+                         let backupDate = Directory.GetLastWriteTime(backup)
+                         where (DateTime.Now - backupDate).Duration() > MaxBackupTime.Duration()
+                         select backup)
                 {
                     Logger.Msg("Removing old backup: " + backup);
                     File.Delete(backup);
                 }
 
                 if (!File.Exists(BackupZip)) return;
-                
+
                 using var zip = ZipFile.OpenRead(BackupZip);
-                foreach (var entry in zip.Entries.ToList().Where(entry => (DateTime.Now - entry.LastWriteTime).Duration() > MaxBackupTime.Duration()))
+                foreach (var entry in zip.Entries.ToList().Where(entry =>
+                             (DateTime.Now - entry.LastWriteTime).Duration() > MaxBackupTime.Duration()))
                 {
                     Logger.Msg("Removing compressed old backup: " + entry.Name);
                     zip.GetEntry(entry.Name)?.Delete();
@@ -108,23 +115,25 @@ namespace CustomAlbums.Utilities
             {
                 using var zip = ZipFile.Open(BackupZip, ZipArchiveMode.Update);
 
-                var filesList = Directory.EnumerateFiles(BackupPath).Where(name => Path.GetExtension(name) != ".zip").ToList();
+                var filesList = Directory.EnumerateFiles(BackupPath).Where(name => Path.GetExtension(name) != ".zip")
+                    .ToList();
                 if (filesList.Any())
-                {
                     filesList.ForEach(entry =>
                     {
-                        var newFileName = Directory.GetLastWriteTime(entry).ToString("yyyy_MM_dd_H_mm_ss-") + Path.GetFileName(Path.GetFileName(entry));
+                        var newFileName = Directory.GetLastWriteTime(entry).ToString("yyyy_MM_dd_H_mm_ss-") +
+                                          Path.GetFileName(Path.GetFileName(entry));
                         zip.CreateEntryFromFile(entry, newFileName);
                         File.Delete(entry);
                     });
-                }
             }
             catch (Exception e)
             {
                 Logger.Error("Compressing previous backups failed: " + e);
             }
         }
-        private static Dictionary<string, JsonObject> ToJsonDict(Il2CppSystem.Collections.Generic.Dictionary<string, IData> dataList)
+
+        private static Dictionary<string, JsonObject> ToJsonDict(
+            Il2CppSystem.Collections.Generic.Dictionary<string, IData> dataList)
         {
             var dictionary = new Dictionary<string, JsonObject>();
             foreach (var keyValuePair in dataList)
@@ -132,8 +141,8 @@ namespace CustomAlbums.Utilities
                 var singletonDataObject = keyValuePair.Value?.TryCast<SingletonDataObject>();
                 if (singletonDataObject != null)
                     dictionary.Add(keyValuePair.Key, Json.Deserialize<JsonObject>(singletonDataObject.ToJson()));
-                
             }
+
             return dictionary;
         }
     }

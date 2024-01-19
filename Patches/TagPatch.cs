@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using CustomAlbums.Managers;
+﻿using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2Cpp;
@@ -35,7 +30,8 @@ namespace CustomAlbums.Patches
 
                 info.InitCustomTagInfo(customInfo);
 
-                GlobalDataBase.dbMusicTag.m_AlbumTagsSort.Insert(GlobalDataBase.dbMusicTag.m_AlbumTagsSort.Count - 4, AlbumManager.Uid);
+                GlobalDataBase.dbMusicTag.m_AlbumTagsSort.Insert(GlobalDataBase.dbMusicTag.m_AlbumTagsSort.Count - 4,
+                    AlbumManager.Uid);
                 GlobalDataBase.dbMusicTag.AddAlbumTagData(AlbumManager.Uid, info);
             }
         }

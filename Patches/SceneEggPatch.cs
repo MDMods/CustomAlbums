@@ -5,17 +5,16 @@ using HarmonyLib;
 using Il2Cpp;
 using Il2CppAssets.Scripts.Common.SceneEgg;
 using Il2CppAssets.Scripts.Database;
-using Il2CppGameLogic;
 using Il2CppAssets.Scripts.TouhouLogic;
-using UnityEngine.Assertions;
+using Il2CppGameLogic;
 using static CustomAlbums.Data.SceneEgg;
-using System.Reflection;
-using UnityEngine.SceneManagement;
 
 namespace CustomAlbums.Patches
 {
     internal class SceneEggPatch
     {
+        private static readonly Logger Logger = new(nameof(SceneEggPatch));
+
         internal static bool IgnoreSceneEggs(out Album outAlbum, params SceneEggs[] sceneEggs)
         {
             outAlbum = null;
@@ -26,14 +25,13 @@ namespace CustomAlbums.Patches
             // If the album doesn't exist (?) or if there are no SceneEggs or if it's christmas SceneEgg (not really a SceneEgg) then leave
             var album = AlbumManager.GetByUid(uid);
             if (album is null) return true;
-            
+
             outAlbum = album;
             return sceneEggs.Any(sceneEgg => sceneEgg == album.Info.SceneEgg);
         }
 
-        private static readonly Logger Logger = new(nameof(SceneEggPatch));
         /// <summary>
-        /// Adds support for SceneEggs.
+        ///     Adds support for SceneEggs.
         /// </summary>
         [HarmonyPatch(typeof(SceneEggAbstractController), nameof(SceneEggAbstractController.SceneEggHandle))]
         internal class ControllerPatch
@@ -53,7 +51,8 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        /// Makes scene_05 be scene_05_christmas if the Christmas SceneEgg is enabled or scene_08 be scene_touhou_black if BadApple is enabled.
+        ///     Makes scene_05 be scene_05_christmas if the Christmas SceneEgg is enabled or scene_08 be scene_touhou_black if
+        ///     BadApple is enabled.
         /// </summary>
         [HarmonyPatch(typeof(GameMusicScene), nameof(GameMusicScene.SceneFestival))]
         internal class SceneFestivalPatch
@@ -64,7 +63,7 @@ namespace CustomAlbums.Patches
                 if (sceneFestivalName != "scene_05") return true;
 
                 // Ignore the actual SceneEggs (and BadApple)
-                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.Miku, SceneEggs.None, 
+                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.Miku, SceneEggs.None,
                         SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.BadApple)) return true;
 
                 if (sceneFestivalName == "scene_05") __result = "scene_05_christmas";
@@ -73,7 +72,7 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        /// Makes the boss be the christmas boss if the Christmas SceneEgg is enabled.
+        ///     Makes the boss be the christmas boss if the Christmas SceneEgg is enabled.
         /// </summary>
         [HarmonyPatch(typeof(Boss), nameof(Boss.BossFestival))]
         internal class BossFestivalPatch
@@ -82,7 +81,7 @@ namespace CustomAlbums.Patches
             {
                 // If the boss is not 0501_boss then there is no Christmas
                 if (bossFestivalName != "0501_boss") return true;
-                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.Miku, SceneEggs.None, 
+                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.Miku, SceneEggs.None,
                         SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.BadApple)) return true;
 
                 __result = "0501_boss_christmas";
@@ -91,7 +90,8 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        /// Makes the game think (temporarily) that the chart is Bad Apple when the BadApple SceneEgg is enabled to load all the assets properly.
+        ///     Makes the game think (temporarily) that the chart is Bad Apple when the BadApple SceneEgg is enabled to load all
+        ///     the assets properly.
         /// </summary>
         [HarmonyPatch(typeof(DBTouhou), nameof(DBTouhou.AwakeInit))]
         internal class BadApplePatch
@@ -102,13 +102,11 @@ namespace CustomAlbums.Patches
                         SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Christmas)) return;
 
                 GlobalDataBase.dbTouhou.isBadApple = true;
-                
+
                 GlobalDataBase.s_DbOther.m_HpFx = TouhouLogic.ReplaceBadAppleString("fx_hp_ground");
                 GlobalDataBase.s_DbOther.m_MusicFx = TouhouLogic.ReplaceBadAppleString("fx_score_ground");
                 GlobalDataBase.s_DbOther.m_DustFx = TouhouLogic.ReplaceBadAppleString("dust_fx");
             }
-
         }
-
     }
 }

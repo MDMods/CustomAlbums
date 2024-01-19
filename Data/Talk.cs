@@ -1,10 +1,4 @@
-﻿using CustomAlbums.Utilities;
-using Il2CppAssets.Scripts.Structs;
-using System;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Il2CppSystem.Collections.Generic;
+﻿using Il2CppAssets.Scripts.Structs;
 
 namespace CustomAlbums.Data
 {
@@ -17,9 +11,12 @@ namespace CustomAlbums.Data
         public Il2CppSystem.Collections.Generic.List<GameDialogArgs> Japanese { get; set; }
         public Il2CppSystem.Collections.Generic.List<GameDialogArgs> Korean { get; set; }
 
-        public Il2CppSystem.Collections.Generic.Dictionary<string, Il2CppSystem.Collections.Generic.List<GameDialogArgs>>.Enumerator GetEnumerator()
+        public Il2CppSystem.Collections.Generic.Dictionary<string,
+            Il2CppSystem.Collections.Generic.List<GameDialogArgs>>.Enumerator GetEnumerator()
         {
-            var dict = new Il2CppSystem.Collections.Generic.Dictionary<string, Il2CppSystem.Collections.Generic.List<GameDialogArgs>>(5);
+            var dict =
+                new Il2CppSystem.Collections.Generic.Dictionary<string,
+                    Il2CppSystem.Collections.Generic.List<GameDialogArgs>>(5);
             dict["English"] = English;
             dict["ChineseS"] = ChineseS;
             dict["ChineseT"] = ChineseT;
