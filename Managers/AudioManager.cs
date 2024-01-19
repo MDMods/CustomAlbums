@@ -8,7 +8,6 @@ using UnityEngine;
 
 namespace CustomAlbums.Managers
 {
-    // TODO: fix audio cut bug
     public static class AudioManager
     {
         public const int AsyncReadSpeed = 4096;
@@ -19,7 +18,9 @@ namespace CustomAlbums.Managers
 
         public static bool SwitchLoad(string name)
         {
-            if (!Coroutines.TryGetValue(name, out _currentCoroutine)) return false;
+            if (!Coroutines.TryGetValue(name, out var routine)) return false;
+            _currentCoroutine = routine;
+
             Logger.Msg($"Switching to async load of {name}");
             return true;
         }

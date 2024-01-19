@@ -22,7 +22,6 @@ namespace CustomAlbums.Utilities
 
         internal static void InitBackups()
         {
-            // TODO: FIX THIS c:
             Directory.CreateDirectory(BackupPath);
 
             CompressBackups();
