@@ -403,6 +403,7 @@ namespace CustomAlbums.Patches
             private static void Postfix()
             {
                 if (!ModSettings.SavingEnabled) return;
+                CleanCustomData();
                 InjectCustomData();
             }
         }
