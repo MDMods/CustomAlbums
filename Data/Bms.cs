@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Nodes;
+﻿using System.Globalization;
+using System.Text.Json.Nodes;
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
@@ -304,7 +305,7 @@ namespace CustomAlbums.Data
             get
             {
                 var bpmString = Info["BPM"]?.GetValue<string>() ?? Info["BPM01"]?.GetValue<string>() ?? string.Empty;
-                return !float.TryParse(bpmString, out var bpm) ? 0f : bpm;
+                return !float.TryParse(bpmString, NumberStyles.None, CultureInfo.InvariantCulture, out var bpm) ? 0f : bpm;
             }
         }
 

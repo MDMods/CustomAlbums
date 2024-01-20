@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Globalization;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -288,7 +289,7 @@ namespace CustomAlbums.Patches
 
             Logger.Msg($"Loading {assetName}!");
 
-            if (assetName.StartsWith("ALBUM") && int.TryParse(assetName.AsSpan(5), out var albumNum) &&
+            if (assetName.StartsWith("ALBUM") && int.TryParse(assetName.AsSpan(5), NumberStyles.Number, CultureInfo.InvariantCulture, out var albumNum) &&
                 albumNum != AlbumManager.Uid + 1)
             {
                 // If done loading albums, we've found the maximum actual album
