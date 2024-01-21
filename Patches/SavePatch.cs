@@ -10,10 +10,12 @@ using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore.HostComponent;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
+using Il2CppAssets.Scripts.PeroTools.Nice.Actions;
 using Il2CppAssets.Scripts.PeroTools.Nice.Datas;
 using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Il2CppPeroPeroGames.DataStatistics;
+using JetBrains.Annotations;
 using static CustomAlbums.Managers.SaveManager;
 
 namespace CustomAlbums.Patches
@@ -82,8 +84,11 @@ namespace CustomAlbums.Patches
         /// <returns>The current difficulty of the selected chart.</returns>
         private static int GetDifficulty(MusicInfo musicInfo)
         {
-            Singleton<SpecialSongManager>.instance.m_HideBmsInfos.TryGetValuePossibleNullKey(musicInfo.uid,
-                out var hideBms);
+            if (musicInfo?.uid == null || Singleton<SpecialSongManager>.instance.m_HideBmsInfos == null) return GlobalDataBase.s_DbMusicTag.selectedDiffTglIndex;
+            
+            if (!Singleton<SpecialSongManager>.instance.m_HideBmsInfos.TryGetValuePossibleNullKey(musicInfo.uid,
+                    out var hideBms)) return GlobalDataBase.s_DbMusicTag.selectedDiffTglIndex;
+            
             var hiddenDict = Singleton<SpecialSongManager>.instance.m_IsInvokeHideDic;
             var selectedIndex = GlobalDataBase.s_DbMusicTag.selectedDiffTglIndex;
             if (hiddenDict.TryGetValuePossibleNullKey(hideBms?.uid, out var currentlyHidden) && currentlyHidden &&
@@ -140,8 +145,31 @@ namespace CustomAlbums.Patches
             // Set the panel with the custom score data
             SetPanelWithData(recordPanel, currentChartHighest, isFullCombo);
             Logger.Msg($"Injecting {currentMusicInfo.uid} with difficulty {difficulty}");
-            ;
+            
             return false;
+        }
+
+        /// <summary>
+        /// Adds proper support for different levelDesigners as well as fixes the levelDesigner sticking issue.
+        /// </summary>
+        [HarmonyPatch(typeof(MusicInfo), nameof(MusicInfo.GetLevelDesignerStringByIndex))]
+        internal class LevelDesignerPatch
+        {
+            private static void Postfix(MusicInfo __instance, ref string __result)
+            {
+                if (__instance == null || !__instance.uid.StartsWith($"{AlbumManager.Uid}-")) return;
+                
+                var difficulty = GetDifficulty(__instance);
+                __result = difficulty switch
+                {
+                    1 => __instance.levelDesigner1 ?? __instance.levelDesigner ?? string.Empty,
+                    2 => __instance.levelDesigner2 ?? __instance.levelDesigner ?? string.Empty,
+                    3 => __instance.levelDesigner3 ?? __instance.levelDesigner ?? string.Empty,
+                    4 => __instance.levelDesigner4 ?? __instance.levelDesigner ?? string.Empty,
+                    5 => __instance.levelDesigner5 ?? __instance.levelDesigner ?? string.Empty,
+                    _ => __instance.levelDesigner ?? string.Empty
+                };
+            }
         }
 
         //
@@ -350,7 +378,7 @@ namespace CustomAlbums.Patches
         {
             private static void Postfix(PnlVictory __instance)
             {
-                if (!ModSettings.SavingEnabled) return;
+                if (!ModSettings.SavingEnabled || !GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-")) return;
 
                 var albumName = AlbumManager.GetAlbumNameFromUid(GlobalDataBase.dbBattleStage.musicUid);
                 if (!SaveData.Highest.TryGetValue(albumName, out var highest))
