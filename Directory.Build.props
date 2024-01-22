@@ -2,31 +2,32 @@
   <PropertyGroup>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <ClearOutputDirectory>False</ClearOutputDirectory>
-    <GameFolder>$(MD_NET6_DIRECTORY)</GameFolder>
-    <MelonLoader>$(GameFolder)/MelonLoader/</MelonLoader>
-    <MelonNET6>$(MelonLoader)/net6/</MelonNET6>
-    <MelonAssemblies>$(MelonLoader)/Il2CppAssemblies/</MelonAssemblies>
+    <GameFolder Condition="Exists('$(MD_NET6_DIRECTORY)')">$(MD_NET6_DIRECTORY)</GameFolder>
+    <GameFolder Condition="Exists('$(MD_DIRECTORY)')">$(MD_DIRECTORY)</GameFolder>
+    <MelonLoader>$(GameFolder)\MelonLoader\</MelonLoader>
+    <MelonNET6>$(MelonLoader)\net6\</MelonNET6>
+    <MelonAssemblies>$(MelonLoader)\Il2CppAssemblies\</MelonAssemblies>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
       <SpecificVersion>false</SpecificVersion>
       <Private>false</Private>
-      <HintPath>$(MelonAssemblies)/Assembly-CSharp.dll</HintPath>
+      <HintPath>$(MelonAssemblies)\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="Assembly-CSharp-firstpass, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
       <SpecificVersion>false</SpecificVersion>
       <Private>false</Private>
-      <HintPath>$(MelonAssemblies)/Assembly-CSharp-firstpass.dll</HintPath>
+      <HintPath>$(MelonAssemblies)\Assembly-CSharp-firstpass.dll</HintPath>
     </Reference>
     <Reference Include="Il2CppPeroString, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
       <SpecificVersion>false</SpecificVersion>
       <Private>false</Private>
-      <HintPath>$(MelonAssemblies)/Il2CppPeroString.dll</HintPath>
+      <HintPath>$(MelonAssemblies)\Il2CppPeroString.dll</HintPath>
     </Reference>
     <Reference Include="Il2CppGoogle.Protobuf, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
       <SpecificVersion>false</SpecificVersion>
       <Private>false</Private>
-      <HintPath>$(MelonAssemblies)/Il2CppGoogle.Protobuf.dll</HintPath>
+      <HintPath>$(MelonAssemblies)\Il2CppGoogle.Protobuf.dll</HintPath>
     </Reference>
     <Reference Include="Il2Cppmscorlib, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
       <SpecificVersion>false</SpecificVersion>

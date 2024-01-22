@@ -49,5 +49,10 @@
   
   <Target Name="ILRepackCopy" AfterTargets="ILRepacker" Condition="'$(WORKER)' != 'GitHub'">
     <Copy SourceFiles="$(OutputPath)\$(AssemblyName).dll" DestinationFolder="$(GameFolder)\Mods" />
+    <Message Text="Copied DLL -&gt; $(GameFolder)\Mods\$(ProjectName).dll" Importance="High" />
+  </Target>
+
+  <Target Name="WarnDeprecatedPath" AfterTargets="Build" Condition="!Exists('$(MD_DIRECTORY)')">
+    <Message Text="Warning: MD_NET6_DIRECTORY is no longer in use. Please remove the environment variable and run SetPath.cmd again." Importance="High" />
   </Target>
 </Project>
