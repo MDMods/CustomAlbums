@@ -1,4 +1,5 @@
-﻿using CustomAlbums.Data;
+﻿using System.Globalization;
+using CustomAlbums.Data;
 using Il2CppPeroTools2.Resources;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
@@ -78,7 +79,7 @@ namespace CustomAlbums.Managers
 
         public static Album GetByUid(string uid)
         {
-            return LoadedAlbums.FirstOrDefault(album => album.Value.Index == int.Parse(uid[4..])).Value;
+            return LoadedAlbums.FirstOrDefault(album => album.Value.Index == int.Parse(uid[4..], CultureInfo.InvariantCulture)).Value;
         }
 
         public static string GetAlbumName(this Album album)

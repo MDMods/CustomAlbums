@@ -1,4 +1,5 @@
-﻿using CustomAlbums.Managers;
+﻿using System.Globalization;
+using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2Cpp;
@@ -44,7 +45,7 @@ namespace CustomAlbums.Patches
                                 albumUid,
                                 value.Info.HideBmsDifficulty == "0"
                                     ? value.Sheets.ContainsKey(3) ? 3 : 2
-                                    : int.Parse(value.Info.HideBmsDifficulty),
+                                    : int.Parse(value.Info.HideBmsDifficulty, CultureInfo.InvariantCulture),
                                 4,
                                 $"{key}_map4",
                                 (Il2CppSystem.Func<bool>)delegate { return __instance.IsInvokeHideBms(albumUid); }

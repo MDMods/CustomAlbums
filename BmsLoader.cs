@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Nodes;
+﻿using System.Globalization;
+using System.Text.Json.Nodes;
 using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
@@ -63,11 +64,11 @@ namespace CustomAlbums
                     if (!key.Contains("BPM")) continue;
 
                     var bpmKey = string.IsNullOrEmpty(key[3..]) ? "00" : key[3..];
-                    bpmDict.Add(bpmKey, float.Parse(value));
+                    bpmDict.Add(bpmKey, float.Parse(value, CultureInfo.InvariantCulture));
 
                     if (bpmKey != "00") continue;
 
-                    var freq = 60f / float.Parse(value) * 4f;
+                    var freq = 60f / float.Parse(value, CultureInfo.InvariantCulture) * 4f;
                     var obj = new JsonObject
                     {
                         { "tick", 0f },
@@ -82,7 +83,7 @@ namespace CustomAlbums
                     var key = split[0];
                     var value = split[1];
 
-                    var beat = int.Parse(key[..3]);
+                    var beat = int.Parse(key[..3], CultureInfo.InvariantCulture);
                     var typeCode = key.Substring(3, 2);
                     var type = Bms.Channels[typeCode];
 
@@ -91,7 +92,7 @@ namespace CustomAlbums
                         var obj = new JsonObject
                         {
                             { "beat", beat },
-                            { "percent", float.Parse(value) }
+                            { "percent", float.Parse(value, CultureInfo.InvariantCulture) }
                         };
                         notePercents.Add(beat, obj);
                     }
@@ -545,7 +546,7 @@ namespace CustomAlbums
         private static void ProcessDelay(Bms bms)
         {
             var scene = bms.Info["GENRE"]?.GetValue<string>() ?? string.Empty;
-            var sceneIndex = int.Parse(scene.Split('_')[1]);
+            var sceneIndex = int.Parse(scene.Split('_')[1], CultureInfo.InvariantCulture);
             var sceneInfo = Singleton<StageBattleComponent>.instance.sceneInfo;
             var delayCache = new Dictionary<string, Decimal>();
 

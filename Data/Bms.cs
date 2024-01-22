@@ -400,7 +400,7 @@ namespace CustomAlbums.Data
             if (NoteData is null || NoteData.Count == 0) InitNoteData();
             var processed = new JsonArray();
 
-            var speedAir = int.Parse(Info["PLAYER"]?.GetValue<string>() ?? "1");
+            var speedAir = int.Parse(Info["PLAYER"]?.GetValue<string>() ?? "1", CultureInfo.InvariantCulture);
             var speedGround = speedAir;
 
             var objectId = 1;
