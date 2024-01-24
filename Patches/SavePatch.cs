@@ -1,5 +1,7 @@
 ﻿using System.Globalization;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
@@ -10,13 +12,15 @@ using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore.HostComponent;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
-using Il2CppAssets.Scripts.PeroTools.Nice.Actions;
 using Il2CppAssets.Scripts.PeroTools.Nice.Datas;
 using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
+using Il2CppAssets.Scripts.Structs;
+using Il2CppInterop.Common;
 using Il2CppPeroPeroGames.DataStatistics;
-using JetBrains.Annotations;
+using MelonLoader.NativeUtils;
 using static CustomAlbums.Managers.SaveManager;
+using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums.Patches
 {
@@ -35,6 +39,8 @@ namespace CustomAlbums.Patches
             "S",
             "S"
         };
+
+        private static readonly NativeHook<RecordBattleArgsDelegate> Hook = new();
 
         //
         // PANEL INJECTION SECTION
@@ -74,26 +80,27 @@ namespace CustomAlbums.Patches
         private static void ClearAndRefreshPanels(PnlPreparation panelPreparation, bool reload)
         {
             panelPreparation.pnlRecord.Clear();
+            panelPreparation.pnlRecord.imgIconFc.SetActive(false);
             foreach (var panel in panelPreparation.pnlRanks) panel.Refresh(reload);
         }
 
         /// <summary>
         ///     Gets the correct current difficulty for the selected chart, accounting for hidden activation.
         /// </summary>
-        /// <param name="musicInfo">The musicInfo of the chart.</param>
+        /// <param name="uid">The uid of the chart.</param>
         /// <returns>The current difficulty of the selected chart.</returns>
-        private static int GetDifficulty(MusicInfo musicInfo)
+        private static int GetDifficulty(string uid)
         {
-            if (musicInfo?.uid == null || Singleton<SpecialSongManager>.instance.m_HideBmsInfos == null) return GlobalDataBase.s_DbMusicTag.selectedDiffTglIndex;
-            
-            if (!Singleton<SpecialSongManager>.instance.m_HideBmsInfos.TryGetValuePossibleNullKey(musicInfo.uid,
-                    out var hideBms)) return GlobalDataBase.s_DbMusicTag.selectedDiffTglIndex;
-            
-            var hiddenDict = Singleton<SpecialSongManager>.instance.m_IsInvokeHideDic;
+            // Get current index and null-check m_HideBmsInfos
             var selectedIndex = GlobalDataBase.s_DbMusicTag.selectedDiffTglIndex;
-            if (hiddenDict.TryGetValuePossibleNullKey(hideBms?.uid, out var currentlyHidden) && currentlyHidden &&
-                selectedIndex == hideBms!.triggerDiff) return hideBms!.m_HideDiff;
-            return selectedIndex;
+            var hideBmsInfos = Singleton<SpecialSongManager>.instance.m_HideBmsInfos;
+            if (hideBmsInfos == null || !hideBmsInfos.ContainsKey(uid)) return selectedIndex;
+
+            // Null-check the invoked hidden dictionary and make sure that if it's non-null the hideBms exists and is non-null
+            var invokedHides = Singleton<SpecialSongManager>.instance.m_IsInvokeHideDic;
+            if (invokedHides == null || !invokedHides.ContainsKey(uid) || !hideBmsInfos.TryGetValue(uid, out var hideBms) || hideBms == null) return selectedIndex;
+
+            return invokedHides[uid] && selectedIndex == hideBms.triggerDiff ? hideBms.m_HideDiff : selectedIndex;
         }
 
         /// <summary>
@@ -108,10 +115,10 @@ namespace CustomAlbums.Patches
 
             // If the chart is not custom, run the original method, otherwise continue and don't run the original method
             if (currentMusicInfo.albumJsonIndex != AlbumManager.Uid + 1) return true;
-            if (!ModSettings.SavingEnabled) return false;
 
             // Reset the panel to its default
             ClearAndRefreshPanels(__instance, forceReload);
+            if (!ModSettings.SavingEnabled) return false;
 
             var recordPanel = __instance.pnlRecord;
             var currentChartData = SaveData.GetChartSaveDataFromUid(currentMusicInfo.uid);
@@ -124,7 +131,7 @@ namespace CustomAlbums.Patches
                 return false;
             }
 
-            var difficulty = GetDifficulty(currentMusicInfo);
+            var difficulty = GetDifficulty(currentMusicInfo.uid);
 
             currentChartData.TryGetPropertyValue("FullCombo", out var currentChartFullCombo);
 
@@ -157,9 +164,9 @@ namespace CustomAlbums.Patches
         {
             private static void Postfix(MusicInfo __instance, ref string __result)
             {
-                if (__instance == null || !__instance.uid.StartsWith($"{AlbumManager.Uid}-")) return;
-                
-                var difficulty = GetDifficulty(__instance);
+                if (__instance?.uid == null || !__instance.uid.StartsWith($"{AlbumManager.Uid}-")) return;
+
+                var difficulty = GetDifficulty(__instance.uid);
                 __result = difficulty switch
                 {
                     1 => __instance.levelDesigner1 ?? __instance.levelDesigner ?? string.Empty,
@@ -179,8 +186,6 @@ namespace CustomAlbums.Patches
         // TODO: Find a way to inject hidden and favorite charts without using vanilla save -- below are workarounds for quick release.
         private static void CleanCustomData()
         {
-            if (!ModSettings.SavingEnabled) return;
-
             DataHelper.hides.RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
             DataHelper.history.RemoveAll(
                 (Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
@@ -196,12 +201,12 @@ namespace CustomAlbums.Patches
 
             if (DataHelper.selectedMusicUidFromInfoList.StartsWith($"{AlbumManager.Uid}-"))
             {
-                SaveData.SelectedAlbum = AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList);
+                if (ModSettings.SavingEnabled) SaveData.SelectedAlbum = AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList);
                 DataHelper.selectedMusicUidFromInfoList = "0-0";
             }
             else
             {
-                SaveData.SelectedAlbum = string.Empty;
+                if (ModSettings.SavingEnabled) SaveData.SelectedAlbum = string.Empty;
             }
 
             foreach (var task in DataHelper.tasks)
@@ -323,6 +328,42 @@ namespace CustomAlbums.Patches
         //
 
         /// <summary>
+        ///     Stops the game from saving custom chart score data.
+        /// </summary>
+        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
+        private static IntPtr RecordBattleArgsPatch(IntPtr instance, IntPtr args, IntPtr isSuccess)
+        {
+            return !GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-") ? Hook.Trampoline(instance, args, isSuccess) : IntPtr.Zero;
+        }
+
+        /// <summary>
+        ///     Gets <c>RecordBattleArgs</c> and detours it using a
+        ///     <c>NativeHook&lt;RecordBattleArgsDelegate&gt;</c> to <c>RecordBattleArgsPatch</c>.
+        /// </summary>
+        internal static unsafe void AttachHook()
+        {
+            // If you are interested in what's happening here, check out AssetPatch
+            var recordBattleArgsMethod = AccessTools.Method(typeof(AchievementManager),
+                nameof(AchievementManager.RecordBattleArgs),
+                new[] { typeof(GlobalAchievementArgs).MakeByRefType(), typeof(bool) });
+
+            if (recordBattleArgsMethod is null)
+            {
+                Logger.Error("FATAL ERROR: SavePatch failed.");
+                return;
+            }
+
+            var recordBattleArgsPointer = *(IntPtr*)(IntPtr)Il2CppInteropUtils
+                .GetIl2CppMethodInfoPointerFieldForGeneratedMethod(recordBattleArgsMethod).GetValue(null)!;
+
+            delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, IntPtr> detourPointer = &RecordBattleArgsPatch;
+
+            Hook.Detour = (IntPtr)detourPointer;
+            Hook.Target = recordBattleArgsPointer;
+            Hook.Attach();
+        }
+
+        /// <summary>
         ///     Gets the score data of the custom chart and sends it to SaveManager for processing.
         /// </summary>
         [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.UploadScore))]
@@ -351,22 +392,6 @@ namespace CustomAlbums.Patches
             private static bool Prefix()
             {
                 return !BattleHelper.MusicInfo().uid.StartsWith($"{AlbumManager.Uid}-");
-            }
-        }
-
-        /// <summary>
-        ///     Stops the game from saving custom chart score data.
-        /// </summary>
-
-        // TODO: Make sure this actually stops the game from saving high score data to vanilla save
-        [HarmonyPatch(typeof(AchievementManager), nameof(AchievementManager.RecordBattleArgs))]
-        internal class StopSavingPatch
-        {
-            private static bool Prefix()
-            {
-                if (GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-"))
-                    Logger.Msg($"Custom chart {GlobalDataBase.dbBattleStage.musicUid}, not saving");
-                return !GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-");
             }
         }
 
@@ -402,6 +427,9 @@ namespace CustomAlbums.Patches
             }
         }
 
+        //
+        // HACKS SECTION - TODO: Remove all the methods below once we don't put data into the official game at all
+        //
 
         [HarmonyPatch(typeof(SteamSync), nameof(SteamSync.SaveLocal))]
         internal class SaveLocalPatch
@@ -410,13 +438,12 @@ namespace CustomAlbums.Patches
 
             private static void Prefix()
             {
-                if (!ModSettings.SavingEnabled) return;
 
-                if (DataHelper.selectedMusicUidFromInfoList.StartsWith($"{AlbumManager.Uid}-"))
+                if (ModSettings.SavingEnabled && DataHelper.selectedMusicUidFromInfoList.StartsWith($"{AlbumManager.Uid}-"))
                     SaveData.SelectedAlbum =
                         $"{AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList)}";
 
-                SaveSaveFile();
+                if (ModSettings.SavingEnabled) SaveSaveFile();
                 CleanCustomData();
             }
 
@@ -434,8 +461,8 @@ namespace CustomAlbums.Patches
         {
             private static void Postfix()
             {
-                if (!ModSettings.SavingEnabled) return;
                 CleanCustomData();
+                if (!ModSettings.SavingEnabled) return;
                 InjectCustomData();
             }
         }
@@ -445,11 +472,10 @@ namespace CustomAlbums.Patches
         {
             private static void Prefix()
             {
-                if (!ModSettings.SavingEnabled) return;
                 Backup.InitBackups();
                 SaveSaveFile();
                 CleanCustomData();
-                InjectCustomData();
+                if (ModSettings.SavingEnabled) InjectCustomData();
             }
         }
 
@@ -458,9 +484,9 @@ namespace CustomAlbums.Patches
         {
             private static void Prefix(ref bool isLocal)
             {
-                if (!ModSettings.SavingEnabled || !isLocal) return;
+                if (!isLocal) return;
 
-                SaveSaveFile();
+                if (ModSettings.SavingEnabled) SaveSaveFile();
                 CleanCustomData();
             }
 
@@ -470,5 +496,8 @@ namespace CustomAlbums.Patches
                 InjectCustomData();
             }
         }
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        private delegate IntPtr RecordBattleArgsDelegate(IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo);
     }
 }

@@ -17,6 +17,7 @@ namespace CustomAlbums
             if (!Directory.Exists(AlbumManager.SearchPath)) Directory.CreateDirectory(AlbumManager.SearchPath);
 
             AssetPatch.AttachHook();
+            SavePatch.AttachHook();
             ModSettings.Register();
             AlbumManager.LoadAlbums();
             SaveManager.LoadSaveFile();
@@ -51,7 +52,8 @@ namespace CustomAlbums
         public override void OnFixedUpdate()
         {
             base.OnFixedUpdate();
-            HotReloadManager.FixedUpdate();
+            // TODO: Actually write HotReload
+            // HotReloadManager.FixedUpdate();
         }
     }
 }
