@@ -186,6 +186,7 @@ namespace CustomAlbums.Patches
         // TODO: Find a way to inject hidden and favorite charts without using vanilla save -- below are workarounds for quick release.
         private static void CleanCustomData()
         {
+
             DataHelper.hides.RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
             DataHelper.history.RemoveAll(
                 (Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
@@ -204,10 +205,6 @@ namespace CustomAlbums.Patches
                 if (ModSettings.SavingEnabled) SaveData.SelectedAlbum = AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList);
                 DataHelper.selectedMusicUidFromInfoList = "0-0";
             }
-            else
-            {
-                if (ModSettings.SavingEnabled) SaveData.SelectedAlbum = string.Empty;
-            }
 
             foreach (var task in DataHelper.tasks)
                 Singleton<DataManager>.instance["Task"][task].GetResult<Il2CppSystem.Collections.Generic.List<IData>>()
@@ -222,12 +219,12 @@ namespace CustomAlbums.Patches
             DataHelper.hides.AddManagedRange(SaveData.Hides.GetAlbumUidsFromNames());
             DataHelper.history.AddManagedRange(SaveData.History.GetAlbumUidsFromNames());
             DataHelper.collections.AddManagedRange(SaveData.Collections.GetAlbumUidsFromNames());
+            Logger.Msg("SelectedAlbum = " + SaveData.SelectedAlbum);
 
-            if (!SaveData.SelectedAlbum.StartsWith($"{AlbumManager.Uid}-")) return;
-
+            if (!SaveData.SelectedAlbum.StartsWith("album_")) return;
             DataHelper.selectedAlbumUid = "music_package_999";
             DataHelper.selectedAlbumTagIndex = 999;
-            DataHelper.selectedMusicUidFromInfoList = SaveData.SelectedAlbum ?? "0-0";
+            DataHelper.selectedMusicUidFromInfoList = AlbumManager.LoadedAlbums.TryGetValue(SaveData.SelectedAlbum, out var album) ? $"{AlbumManager.Uid}-{album.Index}" : "0-0";
         }
 
         [HarmonyPatch(typeof(PnlPreparation), nameof(PnlPreparation.OnEnable))]
@@ -350,7 +347,8 @@ namespace CustomAlbums.Patches
             if (recordBattleArgsMethod is null)
             {
                 Logger.Error("FATAL ERROR: SavePatch failed.");
-                return;
+                Thread.Sleep(1000);
+                Environment.Exit(1);
             }
 
             var recordBattleArgsPointer = *(IntPtr*)(IntPtr)Il2CppInteropUtils
@@ -424,6 +422,16 @@ namespace CustomAlbums.Patches
                     __instance.m_CurControls.newBest.SetActive(score > int.Parse(PreviousScore));
 
                 __instance.m_CurControls.highScoreTxt.text = PreviousScore;
+            }
+        }
+
+        [HarmonyPatch(typeof(PnlPreparation), nameof(PnlPreparation.OnBattleStart))]
+        internal class OnBattleStartPatch
+        {
+            private static void Postfix()
+            {
+                if (ModSettings.SavingEnabled && !DataHelper.selectedMusicUidFromInfoList.StartsWith("album_"))
+                    SaveData.SelectedAlbum = DataHelper.selectedMusicUidFromInfoList;
             }
         }
 

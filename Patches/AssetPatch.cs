@@ -249,7 +249,8 @@ namespace CustomAlbums.Patches
             if (loadFromNameMethod is null)
             {
                 Logger.Error("FATAL ERROR: AssetPatch failed.");
-                return;
+                Thread.Sleep(1000);
+                Environment.Exit(1);
             }
 
             // AttachHook should only be run once; create the handler
