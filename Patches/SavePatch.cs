@@ -12,14 +12,15 @@ using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore.HostComponent;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
-using Il2CppAssets.Scripts.PeroTools.Nice.Datas;
-using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Il2CppAssets.Scripts.Structs;
 using Il2CppInterop.Common;
 using Il2CppPeroPeroGames.DataStatistics;
 using MelonLoader.NativeUtils;
 using static CustomAlbums.Managers.SaveManager;
+using ArgumentOutOfRangeException = System.ArgumentOutOfRangeException;
+using Environment = System.Environment;
+using IntPtr = System.IntPtr;
 using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums.Patches
@@ -118,6 +119,7 @@ namespace CustomAlbums.Patches
 
             // Reset the panel to its default
             ClearAndRefreshPanels(__instance, forceReload);
+            __instance.designerLongNameController?.Refresh();
             if (!ModSettings.SavingEnabled) return false;
 
             var recordPanel = __instance.pnlRecord;
@@ -162,20 +164,25 @@ namespace CustomAlbums.Patches
         [HarmonyPatch(typeof(MusicInfo), nameof(MusicInfo.GetLevelDesignerStringByIndex))]
         internal class LevelDesignerPatch
         {
-            private static void Postfix(MusicInfo __instance, ref string __result)
+            private static bool Prefix(MusicInfo __instance, ref string __result, int index)
             {
-                if (__instance?.uid == null || !__instance.uid.StartsWith($"{AlbumManager.Uid}-")) return;
 
-                var difficulty = GetDifficulty(__instance.uid);
-                __result = difficulty switch
+                __result = index switch
                 {
-                    1 => __instance.levelDesigner1 ?? __instance.levelDesigner ?? string.Empty,
-                    2 => __instance.levelDesigner2 ?? __instance.levelDesigner ?? string.Empty,
-                    3 => __instance.levelDesigner3 ?? __instance.levelDesigner ?? string.Empty,
-                    4 => __instance.levelDesigner4 ?? __instance.levelDesigner ?? string.Empty,
-                    5 => __instance.levelDesigner5 ?? __instance.levelDesigner ?? string.Empty,
-                    _ => __instance.levelDesigner ?? string.Empty
+                    1 => __instance.m_MaskValue.ContainsKey("levelDesigner1") ? __instance.m_MaskValue["levelDesigner1"].ToString() : __instance.levelDesigner1,
+                    2 => __instance.m_MaskValue.ContainsKey("levelDesigner2") ? __instance.m_MaskValue["levelDesigner2"].ToString() : __instance.levelDesigner2,
+                    3 => __instance.m_MaskValue.ContainsKey("levelDesigner3") ? __instance.m_MaskValue["levelDesigner3"].ToString() : __instance.levelDesigner3,
+                    4 => __instance.m_MaskValue.ContainsKey("levelDesigner4") ? __instance.m_MaskValue["levelDesigner4"].ToString() : __instance.levelDesigner4,
+                    5 => __instance.m_MaskValue.ContainsKey("levelDesigner5") ? __instance.m_MaskValue["levelDesigner5"].ToString() : __instance.levelDesigner5,
+                    _ => throw new ArgumentOutOfRangeException(nameof(index), index, "The difficulty is not a valid index.")
                 };
+
+                if (string.IsNullOrEmpty(__result) || __result == "?") __result = __instance.m_MaskValue.ContainsKey("levelDesigner") ? __instance.m_MaskValue["levelDesigner"].ToString() : __instance.levelDesigner;
+                if (!string.IsNullOrEmpty(__result)) return false;
+
+                __result = "?????";
+                return false;
+
             }
         }
 
@@ -200,16 +207,10 @@ namespace CustomAlbums.Patches
             if (DataHelper.selectedAlbumTagIndex == AlbumManager.Uid)
                 DataHelper.selectedAlbumTagIndex = 0;
 
-            if (DataHelper.selectedMusicUidFromInfoList.StartsWith($"{AlbumManager.Uid}-"))
-            {
-                if (ModSettings.SavingEnabled) SaveData.SelectedAlbum = AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList);
-                DataHelper.selectedMusicUidFromInfoList = "0-0";
-            }
-
-            foreach (var task in DataHelper.tasks)
-                Singleton<DataManager>.instance["Task"][task].GetResult<Il2CppSystem.Collections.Generic.List<IData>>()
-                    .RemoveAll((Il2CppSystem.Predicate<IData>)(data =>
-                        data["uid"].GetResult<string>().StartsWith($"{AlbumManager.Uid}")));
+            if (!DataHelper.selectedMusicUidFromInfoList.StartsWith($"{AlbumManager.Uid}-")) return;
+            
+            if (ModSettings.SavingEnabled) SaveData.SelectedAlbum = AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList);
+            DataHelper.selectedMusicUidFromInfoList = "0-0";
         }
 
         private static void InjectCustomData()
