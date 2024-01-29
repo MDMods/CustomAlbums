@@ -85,6 +85,9 @@ namespace CustomAlbums
 
                     var beat = int.Parse(key[..3], CultureInfo.InvariantCulture);
                     var typeCode = key.Substring(3, 2);
+                    
+                    if (!Bms.Channels.ContainsKey(typeCode)) continue;
+                    
                     var type = Bms.Channels[typeCode];
 
                     if (type == Bms.ChannelType.SpTimesig)
