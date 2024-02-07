@@ -95,7 +95,7 @@ namespace CustomAlbums.Utilities
 
                 if (!File.Exists(BackupZip)) return;
 
-                using var zip = ZipFile.OpenRead(BackupZip);
+                using var zip = ZipFile.Open(BackupZip, ZipArchiveMode.Update);
                 foreach (var entry in zip.Entries.ToList().Where(entry =>
                              (DateTime.Now - entry.LastWriteTime).Duration() > MaxBackupTime.Duration()))
                 {

@@ -199,7 +199,6 @@ namespace CustomAlbums.Patches
                 (Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
             DataHelper.collections.RemoveAll(
                 (Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
-            DataHelper.tasks.RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
 
             if (DataHelper.selectedAlbumUid == "music_package_999")
                 DataHelper.selectedAlbumUid = "music_package_0";
@@ -211,6 +210,7 @@ namespace CustomAlbums.Patches
             
             if (ModSettings.SavingEnabled) SaveData.SelectedAlbum = AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList);
             DataHelper.selectedMusicUidFromInfoList = "0-0";
+            DataHelper.unlockMasters.RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
         }
 
         private static void InjectCustomData()
@@ -220,7 +220,13 @@ namespace CustomAlbums.Patches
             DataHelper.hides.AddManagedRange(SaveData.Hides.GetAlbumUidsFromNames());
             DataHelper.history.AddManagedRange(SaveData.History.GetAlbumUidsFromNames());
             DataHelper.collections.AddManagedRange(SaveData.Collections.GetAlbumUidsFromNames());
-            Logger.Msg("SelectedAlbum = " + SaveData.SelectedAlbum);
+
+            // Wild one-liner to get the UIDs that should have unlocked masters
+            //
+            // Logic: Get all the charts where there is a master difficulty (3), and if the value of hard difficulty exists (2), make sure that its evaluate is an S rank. If it is, add it to the list
+            // Once the list has been lazily created, select only the keys (album_{nameOfFile}) from that list, and then get the UIDs from those album names, adding it to the game's data list
+            DataHelper.unlockMasters.AddManagedRange(SaveData.Highest.Where(kv =>
+                kv.Value.ContainsKey(3) && kv.Value.TryGetValue(2, out var chartSave) && chartSave.Evaluate >= 4).Select(kv => kv.Key).GetAlbumUidsFromNames());
 
             if (!SaveData.SelectedAlbum.StartsWith("album_")) return;
             DataHelper.selectedAlbumUid = "music_package_999";
@@ -410,6 +416,10 @@ namespace CustomAlbums.Patches
 
                 // If the chart has been played then enable the "HI-SCORE" UI element
                 var difficulty = GlobalDataBase.s_DbBattleStage.m_MapDifficulty;
+                if (difficulty is 2 && AlbumManager.LoadedAlbums[albumName].Sheets.ContainsKey(3) && highest[2].Evaluate >= 4)
+                {
+                    DataHelper.unlockMasters.Add(GlobalDataBase.dbBattleStage.musicUid);
+                } 
                 __instance.m_CurControls.highScoreTitle.enabled = PreviousScore != "-";
                 __instance.m_CurControls.highScoreTxt.enabled = PreviousScore != "-";
 
@@ -471,8 +481,7 @@ namespace CustomAlbums.Patches
             private static void Postfix()
             {
                 CleanCustomData();
-                if (!ModSettings.SavingEnabled) return;
-                InjectCustomData();
+                if (ModSettings.SavingEnabled) InjectCustomData();
             }
         }
 
