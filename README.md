@@ -12,7 +12,7 @@ This is now the only active and ongoing version of this mod; all other versions 
 ## Building
 - Install MelonLoader into Muse Dash and run it once
 - Run SetPath.cmd as administrator and follow the instructions
-- Build tested with Visual Studio 2022, MelonLoader 0.6.1, Muse Dash 3.12.1
+- Build tested with Visual Studio 2022, MelonLoader 0.6.1, Muse Dash 4.0.0
 - DO NOT use MelonLoader 0.6.2, it is incredibly broken
 ## Credits & Contributions
 - [Mister Talk](https://github.com/SB15-MD) - Developer
