@@ -97,7 +97,6 @@ namespace CustomAlbums.Managers
                 ? $"album_{Path.GetFileNameWithoutExtension(album.Path)}"
                 : $"album_{Path.GetFileNameWithoutExtension(album.Path)}_folder";
         }
-
         public static IEnumerable<string> GetAlbumUidsFromNames(this IEnumerable<string> albumNames)
         {
             return albumNames.Where(name => LoadedAlbums.ContainsKey(name))
