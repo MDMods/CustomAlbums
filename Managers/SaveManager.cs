@@ -127,7 +127,7 @@ namespace CustomAlbums.Managers
             if (!ModSettings.SavingEnabled) return;
 
             var album = AlbumManager.GetByUid(uid);
-            if (album is null) return;
+            if (!album?.IsPackaged ?? true) return;
 
             var newEvaluate = evaluate switch
             {
