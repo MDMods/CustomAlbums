@@ -149,7 +149,7 @@ namespace CustomAlbums.Managers
                 _ => 0
             };
 
-            var albumName = album.GetAlbumName();
+            var albumName = album.AlbumName;
 
             // Create new album save 
             if (!SaveData.Highest.ContainsKey(albumName))

@@ -21,7 +21,7 @@ namespace CustomAlbums.Utilities
 
             if (album is null) return null;
 
-            var key = album!.GetAlbumName();
+            var key = album!.AlbumName;
             return new JsonObject
             {
                 { nameof(save.Highest), JsonNode.Parse(JsonSerializer.Serialize(save.Highest.GetValueOrDefault(key))) },
