@@ -39,10 +39,6 @@ namespace CustomAlbums.Patches
         {
             private static void Prefix(Il2CppSystem.Collections.Generic.List<int> sceneEggIdsBuffer)
             {
-                foreach (var bruh in sceneEggIdsBuffer)
-                {
-                    Logger.Msg("There is " + bruh + " in sceneEggIds!");
-                }
                 if (IgnoreSceneEggs(out var album, SceneEggs.None, SceneEggs.Christmas, SceneEggs.BadApple)) return;
 
                 // Adds the scene egg to the buffer
@@ -87,7 +83,7 @@ namespace CustomAlbums.Patches
                 // If the boss is not 0501_boss then there is no Christmas
                 if (bossFestivalName != "0501_boss") return true;
                 if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.None,
-                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku,SceneEggs.BadApple, SceneEggs.RinLen)) return true;
+                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku, SceneEggs.BadApple, SceneEggs.RinLen)) return true;
 
                 __result = "0501_boss_christmas";
                 return false;
