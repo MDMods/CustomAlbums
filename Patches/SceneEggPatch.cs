@@ -7,6 +7,7 @@ using Il2CppAssets.Scripts.Common.SceneEgg;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.TouhouLogic;
 using Il2CppGameLogic;
+using Il2CppPeroPeroGames.GlobalDefines;
 using static CustomAlbums.Data.SceneEgg;
 
 namespace CustomAlbums.Patches
@@ -38,6 +39,10 @@ namespace CustomAlbums.Patches
         {
             private static void Prefix(Il2CppSystem.Collections.Generic.List<int> sceneEggIdsBuffer)
             {
+                foreach (var bruh in sceneEggIdsBuffer)
+                {
+                    Logger.Msg("There is " + bruh + " in sceneEggIds!");
+                }
                 if (IgnoreSceneEggs(out var album, SceneEggs.None, SceneEggs.Christmas, SceneEggs.BadApple)) return;
 
                 // Adds the scene egg to the buffer
@@ -63,8 +68,8 @@ namespace CustomAlbums.Patches
                 if (sceneFestivalName != "scene_05") return true;
 
                 // Ignore the actual SceneEggs (and BadApple)
-                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.Miku, SceneEggs.None,
-                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.BadApple)) return true;
+                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.None,
+                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku, SceneEggs.BadApple, SceneEggs.RinLen)) return true;
 
                 if (sceneFestivalName == "scene_05") __result = "scene_05_christmas";
                 return false;
@@ -81,8 +86,8 @@ namespace CustomAlbums.Patches
             {
                 // If the boss is not 0501_boss then there is no Christmas
                 if (bossFestivalName != "0501_boss") return true;
-                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.Miku, SceneEggs.None,
-                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.BadApple)) return true;
+                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.None,
+                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku,SceneEggs.BadApple, SceneEggs.RinLen)) return true;
 
                 __result = "0501_boss_christmas";
                 return false;
@@ -98,14 +103,31 @@ namespace CustomAlbums.Patches
         {
             private static void Postfix(ref string __state)
             {
-                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.Miku, SceneEggs.None,
-                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Christmas)) return;
+                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.None,
+                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku, SceneEggs.Christmas, SceneEggs.RinLen)) return;
 
                 GlobalDataBase.dbTouhou.isBadApple = true;
 
                 GlobalDataBase.s_DbOther.m_HpFx = TouhouLogic.ReplaceBadAppleString("fx_hp_ground");
                 GlobalDataBase.s_DbOther.m_MusicFx = TouhouLogic.ReplaceBadAppleString("fx_score_ground");
                 GlobalDataBase.s_DbOther.m_DustFx = TouhouLogic.ReplaceBadAppleString("dust_fx");
+            }
+        }
+
+
+        /// <summary>
+        ///     Makes the game think that the chart is a RinLen chart when the RinLen SceneEgg is enabled to load all
+        ///     the assets properly. 
+        /// </summary>
+        [HarmonyPatch(typeof(DBMusicTagDefine), nameof(DBMusicTagDefine.IsRinLenEggSong))]
+        internal class RinLenPatch
+        {
+            private static void Postfix(string uid, ref bool __result)
+            {
+                if (uid.StartsWith($"{AlbumManager.Uid}-") && AlbumManager.GetByUid(uid).Info.SceneEgg is SceneEggs.RinLen)
+                {
+                    __result = true;
+                }
             }
         }
     }
