@@ -60,6 +60,8 @@ namespace CustomAlbums.Data
         public AudioClip Music => this.GetAudio();
         public AudioClip Demo => this.GetAudio("demo");
         public Dictionary<int, Sheet> Sheets { get; } = new();
+        public string AlbumName =>
+            IsPackaged ? $"album_{System.IO.Path.GetFileNameWithoutExtension(Path)}" : $"album_{System.IO.Path.GetFileName(Path)}_folder";
 
         public bool HasFile(string name)
         {
@@ -73,7 +75,8 @@ namespace CustomAlbums.Data
                 }
                 catch (IOException)
                 {
-                    // this is expected in the case of deleting an album
+                    // This is expected in the case of deleting an album
+                    return false;
                 }
             }
 

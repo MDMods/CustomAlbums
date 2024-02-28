@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Nodes;
+using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore;
@@ -15,7 +16,7 @@ namespace CustomAlbums.Data
             Md5 = md5;
             ParentAlbum = parentAlbum;
             Difficulty = difficulty;
-            MapName = $"album_{Path.GetFileNameWithoutExtension(parentAlbum.Path)}_map{difficulty}";
+            MapName = $"{parentAlbum.AlbumName}_map{difficulty}";
         }
 
         public Album ParentAlbum { get; }

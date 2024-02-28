@@ -6,6 +6,7 @@ using Il2CppAssets.Scripts.UI.Panels;
 
 namespace CustomAlbums.Managers
 {
+    // TODO: Fix all of this with album.AlbumName
     internal static class HotReloadManager
     {
         private static readonly Logger Logger = new(nameof(HotReloadManager));

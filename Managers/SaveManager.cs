@@ -25,7 +25,7 @@ namespace CustomAlbums.Managers
             var firstFullCombo = SaveData.FullCombo.FirstOrDefault();
             var stringBuilder = new StringBuilder();
 
-            // if we need to fix the history
+            // If we need to fix the history
             if (firstHistory != null && firstHistory.StartsWith("pkg_"))
             {
                 var fixedQueue = new Queue<string>(SaveData.History.Count);
@@ -57,6 +57,15 @@ namespace CustomAlbums.Managers
                 }
 
                 SaveData.Highest = fixedDictionaryHighest;
+            }
+
+            if (!SaveData.UnlockedMasters.Any()) 
+            {
+                var unlockedHighest = SaveData.Highest.Where(kv =>
+                    kv.Value.ContainsKey(3) && kv.Value.TryGetValue(2, out var chartSave) && chartSave.Evaluate >= 4).Select(kv => kv.Key);
+                var folderCharts = AlbumManager.LoadedAlbums.Where(kv => kv.Value.Sheets.ContainsKey(2) && kv.Value.Sheets.ContainsKey(3) && !kv.Value.IsPackaged).Select(kv => kv.Key);
+                var concat = unlockedHighest.Concat(folderCharts);
+                SaveData.UnlockedMasters.UnionWith(concat);
             }
 
             // If we don't need to fix the FullCombo then return
@@ -127,7 +136,7 @@ namespace CustomAlbums.Managers
             if (!ModSettings.SavingEnabled) return;
 
             var album = AlbumManager.GetByUid(uid);
-            if (album is null) return;
+            if (!album?.IsPackaged ?? true) return;
 
             var newEvaluate = evaluate switch
             {
@@ -140,7 +149,7 @@ namespace CustomAlbums.Managers
                 _ => 0
             };
 
-            var albumName = album.GetAlbumName();
+            var albumName = album.AlbumName;
 
             // Create new album save 
             if (!SaveData.Highest.ContainsKey(albumName))
@@ -164,6 +173,9 @@ namespace CustomAlbums.Managers
             newScore.Evaluate = Math.Max(newEvaluate, newScore.Evaluate);
             newScore.AccuracyStr = string.Create(CultureInfo.InvariantCulture, $"{newScore.Accuracy / 100:P2}");
             newScore.Clear++;
+
+            if (musicDifficulty is 2 && AlbumManager.LoadedAlbums[albumName].Sheets.ContainsKey(3) && newScore.Evaluate >= 4)
+                SaveData.UnlockedMasters.Add(albumName);
 
             if (miss != 0) return;
 

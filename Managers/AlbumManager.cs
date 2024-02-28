@@ -1,4 +1,5 @@
 ﻿using System.Globalization;
+using System.IO.Enumeration;
 using CustomAlbums.Data;
 using Il2CppPeroTools2.Resources;
 using UnityEngine;
@@ -32,7 +33,7 @@ namespace CustomAlbums.Managers
         public static Album LoadOne(string path)
         {
             MaxCount = Math.Max(LoadedAlbums.Count, MaxCount);
-            var fileName = Path.GetFileNameWithoutExtension(path);
+            var fileName = File.GetAttributes(path).HasFlag(FileAttributes.Directory) ? Path.GetFileName(path) : Path.GetFileNameWithoutExtension(path);
             if (LoadedAlbums.ContainsKey(fileName)) return null;
 
             try
@@ -40,7 +41,7 @@ namespace CustomAlbums.Managers
                 var album = new Album(path, MaxCount);
                 if (album.Info is null) return null;
 
-                var albumName = album.GetAlbumName();
+                var albumName = album.AlbumName;
                 LoadedAlbums.Add(albumName, album);
 
                 if (album.HasFile("cover.png") || album.HasFile("cover.gif"))
@@ -81,23 +82,11 @@ namespace CustomAlbums.Managers
         {
             return LoadedAlbums.FirstOrDefault(album => album.Value.Index == int.Parse(uid[4..], CultureInfo.InvariantCulture)).Value;
         }
-
-        public static string GetAlbumName(this Album album)
-        {
-            return album.IsPackaged
-                ? $"album_{Path.GetFileNameWithoutExtension(album.Path)}"
-                : $"album_{Path.GetFileNameWithoutExtension(album.Path)}_folder";
-        }
-
         public static string GetAlbumNameFromUid(string uid)
         {
             var album = GetByUid(uid);
-            if (album is null) return string.Empty;
-            return album.IsPackaged
-                ? $"album_{Path.GetFileNameWithoutExtension(album.Path)}"
-                : $"album_{Path.GetFileNameWithoutExtension(album.Path)}_folder";
+            return album is null ? string.Empty : album.AlbumName;
         }
-
         public static IEnumerable<string> GetAlbumUidsFromNames(this IEnumerable<string> albumNames)
         {
             return albumNames.Where(name => LoadedAlbums.ContainsKey(name))

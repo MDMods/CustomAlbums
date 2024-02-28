@@ -24,6 +24,11 @@
       <Private>false</Private>
       <HintPath>$(MelonAssemblies)\Il2CppPeroString.dll</HintPath>
     </Reference>
+    <Reference Include="Il2Cppcom.prpr.log, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <SpecificVersion>false</SpecificVersion>
+      <Private>false</Private>
+      <HintPath>$(MelonAssemblies)\Il2Cppcom.prpr.log.dll</HintPath>
+    </Reference>
     <Reference Include="Il2CppGoogle.Protobuf, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
       <SpecificVersion>false</SpecificVersion>
       <Private>false</Private>

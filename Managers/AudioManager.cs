@@ -168,7 +168,7 @@ namespace CustomAlbums.Managers
         /// <returns></returns>
         public static AudioClip GetAudio(this Album album, string name = "music")
         {
-            var key = $"album_{Path.GetFileNameWithoutExtension(album.Path)}_{name}";
+            var key = $"{album.AlbumName}_{name}";
             if (album.HasFile($"{name}.ogg"))
             {
                 // Load music.ogg

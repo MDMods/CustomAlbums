@@ -37,34 +37,34 @@ namespace CustomAlbums.Managers
 
         public static unsafe AnimatedCover GetAnimatedCover(this Album album)
         {
-            // early return statements
+            // Early return statements
             if (!album.HasFile("cover.gif")) return null;
             if (CachedAnimatedCovers.TryGetValue(album.Index, out var cached)) return cached;
 
             Config.PreferContiguousImageBuffers = true;
 
-            // open and load the gif
+            // Open and load the gif
             using var stream = album.OpenFileStream("cover.gif");
             using var gif = Image.Load<Rgba32>(new DecoderOptions { Configuration = Config }, stream);
 
-            // for some reason Unity loads textures upside down?
-            // flip the frames
+            // For some reason Unity loads textures upside down?
+            // Flip the frames
             gif.Mutate(c => c.Flip(FlipMode.Vertical));
 
             var sprites = new Sprite[gif.Frames.Count];
 
             for (var i = 0; i < gif.Frames.Count; i++)
             {
-                // get frame data
+                // Get frame data
                 var frame = gif.Frames[i];
                 var width = frame.Width;
                 var height = frame.Width;
 
-                // get frame pixel data
+                // Get frame pixel data
                 //
-                // this should really be done with CopyPixelData and a byte array
+                // This should really be done with CopyPixelData and a byte array
                 // but that causes a 6MB+ copy of an array that slows things down by a bit
-                // the more efficient way is to retrieve an IntPtr that stores the data and pass that with a size instead
+                // The more efficient way is to retrieve an IntPtr that stores the data and pass that with a size instead
                 var getPixelDataResult = frame.DangerousTryGetSinglePixelMemory(out var memory);
                 if (!getPixelDataResult)
                 {
@@ -74,19 +74,19 @@ namespace CustomAlbums.Managers
 
                 using var handle = memory.Pin();
 
-                // create the textures
+                // Create the textures
                 var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
                 texture.LoadRawTextureData((IntPtr)handle.Pointer, memory.Length * sizeof(IntPtr));
                 texture.Apply(false);
 
-                // create the sprite with the given texture and add it to the sprites array
+                // Create the sprite with the given texture and add it to the sprites array
                 var sprite = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height),
                     new Vector2(0.5f, 0.5f));
                 sprite.hideFlags |= HideFlags.DontUnloadUnusedAsset;
                 sprites[i] = sprite;
             }
 
-            // create and add cover to cache
+            // Create and add cover to cache
             var cover = new AnimatedCover(sprites, gif.Frames.RootFrame.Metadata.GetGifMetadata().FrameDelay * 10);
             CachedAnimatedCovers.Add(album.Index, cover);
 
