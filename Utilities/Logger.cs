@@ -1,4 +1,5 @@
-﻿using MelonLoader;
+﻿using System.Drawing;
+using MelonLoader;
 
 namespace CustomAlbums.Utilities
 {
@@ -8,7 +9,7 @@ namespace CustomAlbums.Utilities
 
         public Logger(string className)
         {
-            _logger = new MelonLogger.Instance(className);
+            _logger = new MelonLogger.Instance(className, Color.FromArgb(255, 0, 255, 150));
         }
 
         public void Msg(string message, bool verbose = true)

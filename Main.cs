@@ -15,10 +15,10 @@ namespace CustomAlbums
             base.OnInitializeMelon();
 
             if (!Directory.Exists(AlbumManager.SearchPath)) Directory.CreateDirectory(AlbumManager.SearchPath);
-
+            
+            ModSettings.Register();
             AssetPatch.AttachHook();
             SavePatch.AttachHook();
-            ModSettings.Register();
             AlbumManager.LoadAlbums();
             SaveManager.LoadSaveFile();
             Logger.Msg("Initialized CustomAlbums!", false);
