@@ -7,7 +7,7 @@ This is now the only active and ongoing version of this mod; all other versions 
 - Download the [latest release](https://github.com/MDMods/CustomAlbums/releases) and place it in your Mods folder
 - Place any custom chart (.mdm) files into the generated `Custom_Albums` folder and enjoy
 ## Dependencies
-- [MelonLoader](https://github.com/LavaGang/MelonLoader/releases) v0.6 or higher
+- [MelonLoader](https://github.com/LavaGang/MelonLoader/releases) v0.6.1
 - [Muse Dash on Steam](https://store.steampowered.com/app/774171/Muse_Dash/)
 ## Building
 - Install MelonLoader into Muse Dash and run it once
