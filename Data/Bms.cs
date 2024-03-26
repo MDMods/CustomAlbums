@@ -317,7 +317,7 @@ namespace CustomAlbums.Data
             get
             {
                 var bpmString = Info["BPM"]?.GetValue<string>() ?? Info["BPM01"]?.GetValue<string>() ?? string.Empty;
-                return !float.TryParse(bpmString, NumberStyles.None, CultureInfo.InvariantCulture, out var bpm) ? 0f : bpm;
+                return !float.TryParse(bpmString, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var bpm) ? 0f : bpm;
             }
         }
 
