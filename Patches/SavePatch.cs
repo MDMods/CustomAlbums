@@ -331,11 +331,7 @@ namespace CustomAlbums.Patches
         private static bool RecordBattleArgsPatch(IntPtr instance, IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo, IntPtr trampolinePointer, out IntPtr newPointer)
         {
             newPointer = IntPtr.Zero;
-            if (!GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-"))
-            {
-                return false;
-            }
-            return true;
+            return GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-");
         }
 
         static MelonHookInfo MelonHookInfo;
