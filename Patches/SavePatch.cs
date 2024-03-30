@@ -43,8 +43,6 @@ namespace CustomAlbums.Patches
             "S"
         };
 
-        //private static readonly NativeHook<RecordBattleArgsDelegate> Hook = new();
-
         //
         // PANEL INJECTION SECTION
         //
