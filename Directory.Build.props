@@ -3,7 +3,8 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <ClearOutputDirectory>False</ClearOutputDirectory>
     <GameFolder Condition="Exists('$(MD_NET6_DIRECTORY)')">$(MD_NET6_DIRECTORY)</GameFolder>
-    <GameFolder Condition="Exists('$(MD_DIRECTORY)')">$(MD_DIRECTORY)</GameFolder>
+	<GameFolder Condition="Exists('$(MD_DIRECTORY)')">$(MD_DIRECTORY)</GameFolder>
+	<ModsFolder>$(GameFolder)\Mods\</ModsFolder>
     <MelonLoader>$(GameFolder)\MelonLoader\</MelonLoader>
     <MelonNET6>$(MelonLoader)\net6\</MelonNET6>
     <MelonAssemblies>$(MelonLoader)\Il2CppAssemblies\</MelonAssemblies>
@@ -164,6 +165,11 @@
       <Private>false</Private>
       <HintPath>$(MelonAssemblies)\Il2Cppspine-unity.dll</HintPath>
     </Reference>
+	<Reference Include="BetterNativeHook, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+		<SpecificVersion>false</SpecificVersion>
+		<Private>false</Private>
+		<HintPath>$(ModsFolder)\BetterNativeHook.dll</HintPath>
+	</Reference>
   </ItemGroup>
 
   <PropertyGroup>

@@ -1,8 +1,10 @@
-﻿using System.Globalization;
+﻿using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using BetterNativeHook;
 using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
@@ -25,7 +27,6 @@ namespace CustomAlbums.Patches
 {
     internal class AssetPatch
     {
-        private static readonly NativeHook<LoadFromNameDelegate> Hook = new();
         private static readonly Dictionary<string, Object> AssetCache = new();
         private static readonly Dictionary<string, Func<string, IntPtr, string, IntPtr>> AssetHandler = new();
         private static readonly Logger Logger = new(nameof(AssetPatch));
@@ -236,6 +237,9 @@ namespace CustomAlbums.Patches
             });
         }
 
+        static MelonHookInfo MelonHookInfo;
+        static GenericNativeHook Hook;
+
         /// <summary>
         ///     Gets <c>LoadFromName&lt;TextAsset&gt;</c> and detours it using a
         ///     <c>NativeHook&lt;LoadFromNameDelegate&gt;</c> to <c>LoadFromNamePatch</c>.
@@ -256,18 +260,23 @@ namespace CustomAlbums.Patches
             // AttachHook should only be run once; create the handler
             InitializeHandler();
 
-            var loadFromNamePointer = *(IntPtr*)(IntPtr)Il2CppInteropUtils
-                .GetIl2CppMethodInfoPointerFieldForGeneratedMethod(loadFromNameMethod).GetValue(null)!;
-
-            // Create a pointer for our new method to be called instead
-            // This is Cdecl because this is going to be called in an unmanaged context
-            delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, IntPtr> detourPointer = &LoadFromNamePatch;
-
-            // Set the hook so that LoadFromNamePatch runs instead of the original LoadFromName
-            Hook.Detour = (IntPtr)detourPointer;
-            Hook.Target = loadFromNamePointer;
-            Hook.Attach();
+            Hook = GenericNativeHook.CreateInstance(out MelonHookInfo, loadFromNameMethod);
+            MelonHookInfo.HookCallbackEvent += HookCallback;
+            Hook.AttachHook();
         }
+
+        private static void HookCallback(IntPtr originalReturnValue, ParameterReference modifiedReturnValue, ReadOnlyCollection<ParameterReference> parameters)
+        {
+            IntPtr instance = parameters[0].Value;
+            IntPtr assetNamePtr = parameters[1].Value;
+            IntPtr nativeMethodInfo = parameters[2].Value;
+            IntPtr trampolinePointer = modifiedReturnValue.Value;
+            if (LoadFromNamePatch(instance, assetNamePtr, nativeMethodInfo, trampolinePointer, out var newPointer))
+            {
+                modifiedReturnValue.Override = newPointer;
+            };
+        }
+
 
 
         /// <summary>
@@ -277,15 +286,16 @@ namespace CustomAlbums.Patches
         /// <param name="instance">The instance of ResourceManager calling LoadFromName.</param>
         /// <param name="assetNamePtr">The pointer to the string assetName.</param>
         /// <param name="nativeMethodInfo">Method info used by the original method.</param>
+        /// <param name="trampolinePointer">The original pointer returned by the trampoline, or the pointer modified by previous hooks.</param>
+        /// <param name="modifiedPointer">Pointer of either a newly created asset, or the original <paramref name="trampolinePointer"/></param>
         /// <returns>
         ///     A pointer of either a newly created asset if it exists or the original asset pointer if a new one was not
         ///     created.
         /// </returns>
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
-        private static IntPtr LoadFromNamePatch(IntPtr instance, IntPtr assetNamePtr, IntPtr nativeMethodInfo)
+        private static bool LoadFromNamePatch(IntPtr instance, IntPtr assetNamePtr, IntPtr nativeMethodInfo, IntPtr trampolinePointer, out IntPtr modifiedPointer)
         {
+            modifiedPointer = trampolinePointer;
             // Retrieve the pointer of the asset and the name of the asset
-            var assetPtr = Hook.Trampoline(instance, assetNamePtr, nativeMethodInfo);
             var assetName = IL2CPP.Il2CppStringToManaged(assetNamePtr) ?? string.Empty;
 
             Logger.Msg($"Loading {assetName}!");
@@ -297,7 +307,10 @@ namespace CustomAlbums.Patches
                 // If there's an attempt to load other albums (there will be if you open the tag menu), early return zero pointer
                 // This provides a noticeable speedup when opening tags for the first time
                 if (_doneLoadingAlbumsFlag && albumNum > _latestAlbumNum)
-                    return IntPtr.Zero;
+                {
+                    modifiedPointer = IntPtr.Zero;
+                    return true;
+                }
 
                 // Otherwise get the maximum number X of ALBUMX
                 _latestAlbumNum = Math.Max(_latestAlbumNum, albumNum);
@@ -313,7 +326,8 @@ namespace CustomAlbums.Patches
                 {
                     Logger.Msg($"Returning {assetName} from cache");
                     AudioManager.SwitchLoad(assetName);
-                    return cachedAsset.Pointer;
+                    modifiedPointer = cachedAsset.Pointer;
+                    return true;
                 }
 
                 Logger.Msg("Removing null asset from cache");
@@ -321,7 +335,7 @@ namespace CustomAlbums.Patches
             }
 
             // Allow original LoadFromName to run with LocalizationSettings
-            if (assetName is "LocalizationSettings") return assetPtr;
+            if (assetName is "LocalizationSettings") return false;
 
             var language = SingletonScriptableObject<LocalizationSettings>.instance.GetActiveOption("Language");
 
@@ -333,9 +347,12 @@ namespace CustomAlbums.Patches
             handledAssetName = handledAssetName.StartsWith("album_") ? "album_" : handledAssetName;
 
             // Get the method from the AssetHandler if it exists and run it, otherwise return assetPtr
-            return AssetHandler.TryGetValue(handledAssetName, out var value)
-                ? value(assetName, assetPtr, language)
-                : assetPtr;
+            if (AssetHandler.TryGetValue(handledAssetName, out var value))
+            {
+                modifiedPointer = value(assetName, trampolinePointer, language);
+                return true;
+            }
+            return false;
         }
 
         /// <summary>

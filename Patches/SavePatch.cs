@@ -1,8 +1,10 @@
-﻿using System.Globalization;
+﻿using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
+using BetterNativeHook;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using HarmonyLib;
@@ -41,7 +43,7 @@ namespace CustomAlbums.Patches
             "S"
         };
 
-        private static readonly NativeHook<RecordBattleArgsDelegate> Hook = new();
+        //private static readonly NativeHook<RecordBattleArgsDelegate> Hook = new();
 
         //
         // PANEL INJECTION SECTION
@@ -328,11 +330,18 @@ namespace CustomAlbums.Patches
         /// <summary>
         ///     Stops the game from saving custom chart score data.
         /// </summary>
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
-        private static IntPtr RecordBattleArgsPatch(IntPtr instance, IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo)
+        private static bool RecordBattleArgsPatch(IntPtr instance, IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo, IntPtr trampolinePointer, out IntPtr newPointer)
         {
-            return !GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-") ? Hook.Trampoline(instance, args, isSuccess, nativeMethodInfo) : IntPtr.Zero;
+            newPointer = IntPtr.Zero;
+            if (!GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-"))
+            {
+                return false;
+            }
+            return true;
         }
+
+        static MelonHookInfo MelonHookInfo;
+        static GenericNativeHook Hook;
 
         /// <summary>
         ///     Gets <c>RecordBattleArgs</c> and detours it using a
@@ -352,14 +361,21 @@ namespace CustomAlbums.Patches
                 Environment.Exit(1);
             }
 
-            var recordBattleArgsPointer = *(IntPtr*)(IntPtr)Il2CppInteropUtils
-                .GetIl2CppMethodInfoPointerFieldForGeneratedMethod(recordBattleArgsMethod).GetValue(null)!;
+            Hook = GenericNativeHook.CreateInstance(out MelonHookInfo, recordBattleArgsMethod);
+            MelonHookInfo.HookCallbackEvent += HookCallback;
+        }
 
-            delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, IntPtr, IntPtr> detourPointer = &RecordBattleArgsPatch;
-
-            Hook.Detour = (IntPtr)detourPointer;
-            Hook.Target = recordBattleArgsPointer;
-            Hook.Attach();
+        private static void HookCallback(IntPtr originalReturnValue, ParameterReference modifiedReturnValue, ReadOnlyCollection<ParameterReference> parameters)
+        {
+            IntPtr instance = parameters[0].Value;
+            IntPtr args = parameters[1].Value;
+            IntPtr isSuccess = parameters[2].Value;
+            IntPtr nativeMethodInfo = parameters[3].Value;
+            IntPtr trampolinePointer = modifiedReturnValue.Value;
+            if (RecordBattleArgsPatch(instance, args, isSuccess, nativeMethodInfo, trampolinePointer, out var newPointer))
+            {
+                modifiedReturnValue.Override = newPointer;
+            };
         }
 
         /// <summary>
