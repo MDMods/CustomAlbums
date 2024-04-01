@@ -84,7 +84,7 @@ namespace CustomAlbums.Data
             return File.Exists(path);
         }
 
-        public MemoryStream OpenFileStream(string file)
+        public Stream OpenFileStreamIfPossible(string file)
         {
             if (IsPackaged)
             {
@@ -92,7 +92,9 @@ namespace CustomAlbums.Data
                 var entry = zip.GetEntry(file);
 
                 if (entry != null)
+                {
                     return entry.Open().ToMemoryStream();
+                }
 
                 _logger.Error($"Could not find file in package: {file}");
                 throw new FileNotFoundException();
@@ -100,18 +102,41 @@ namespace CustomAlbums.Data
 
             var path = $"{Path}\\{file}";
             if (File.Exists(path))
-                return File.OpenRead(path).ToMemoryStream();
+                return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
             _logger.Error($"Could not find file: {path}");
             throw new FileNotFoundException();
         }
 
+        public MemoryStream OpenMemoryStream(string file)
+        {
+            if (IsPackaged)
+            {
+                using var zip = ZipFile.OpenRead(Path);
+                var entry = zip.GetEntry(file);
+
+                if (entry != null)
+                {
+                    return entry.Open().ToMemoryStream();
+                }
+
+                _logger.Error($"Could not find file in package: {file}");
+                throw new FileNotFoundException();
+            }
+
+            var path = $"{Path}\\{file}";
+            if (File.Exists(path))
+                return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite).ToMemoryStream();
+
+            _logger.Error($"Could not find file: {path}");
+            throw new FileNotFoundException();
+        }
         private void GetSheets()
         {
             // Adds to the Sheets dictionary
             foreach (var difficulty in Info.Difficulties.Keys.Where(difficulty => HasFile($"map{difficulty}.bms")))
             {
-                using var stream = OpenFileStream($"map{difficulty}.bms");
+                using var stream = OpenMemoryStream($"map{difficulty}.bms");
                 var hash = stream.GetHash();
 
                 Sheets.Add(difficulty, new Sheet(hash, this, difficulty));

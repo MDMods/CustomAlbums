@@ -4,9 +4,14 @@ namespace CustomAlbums.Utilities
 {
     internal static class StreamExtensions
     {
-        public static string GetHash(this MemoryStream stream)
+        public static string GetHash(this Stream stream)
         {
-            var hash = MD5.Create().ComputeHash(stream.ToArray());
+            byte[] hash;
+            if (stream is MemoryStream ms)
+                hash = MD5.Create().ComputeHash(ms.ToArray());
+            else
+                hash = MD5.Create().ComputeHash(stream.ToMemoryStream().ToArray());
+            
             return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
         }
 
@@ -21,7 +26,6 @@ namespace CustomAlbums.Utilities
 
             return ms.ToArray();
         }
-
         public static MemoryStream ToMemoryStream(this Stream stream)
         {
             var ms = new MemoryStream();
