@@ -31,12 +31,6 @@ namespace CustomAlbums
             // HotReloadManager.OnLateInitializeMelon();
         }
 
-        public override void OnApplicationQuit()
-        {
-            if (ModSettings.SavingEnabled) SaveManager.SaveSaveFile();
-            base.OnApplicationQuit();
-        }
-
         /// <summary>
         ///     This override adds support for animated covers.
         /// </summary>
