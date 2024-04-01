@@ -328,18 +328,27 @@ namespace CustomAlbums.Patches
         /// <summary>
         ///     Stops the game from saving custom chart score data.
         /// </summary>
-        private static bool RecordBattleArgsPatch(IntPtr instance, IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo, IntPtr trampolinePointer, out IntPtr newPointer)
+        /// <param name="returnValue">An instance that represents the trampoline's return value, and changes to it.</param>
+        /// <param name="parameters">A reference to the parameters of the trampoline.</param>
+        private static void RecordBattleArgsPatch(ReturnValueReference returnValue, ReadOnlyCollection<ParameterReference> parameters)
         {
-            newPointer = IntPtr.Zero;
-            return GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-");
+            /// don't invoke <see cref="ReturnValueReference.InvokeTrampoline"/> when you don't want to modify or access the original return value,
+            /// it will automatically be invoked if no subsequent hooks specify an override,
+            /// and this way they can also decide whether the trampoline needs to be invoked or not.
+            if (GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-"))
+            {
+                returnValue.Override = IntPtr.Zero;
+                return;
+            }
         }
 
         static MelonHookInfo MelonHookInfo;
         static GenericNativeHook Hook;
 
         /// <summary>
-        ///     Gets <c>RecordBattleArgs</c> and detours it using a
-        ///     <c>NativeHook&lt;RecordBattleArgsDelegate&gt;</c> to <c>RecordBattleArgsPatch</c>.
+        ///     Gets <see cref="AchievementManager.RecordBattleArgs(ref GlobalAchievementArgs, bool)"/> and detours it using a <see cref="GenericNativeHook"/>
+        ///     <br/>
+        ///     to <see cref="HookCallback(ReturnValueReference, ReadOnlyCollection{ParameterReference})"/>.
         /// </summary>
         internal static unsafe void AttachHook()
         {
@@ -356,20 +365,7 @@ namespace CustomAlbums.Patches
             }
 
             Hook = GenericNativeHook.CreateInstance(out MelonHookInfo, recordBattleArgsMethod);
-            MelonHookInfo.HookCallbackEvent += HookCallback;
-        }
-
-        private static void HookCallback(IntPtr originalReturnValue, ParameterReference modifiedReturnValue, ReadOnlyCollection<ParameterReference> parameters)
-        {
-            IntPtr instance = parameters[0].Value;
-            IntPtr args = parameters[1].Value;
-            IntPtr isSuccess = parameters[2].Value;
-            IntPtr nativeMethodInfo = parameters[3].Value;
-            IntPtr trampolinePointer = modifiedReturnValue.Value;
-            if (RecordBattleArgsPatch(instance, args, isSuccess, nativeMethodInfo, trampolinePointer, out var newPointer))
-            {
-                modifiedReturnValue.Override = newPointer;
-            };
+            MelonHookInfo.HookCallbackEvent += RecordBattleArgsPatch;
         }
 
         /// <summary>
@@ -514,8 +510,5 @@ namespace CustomAlbums.Patches
                 InjectCustomData();
             }
         }
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate IntPtr RecordBattleArgsDelegate(IntPtr instance, IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo);
     }
 }

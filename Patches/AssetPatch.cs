@@ -28,6 +28,9 @@ namespace CustomAlbums.Patches
     internal class AssetPatch
     {
         private static readonly Dictionary<string, Object> AssetCache = new();
+        /// <summary>
+        ///     Modifies certain assets based on their name.
+        /// </summary>
         private static readonly Dictionary<string, Func<string, IntPtr, string, IntPtr>> AssetHandler = new();
         private static readonly Logger Logger = new(nameof(AssetPatch));
 
@@ -47,7 +50,7 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        ///     Removes a KeyValuePair from the asset cache.
+        ///     Removes the specified key from the asset cache.
         /// </summary>
         /// <param name="key">The key corresponding to the value to be removed.</param>
         /// <returns>true if the entry was successfully removed; otherwise, false.</returns>
@@ -57,8 +60,7 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        ///     Adds methods to the <c>AssetHandler</c>.
-        ///     The <c>AssetHandler</c> modifies certain assets based on their name.
+        ///     Adds methods to the <see cref="AssetHandler"/>.
         /// </summary>
         internal static void InitializeHandler()
         {
@@ -241,8 +243,9 @@ namespace CustomAlbums.Patches
         static GenericNativeHook Hook;
 
         /// <summary>
-        ///     Gets <c>LoadFromName&lt;TextAsset&gt;</c> and detours it using a
-        ///     <c>NativeHook&lt;LoadFromNameDelegate&gt;</c> to <c>LoadFromNamePatch</c>.
+        ///     Gets <see cref="ResourcesManager.LoadFromName{T}(string)"/> (where <typeparamref name="T"/> is <see cref="TextAsset"/>) and detours it using a <see cref="GenericNativeHook"/>
+        ///     <para/>
+        ///     to <see cref="HookCallback(ReturnValueReference, ReadOnlyCollection{ParameterReference})"/>.
         /// </summary>
         internal static unsafe void AttachHook()
         {
@@ -261,20 +264,8 @@ namespace CustomAlbums.Patches
             InitializeHandler();
 
             Hook = GenericNativeHook.CreateInstance(out MelonHookInfo, loadFromNameMethod);
-            MelonHookInfo.HookCallbackEvent += HookCallback;
+            MelonHookInfo.HookCallbackEvent += LoadFromNamePatch;
             Hook.AttachHook();
-        }
-
-        private static void HookCallback(IntPtr originalReturnValue, ParameterReference modifiedReturnValue, ReadOnlyCollection<ParameterReference> parameters)
-        {
-            IntPtr instance = parameters[0].Value;
-            IntPtr assetNamePtr = parameters[1].Value;
-            IntPtr nativeMethodInfo = parameters[2].Value;
-            IntPtr trampolinePointer = modifiedReturnValue.Value;
-            if (LoadFromNamePatch(instance, assetNamePtr, nativeMethodInfo, trampolinePointer, out var newPointer))
-            {
-                modifiedReturnValue.Override = newPointer;
-            };
         }
 
 
@@ -283,19 +274,19 @@ namespace CustomAlbums.Patches
         ///     Modifies certain game data as it get loaded.
         ///     The game data that is modified directly adds support for custom albums.
         /// </summary>
-        /// <param name="instance">The instance of ResourceManager calling LoadFromName.</param>
-        /// <param name="assetNamePtr">The pointer to the string assetName.</param>
-        /// <param name="nativeMethodInfo">Method info used by the original method.</param>
-        /// <param name="trampolinePointer">The original pointer returned by the trampoline, or the pointer modified by previous hooks.</param>
-        /// <param name="modifiedPointer">Pointer of either a newly created asset, or the original <paramref name="trampolinePointer"/></param>
+
+        /// <param name="returnValue">An instance that represents the trampoline's return value, and changes to it.</param>
+        /// <param name="parameters">A reference to the parameters of the trampoline.</param>
         /// <returns>
         ///     A pointer of either a newly created asset if it exists or the original asset pointer if a new one was not
         ///     created.
         /// </returns>
-        private static bool LoadFromNamePatch(IntPtr instance, IntPtr assetNamePtr, IntPtr nativeMethodInfo, IntPtr trampolinePointer, out IntPtr modifiedPointer)
+        private static void LoadFromNamePatch(ReturnValueReference returnValue, ReadOnlyCollection<ParameterReference> parameters)
         {
-            modifiedPointer = trampolinePointer;
-            // Retrieve the pointer of the asset and the name of the asset
+            /// The original pointer to the string assetName.
+            IntPtr assetNamePtr = parameters[1].OriginalValue;
+
+            // Retrieve the name of the asset
             var assetName = IL2CPP.Il2CppStringToManaged(assetNamePtr) ?? string.Empty;
 
             Logger.Msg($"Loading {assetName}!");
@@ -308,8 +299,8 @@ namespace CustomAlbums.Patches
                 // This provides a noticeable speedup when opening tags for the first time
                 if (_doneLoadingAlbumsFlag && albumNum > _latestAlbumNum)
                 {
-                    modifiedPointer = IntPtr.Zero;
-                    return true;
+                    returnValue.Override = IntPtr.Zero;
+                    return;
                 }
 
                 // Otherwise get the maximum number X of ALBUMX
@@ -326,8 +317,8 @@ namespace CustomAlbums.Patches
                 {
                     Logger.Msg($"Returning {assetName} from cache");
                     AudioManager.SwitchLoad(assetName);
-                    modifiedPointer = cachedAsset.Pointer;
-                    return true;
+                    returnValue.Override = cachedAsset.Pointer;
+                    return;
                 }
 
                 Logger.Msg("Removing null asset from cache");
@@ -335,7 +326,7 @@ namespace CustomAlbums.Patches
             }
 
             // Allow original LoadFromName to run with LocalizationSettings
-            if (assetName is "LocalizationSettings") return false;
+            if (assetName is "LocalizationSettings") return;
 
             var language = SingletonScriptableObject<LocalizationSettings>.instance.GetActiveOption("Language");
 
@@ -346,13 +337,16 @@ namespace CustomAlbums.Patches
                 : handledAssetName;
             handledAssetName = handledAssetName.StartsWith("album_") ? "album_" : handledAssetName;
 
-            // Get the method from the AssetHandler if it exists and run it, otherwise return assetPtr
+            // Get the method from the AssetHandler if it exists and run it, otherwise return false
             if (AssetHandler.TryGetValue(handledAssetName, out var value))
             {
-                modifiedPointer = value(assetName, trampolinePointer, language);
-                return true;
+                var trampolinePointer = returnValue.GetValueOrInvokeTrampoline();
+                var newPointer = value(assetName, trampolinePointer, language);
+                if (newPointer != trampolinePointer)
+                {
+                    returnValue.Override = newPointer;
+                }
             }
-            return false;
         }
 
         /// <summary>
@@ -368,8 +362,5 @@ namespace CustomAlbums.Patches
                 name = name
             };
         }
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate IntPtr LoadFromNameDelegate(IntPtr instance, IntPtr assetNamePtr, IntPtr nativeMethodInfo);
     }
 }
