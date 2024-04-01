@@ -27,7 +27,10 @@ namespace CustomAlbums.Data
 
         public StageInfo GetStage()
         {
-            using var stream = ParentAlbum.OpenFileStream($"map{Difficulty}.bms");
+            // If opening a FileStream is possible (i.e. reading from a folder) then open it as FileStream
+            // Otherwise open it as a MemoryStream
+            // This allows writing to the map BMS file while it is being read
+            using var stream = ParentAlbum.OpenFileStreamIfPossible($"map{Difficulty}.bms");
 
             var bms = BmsLoader.Load(stream, MapName);
             if (bms is null) return null;
@@ -44,7 +47,7 @@ namespace CustomAlbums.Data
 
             if (ParentAlbum.HasFile($"map{Difficulty}.talk"))
             {
-                using var talkStream = ParentAlbum.OpenFileStream($"map{Difficulty}.talk");
+                using var talkStream = ParentAlbum.OpenFileStreamIfPossible($"map{Difficulty}.talk");
                 if (talkStream.Length > 0)
                 {
                     var talkFile = Json.Deserialize<JsonObject>(talkStream);
