@@ -22,7 +22,7 @@ namespace CustomAlbums.Managers
             if (!album.HasFile("cover.png")) return null;
             if (CachedCovers.TryGetValue(album.Index, out var cached)) return cached;
 
-            using var stream = album.OpenFileStream("cover.png");
+            using var stream = album.OpenMemoryStream("cover.png");
 
             var bytes = stream.ReadFully();
 
@@ -44,7 +44,7 @@ namespace CustomAlbums.Managers
             Config.PreferContiguousImageBuffers = true;
 
             // Open and load the gif
-            using var stream = album.OpenFileStream("cover.gif");
+            using var stream = album.OpenMemoryStream("cover.gif");
             using var gif = Image.Load<Rgba32>(new DecoderOptions { Configuration = Config }, stream);
 
             // For some reason Unity loads textures upside down?

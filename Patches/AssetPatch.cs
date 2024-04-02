@@ -321,7 +321,7 @@ namespace CustomAlbums.Patches
             }
 
             // Allow original LoadFromName to run with LocalizationSettings
-            if (assetName == "LocalizationSettings") return assetPtr;
+            if (assetName is "LocalizationSettings") return assetPtr;
 
             var language = SingletonScriptableObject<LocalizationSettings>.instance.GetActiveOption("Language");
 

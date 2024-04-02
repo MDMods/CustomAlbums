@@ -15,10 +15,10 @@ namespace CustomAlbums
             base.OnInitializeMelon();
 
             if (!Directory.Exists(AlbumManager.SearchPath)) Directory.CreateDirectory(AlbumManager.SearchPath);
-
+            
+            ModSettings.Register();
             AssetPatch.AttachHook();
             SavePatch.AttachHook();
-            ModSettings.Register();
             AlbumManager.LoadAlbums();
             SaveManager.LoadSaveFile();
             Logger.Msg("Initialized CustomAlbums!", false);
@@ -29,12 +29,6 @@ namespace CustomAlbums
             base.OnLateInitializeMelon();
             // TODO: Actually write HotReload
             // HotReloadManager.OnLateInitializeMelon();
-        }
-
-        public override void OnApplicationQuit()
-        {
-            if (ModSettings.SavingEnabled) SaveManager.SaveSaveFile();
-            base.OnApplicationQuit();
         }
 
         /// <summary>

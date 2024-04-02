@@ -172,14 +172,14 @@ namespace CustomAlbums.Managers
             if (album.HasFile($"{name}.ogg"))
             {
                 // Load music.ogg
-                var stream = album.OpenFileStream($"{name}.ogg");
+                var stream = album.OpenMemoryStream($"{name}.ogg");
                 return LoadClipFromOgg(stream, key);
             }
 
             if (album.HasFile($"{name}.mp3"))
             {
                 // Load music.mp3
-                var stream = album.OpenFileStream($"{name}.mp3");
+                var stream = album.OpenMemoryStream($"{name}.mp3");
                 return LoadClipFromMp3(stream, key);
             }
 

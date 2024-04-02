@@ -34,7 +34,7 @@ namespace CustomAlbums
         /// <param name="stream">MemoryStream of BMS file.</param>
         /// <param name="bmsName">Name of BMS score.</param>
         /// <returns>Loaded Bms object.</returns>
-        internal static Bms Load(MemoryStream stream, string bmsName)
+        internal static Bms Load(Stream stream, string bmsName)
         {
             Logger.Msg($"Loading bms {bmsName}...");
 
@@ -44,7 +44,7 @@ namespace CustomAlbums
             var notesArray = new JsonArray();
             var info = new JsonObject();
 
-            var streamReader = new StreamReader(stream);
+            using var streamReader = new StreamReader(stream);
             while (streamReader.ReadLine()?.Trim() is { } line)
             {
                 if (string.IsNullOrEmpty(line) || !line.StartsWith("#")) continue;
@@ -90,7 +90,7 @@ namespace CustomAlbums
                     
                     var type = Bms.Channels[typeCode];
 
-                    if (type == Bms.ChannelType.SpTimesig)
+                    if (type is Bms.ChannelType.SpTimesig)
                     {
                         var obj = new JsonObject
                         {
@@ -105,7 +105,7 @@ namespace CustomAlbums
                         for (var i = 0; i < objLength; i++)
                         {
                             var note = value.Substring(i * 2, 2);
-                            if (note == "00") continue;
+                            if (note is "00") continue;
 
                             var tick = (float)i / objLength + beat;
 

@@ -329,9 +329,9 @@ namespace CustomAlbums.Patches
         ///     Stops the game from saving custom chart score data.
         /// </summary>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
-        private static IntPtr RecordBattleArgsPatch(IntPtr instance, IntPtr args, IntPtr isSuccess)
+        private static IntPtr RecordBattleArgsPatch(IntPtr instance, IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo)
         {
-            return !GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-") ? Hook.Trampoline(instance, args, isSuccess) : IntPtr.Zero;
+            return !GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-") ? Hook.Trampoline(instance, args, isSuccess, nativeMethodInfo) : IntPtr.Zero;
         }
 
         /// <summary>
@@ -355,7 +355,7 @@ namespace CustomAlbums.Patches
             var recordBattleArgsPointer = *(IntPtr*)(IntPtr)Il2CppInteropUtils
                 .GetIl2CppMethodInfoPointerFieldForGeneratedMethod(recordBattleArgsMethod).GetValue(null)!;
 
-            delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, IntPtr> detourPointer = &RecordBattleArgsPatch;
+            delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, IntPtr, IntPtr> detourPointer = &RecordBattleArgsPatch;
 
             Hook.Detour = (IntPtr)detourPointer;
             Hook.Target = recordBattleArgsPointer;
@@ -506,6 +506,6 @@ namespace CustomAlbums.Patches
         }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        private delegate IntPtr RecordBattleArgsDelegate(IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo);
+        private delegate IntPtr RecordBattleArgsDelegate(IntPtr instance, IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo);
     }
 }
