@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Text.Json;
+﻿using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using Il2CppNewtonsoft.Json;
@@ -54,14 +53,12 @@ namespace CustomAlbums.Utilities
         /// <returns>The decimal value</returns>
         public static decimal GetValueAsDecimal(this JsonNode node)
         {
-            return decimal.TryParse(node.ToString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var result) ? result : 0M;
+            return node.ToString().TryParseAsDecimal(out var result) ? result : 0M;
         }
 
         public static Decimal GetValueAsIl2CppDecimal(this JsonNode node)
         {
-            return decimal.TryParse(node.ToString(), NumberStyles.Number, CultureInfo.InvariantCulture, out var result)
-                ? (Decimal)(float)result
-                : Decimal.Zero;
+            return (Decimal)(float)node.GetValueAsDecimal();
         }
     }
 }
