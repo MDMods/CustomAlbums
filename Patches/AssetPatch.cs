@@ -134,7 +134,7 @@ namespace CustomAlbums.Patches
                     var tags = new List<string> { "custom albums" };
                     if (albumInfo.SearchTags != null) tags.AddRange(albumInfo.SearchTags);
                     if (!string.IsNullOrEmpty(albumInfo.NameRomanized)) tags.Add(albumInfo.NameRomanized);
-                    for (var i = 0; i < tags.Count; i++) tags[i] = tags[i].ToLower();
+                    for (var i = 0; i < tags.Count; i++) tags[i] = tags[i].ToLowerInvariant();
 
                     searchTag.tag = new Il2CppStringArray(tags.ToArray());
 
@@ -206,7 +206,7 @@ namespace CustomAlbums.Patches
                 {
                     var albumKey = assetName.Remove(assetName.Length - suffix.Length);
                     AlbumManager.LoadedAlbums.TryGetValue(albumKey, out var album);
-                    if (suffix.StartsWith("_map"))
+                    if (suffix.StartsWithOrdinal("_map"))
                     {
                         newAsset = album?.Sheets[suffix[^1].ToString().ParseAsInt()].GetStage();
                         // Do not cache the StageInfos, this should be loaded into memory only when we need it
@@ -290,8 +290,7 @@ namespace CustomAlbums.Patches
             var assetName = IL2CPP.Il2CppStringToManaged(assetNamePtr) ?? string.Empty;
 
             Logger.Msg($"Loading {assetName}!");
-
-            if (assetName.StartsWith("ALBUM") && assetName[5..].TryParseAsInt(out var albumNum) &&
+            if (assetName.StartsWithOrdinal("ALBUM") && assetName[5..].TryParseAsInt(out var albumNum) &&
                 albumNum != AlbumManager.Uid + 1)
             {
                 // If done loading albums, we've found the maximum actual album
@@ -330,18 +329,18 @@ namespace CustomAlbums.Patches
 
             var language = SingletonScriptableObject<LocalizationSettings>.instance.GetActiveOption("Language");
 
-            // Programmatically alters the asset name to remove the language if the language exists 
-            var handledAssetName = assetName.StartsWith("albums_") ? "albums_" : assetName;
-            handledAssetName = handledAssetName.StartsWith($"{AlbumManager.JsonName}_")
+            // Programmatically alters the asset name to remove the language if the language exists
+            var handledAssetName = assetName.StartsWithOrdinal("albums_") ? "albums_" : assetName;
+            handledAssetName = handledAssetName.StartsWithOrdinal($"{AlbumManager.JsonName}_")
                 ? $"{AlbumManager.JsonName}_"
                 : handledAssetName;
-            handledAssetName = handledAssetName.StartsWith("album_") ? "album_" : handledAssetName;
+            handledAssetName = handledAssetName.StartsWithOrdinal("album_") ? "album_" : handledAssetName;
 
             // Get the method from the AssetHandler if it exists and run it, otherwise return false
-            if (AssetHandler.TryGetValue(handledAssetName, out var value))
+            if (AssetHandler.TryGetValue(handledAssetName, out var assetHandlerMethod))
             {
                 var trampolinePointer = returnValue.GetValueOrInvokeTrampoline();
-                var newPointer = value(assetName, trampolinePointer, language);
+                var newPointer = assetHandlerMethod(assetName, trampolinePointer, language);
                 if (newPointer != trampolinePointer)
                 {
                     returnValue.Override = newPointer;

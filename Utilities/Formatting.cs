@@ -29,4 +29,7 @@ public static class Formatting {
     
     public static string ToStringInvariant(this decimal value, string format = "")
         => value.ToString(format, CultureInfo.InvariantCulture);
+
+    public static bool StartsWithOrdinal(this string value, string compare)
+        => value.StartsWith(compare, StringComparison.Ordinal);
 }
