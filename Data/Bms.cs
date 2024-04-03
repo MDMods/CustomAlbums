@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Text.Json.Nodes;
+﻿using System.Text.Json.Nodes;
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
@@ -317,7 +316,7 @@ namespace CustomAlbums.Data
             get
             {
                 var bpmString = Info["BPM"]?.GetValue<string>() ?? Info["BPM01"]?.GetValue<string>() ?? string.Empty;
-                return !float.TryParse(bpmString, NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var bpm) ? 0f : bpm;
+                return bpmString.TryParseAsFloat(out var bpm) ? bpm : 0f;
             }
         }
 
@@ -412,7 +411,7 @@ namespace CustomAlbums.Data
             if (NoteData is null || NoteData.Count == 0) InitNoteData();
             var processed = new JsonArray();
 
-            var speedAir = int.Parse(Info["PLAYER"]?.GetValue<string>() ?? "1", CultureInfo.InvariantCulture);
+            var speedAir = (Info["PLAYER"]?.GetValue<string>() ?? "1").ParseAsInt();
             var speedGround = speedAir;
 
             var objectId = 1;

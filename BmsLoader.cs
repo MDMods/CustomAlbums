@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Text.Json.Nodes;
+﻿using System.Text.Json.Nodes;
 using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
@@ -64,11 +63,11 @@ namespace CustomAlbums
                     if (!key.Contains("BPM")) continue;
 
                     var bpmKey = string.IsNullOrEmpty(key[3..]) ? "00" : key[3..];
-                    bpmDict.Add(bpmKey, float.Parse(value, CultureInfo.InvariantCulture));
+                    bpmDict.Add(bpmKey, value.ParseAsFloat());
 
                     if (bpmKey != "00") continue;
 
-                    var freq = 60f / float.Parse(value, CultureInfo.InvariantCulture) * 4f;
+                    var freq = 60f / value.ParseAsFloat() * 4f;
                     var obj = new JsonObject
                     {
                         { "tick", 0f },
@@ -83,7 +82,7 @@ namespace CustomAlbums
                     var key = split[0];
                     var value = split[1];
 
-                    var beat = int.Parse(key[..3], CultureInfo.InvariantCulture);
+                    var beat = key[..3].ParseAsInt();
                     var typeCode = key.Substring(3, 2);
                     
                     if (!Bms.Channels.ContainsKey(typeCode)) continue;
@@ -95,7 +94,7 @@ namespace CustomAlbums
                         var obj = new JsonObject
                         {
                             { "beat", beat },
-                            { "percent", float.Parse(value, CultureInfo.InvariantCulture) }
+                            { "percent", value.ParseAsFloat() }
                         };
                         notePercents.Add(beat, obj);
                     }
@@ -549,7 +548,7 @@ namespace CustomAlbums
         private static void ProcessDelay(Bms bms)
         {
             var scene = bms.Info["GENRE"]?.GetValue<string>() ?? string.Empty;
-            var sceneIndex = int.Parse(scene.Split('_')[1], CultureInfo.InvariantCulture);
+            var sceneIndex = scene.Split('_')[1].ParseAsInt();
             var sceneInfo = Singleton<StageBattleComponent>.instance.sceneInfo;
             var delayCache = new Dictionary<string, Decimal>();
 

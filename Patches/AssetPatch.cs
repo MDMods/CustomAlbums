@@ -1,4 +1,4 @@
-﻿using System.Collections.ObjectModel;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -208,7 +208,7 @@ namespace CustomAlbums.Patches
                     AlbumManager.LoadedAlbums.TryGetValue(albumKey, out var album);
                     if (suffix.StartsWith("_map"))
                     {
-                        newAsset = album?.Sheets[int.Parse(suffix[^1].ToString(), CultureInfo.InvariantCulture)].GetStage();
+                        newAsset = album?.Sheets[suffix[^1].ToString().ParseAsInt()].GetStage();
                         // Do not cache the StageInfos, this should be loaded into memory only when we need it
                         cache = false;
                     }
@@ -291,7 +291,7 @@ namespace CustomAlbums.Patches
 
             Logger.Msg($"Loading {assetName}!");
 
-            if (assetName.StartsWith("ALBUM") && int.TryParse(assetName.AsSpan(5), NumberStyles.Number, CultureInfo.InvariantCulture, out var albumNum) &&
+            if (assetName.StartsWith("ALBUM") && assetName[5..].TryParseAsInt(out var albumNum) &&
                 albumNum != AlbumManager.Uid + 1)
             {
                 // If done loading albums, we've found the maximum actual album
