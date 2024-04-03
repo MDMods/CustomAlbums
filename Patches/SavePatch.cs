@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Reflection;
+﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json.Nodes;
@@ -66,11 +65,11 @@ namespace CustomAlbums.Patches
             // Sets all the PnlRecord data to custom chart data.
             var evaluate = data["Evaluate"]!.GetValue<int>();
             panel.txtAccuracy.text = data["AccuracyStr"]!.GetValue<string>();
-            panel.txtClear.text = data["Clear"]!.GetValue<float>().ToString(CultureInfo.InvariantCulture);
-            panel.txtCombo.text = data["Combo"]!.GetValue<int>().ToString(CultureInfo.InvariantCulture);
+            panel.txtClear.text = data["Clear"]!.GetValue<float>().ToStringInvariant();
+            panel.txtCombo.text = data["Combo"]!.GetValue<int>().ToStringInvariant();
             panel.txtGrade.text = EvalToGrade[evaluate];
             panel.txtGrade.color = panel.gradeColor[evaluate];
-            panel.txtScore.text = data["Score"]!.GetValue<int>().ToString(CultureInfo.InvariantCulture);
+            panel.txtScore.text = data["Score"]!.GetValue<int>().ToStringInvariant();
         }
 
         /// <summary>

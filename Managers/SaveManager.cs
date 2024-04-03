@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using CustomAlbums.Data;
 using CustomAlbums.Utilities;
@@ -171,7 +170,7 @@ namespace CustomAlbums.Managers
             newScore.Score = Math.Max(score, newScore.Score);
             newScore.Combo = Math.Max(maxCombo, newScore.Combo);
             newScore.Evaluate = Math.Max(newEvaluate, newScore.Evaluate);
-            newScore.AccuracyStr = string.Create(CultureInfo.InvariantCulture, $"{newScore.Accuracy / 100:P2}");
+            newScore.AccuracyStr = (newScore.Accuracy / 100).ToStringInvariant("P2");
             newScore.Clear++;
 
             if (musicDifficulty is 2 && AlbumManager.LoadedAlbums[albumName].Sheets.ContainsKey(3) && newScore.Evaluate >= 4)

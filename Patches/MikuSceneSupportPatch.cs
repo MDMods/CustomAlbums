@@ -1,4 +1,5 @@
-﻿using HarmonyLib;
+﻿using CustomAlbums.Utilities;
+using HarmonyLib;
 using Il2CppGameLogic;
 
 namespace CustomAlbums.Patches
@@ -14,9 +15,9 @@ namespace CustomAlbums.Patches
         {
             private static void Finalizer(string sceneFestivalName, ref string __result)
             {
+                var subStr = sceneFestivalName[6..];
                 
-                if (sceneFestivalName.AsSpan(6).Length <= 2 ||
-                    !int.TryParse(sceneFestivalName.AsSpan(6).ToString(), out var sceneIndex)) return;
+                if (subStr.Length <= 2 || !subStr.TryParseAsInt(out var sceneIndex)) return;
                 
                 // For some reason, scene change 1X sets scene to scene_010, which is invalid
                 // Just trim off "scene_" and parse the numbers after the underscore to int again to get 10 instead of 010
