@@ -284,7 +284,7 @@ namespace CustomAlbums.Patches
         private static void LoadFromNamePatch(ReturnValueReference returnValue, ReadOnlyCollection<ParameterReference> parameters)
         {
             /// The original pointer to the string assetName.
-            IntPtr assetNamePtr = parameters[1].OriginalValue;
+            IntPtr assetNamePtr = parameters[1].OriginalValue??IntPtr.Zero;
 
             // Retrieve the name of the asset
             var assetName = IL2CPP.Il2CppStringToManaged(assetNamePtr) ?? string.Empty;
