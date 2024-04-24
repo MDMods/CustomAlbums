@@ -2,6 +2,7 @@
 using System.Text.Json;
 using CustomAlbums.Data;
 using CustomAlbums.Utilities;
+using System.IO.Compression;
 
 namespace CustomAlbums.Managers
 {
@@ -85,6 +86,36 @@ namespace CustomAlbums.Managers
             SaveData.FullCombo = fixedDictionaryFc;
         }
 
+        private static void RestoreBackup()
+        {
+            var backupPath = Path.Join(SaveLocation, "Backups", "Backups.zip");
+            
+            // If a backup does not exist at all
+            if (!File.Exists(backupPath))
+            {
+                Logger.Fail("No backups found. Please delete the CustomAlbums.json file in UserData folder to create a new save.");
+                return;
+            }
+
+            // Traverse the .zip file, trying every single backup in this archive
+            using var backupEntries = ZipFile.OpenRead(backupPath);
+            foreach (var backup in backupEntries.Entries.OrderByDescending(bak => bak.LastWriteTime)
+                         .Where(bak => bak.Name.EndsWith("CustomAlbums.json.bak")))
+            {
+                try
+                {
+                    SaveData = Json.Deserialize<CustomAlbumsSave>(backup.Open());
+                }
+                catch (Exception)
+                {
+                    continue;
+                }
+                Logger.Success($"Restored backup from {backup.LastWriteTime.DateTime}.");
+                return;
+            }
+            Logger.Fail("Could not restore save file. Please delete the CustomAlbums.json file in UserData folder to create a new save.");
+        }
+
         internal static void LoadSaveFile()
         {
             if (!ModSettings.SavingEnabled) return;
@@ -96,8 +127,15 @@ namespace CustomAlbums.Managers
             }
             catch (Exception ex)
             {
-                if (ex is FileNotFoundException) SaveData = new CustomAlbumsSave();
-                else Logger.Warning("Failed to load save file. " + ex.StackTrace);
+                if (ex is FileNotFoundException)
+                {
+                    SaveData = new CustomAlbumsSave();
+                }
+                else
+                {
+                    Logger.Warning("Could not load save file. Attempting to restore backup...");
+                    RestoreBackup();
+                }
             }
         }
 
@@ -120,6 +158,7 @@ namespace CustomAlbums.Managers
             }
         }
 
+        /// <summary>
         /// Saves custom score given scoring information.
         /// </summary>
         /// <param name="uid">The UID of the chart.</param>

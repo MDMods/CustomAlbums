@@ -18,9 +18,19 @@ namespace CustomAlbums.Utilities
             _logger.Msg(message);
         }
 
+        public void Success(string message)
+        {
+            _logger.Msg(ConsoleColor.Green, "Success: " + message);
+        }
+
         public void Warning(string message)
         {
             _logger.Msg(ConsoleColor.Yellow, "Warning: " + message);
+        }
+
+        public void Fail(string message)
+        {
+            _logger.Msg(ConsoleColor.Red, "FAILED: " + message);
         }
 
         public void Error(string message)
