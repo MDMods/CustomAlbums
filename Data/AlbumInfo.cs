@@ -14,6 +14,7 @@ namespace CustomAlbums.Data
         }
 
         public string Name { get; set; } = string.Empty;
+        [JsonPropertyName("name_romanized")]
         public string NameRomanized { get; set; } = string.Empty;
         public string Author { get; set; } = string.Empty;
         public string LevelDesigner { get; set; } = string.Empty;

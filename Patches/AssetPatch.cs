@@ -159,12 +159,12 @@ namespace CustomAlbums.Patches
                     title = AlbumManager.Languages[language]
                 });
 
-                // create and add the new asset with the correct lingual name of "Custom Albums"
+                // Create and add the new asset with the correct lingual name of "Custom Albums"
                 var newAsset = CreateTextAsset(assetName, JsonSerializer.Serialize(jsonArray));
                 if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
                     Singleton<ConfigManager>.instance.Add(assetName, newAsset.text);
 
-                // set cache and return newAsset's pointer if it non-null
+                // Set cache and return newAsset's pointer if it non-null
                 AssetCache[assetName] = newAsset;
                 return newAsset?.Pointer ?? assetPtr;
             });
