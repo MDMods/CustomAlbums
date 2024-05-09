@@ -13,10 +13,7 @@ namespace CustomAlbums.Patches
 {
     internal class HiddenSupportPatch
     {
-        // TODO: reduce data redundancy using reference counting dictionary
-        internal static HashSet<string> TagLoadedHiddens = new();
-
-        internal static HashSet<string> BmsInfoLoadedHiddens = new();
+        internal static HashSet<string> LoadedHiddens = new();
 
         internal static void UpdateHiddenCharts()
         {
@@ -28,6 +25,7 @@ namespace CustomAlbums.Patches
         internal static class HideBmsInfoDicPatch
         {
             internal static bool HasUpdate { get; set; } = true;
+            private static readonly Logger Logger = new(nameof(HideBmsInfoDicPatch));
 
             private static void Postfix(SpecialSongManager __instance)
             {
@@ -35,7 +33,7 @@ namespace CustomAlbums.Patches
 
                 foreach (var (key, value) in AlbumManager.LoadedAlbums)
                     // Enable hidden mode for charts containing map4
-                    if (value.Sheets.ContainsKey(4) && BmsInfoLoadedHiddens.Add($"{AlbumManager.Uid}-{value.Index}"))
+                    if (value.Sheets.ContainsKey(4) && LoadedHiddens.Contains($"{AlbumManager.Uid}-{value.Index}"))
                     {
                         var albumUid = $"{AlbumManager.Uid}-{value.Index}";
 
@@ -100,7 +98,7 @@ namespace CustomAlbums.Patches
             private static bool Prefix(MusicInfo musicInfo, SpecialSongManager __instance)
             {
                 if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-") ||
-                    !BmsInfoLoadedHiddens.Contains(musicInfo.uid)) return true;
+                    !LoadedHiddens.Contains(musicInfo.uid)) return true;
 
                 var hideBms = __instance.m_HideBmsInfos[musicInfo.uid];
                 __instance.m_IsInvokeHideDic[hideBms.uid] = true;
@@ -192,7 +190,7 @@ namespace CustomAlbums.Patches
                 foreach (var (_, value) in AlbumManager.LoadedAlbums)
                 {
                     var uid = $"{AlbumManager.Uid}-{value.Index}";
-                    if (value.Sheets.ContainsKey(DifficultyDefine.hide) && TagLoadedHiddens.Add(uid))
+                    if (value.Sheets.ContainsKey(DifficultyDefine.hide) && LoadedHiddens.Add(uid))
                         newHiddenAlbums.Add(uid);
                 }
 
