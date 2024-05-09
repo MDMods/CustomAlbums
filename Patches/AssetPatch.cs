@@ -96,7 +96,7 @@ namespace CustomAlbums.Patches
                     var albumInfo = albumObj.Info;
                     var customChartJson = new
                     {
-                        uid = $"{AlbumManager.Uid}-{albumObj.Index}",
+                        uid = albumObj.Uid,
                         name = albumInfo.Name,
                         author = albumInfo.Author,
                         bpm = albumInfo.Bpm,

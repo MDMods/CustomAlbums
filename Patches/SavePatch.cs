@@ -224,7 +224,7 @@ namespace CustomAlbums.Patches
             if (!SaveData.SelectedAlbum.StartsWith("album_")) return;
             DataHelper.selectedAlbumUid = "music_package_999";
             DataHelper.selectedAlbumTagIndex = 999;
-            DataHelper.selectedMusicUidFromInfoList = AlbumManager.LoadedAlbums.TryGetValue(SaveData.SelectedAlbum, out var album) ? $"{AlbumManager.Uid}-{album.Index}" : "0-0";
+            DataHelper.selectedMusicUidFromInfoList = AlbumManager.LoadedAlbums.TryGetValue(SaveData.SelectedAlbum, out var album) ? album.Uid : "0-0";
         }
 
         [HarmonyPatch(typeof(PnlPreparation), nameof(PnlPreparation.OnEnable))]

@@ -33,11 +33,11 @@ namespace CustomAlbums.Patches
 
                 foreach (var (key, value) in AlbumManager.LoadedAlbums)
                     // Enable hidden mode for charts containing map4
-                    if (value.Sheets.ContainsKey(4) && LoadedHiddens.Contains($"{AlbumManager.Uid}-{value.Index}"))
+                    if (value.Sheets.ContainsKey(4) && LoadedHiddens.Contains(value.Uid))
                     {
-                        var albumUid = $"{AlbumManager.Uid}-{value.Index}";
+                        var albumUid = value.Uid;
 
-                        __instance.m_HideBmsInfos.Add($"{AlbumManager.Uid}-{value.Index}",
+                        __instance.m_HideBmsInfos.Add(albumUid,
                             new SpecialSongManager.HideBmsInfo(
                                 albumUid,
                                 value.Info.HideBmsDifficulty == "0"
@@ -189,9 +189,8 @@ namespace CustomAlbums.Patches
                 Il2CppSystem.Collections.Generic.List<string> newHiddenAlbums = new();
                 foreach (var (_, value) in AlbumManager.LoadedAlbums)
                 {
-                    var uid = $"{AlbumManager.Uid}-{value.Index}";
-                    if (value.Sheets.ContainsKey(DifficultyDefine.hide) && LoadedHiddens.Add(uid))
-                        newHiddenAlbums.Add(uid);
+                    if (value.Sheets.ContainsKey(DifficultyDefine.hide) && LoadedHiddens.Add(value.Uid))
+                        newHiddenAlbums.Add(value.Uid);
                 }
 
                 var newHiddenArray =
