@@ -26,10 +26,14 @@ namespace CustomAlbums.Managers
 
             var bytes = stream.ReadFully();
 
-            var tex = new Texture2D(2, 2, TextureFormat.ARGB32, false);
-            tex.LoadImage(bytes);
+            // Create the textures
+            var texture = new Texture2D(2, 2, TextureFormat.ARGB32, false)
+            {
+                wrapMode = TextureWrapMode.MirrorOnce
+            };
+            texture.LoadImage(bytes);
 
-            var cover = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
+            var cover = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
             CachedCovers.Add(album.Index, cover);
 
             return cover;
@@ -75,7 +79,10 @@ namespace CustomAlbums.Managers
                 using var handle = memory.Pin();
 
                 // Create the textures
-                var texture = new Texture2D(width, height, TextureFormat.RGBA32, false);
+                var texture = new Texture2D(width, height, TextureFormat.RGBA32, false)
+                {
+                    wrapMode = TextureWrapMode.MirrorOnce
+                };
                 texture.LoadRawTextureData((IntPtr)handle.Pointer, memory.Length * sizeof(IntPtr));
                 texture.Apply(false);
 
