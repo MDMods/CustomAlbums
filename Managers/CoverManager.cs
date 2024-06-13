@@ -1,4 +1,5 @@
-﻿using CustomAlbums.Data;
+﻿using System.Runtime.CompilerServices;
+using CustomAlbums.Data;
 using CustomAlbums.Utilities;
 using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.Formats;
@@ -62,7 +63,7 @@ namespace CustomAlbums.Managers
                 // Get frame data
                 var frame = gif.Frames[i];
                 var width = frame.Width;
-                var height = frame.Width;
+                var height = frame.Height;
 
                 // Get frame pixel data
                 //
@@ -83,7 +84,7 @@ namespace CustomAlbums.Managers
                 {
                     wrapMode = TextureWrapMode.MirrorOnce
                 };
-                texture.LoadRawTextureData((IntPtr)handle.Pointer, memory.Length * sizeof(IntPtr));
+                texture.LoadRawTextureData((IntPtr)handle.Pointer, memory.Length * Unsafe.SizeOf<Rgba32>());
                 texture.Apply(false);
 
                 // Create the sprite with the given texture and add it to the sprites array
