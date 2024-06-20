@@ -111,10 +111,12 @@ namespace CustomAlbums.Patches
                         levelDesigner2 = albumInfo.LevelDesigner2 ?? albumInfo.LevelDesigner,
                         levelDesigner3 = albumInfo.LevelDesigner3 ?? albumInfo.LevelDesigner,
                         levelDesigner4 = albumInfo.LevelDesigner4 ?? albumInfo.LevelDesigner,
+                        levelDesigner5 = albumInfo.LevelDesigner5 ?? albumInfo.LevelDesigner,
                         difficulty1 = albumInfo.Difficulty1 ?? "0",
                         difficulty2 = albumInfo.Difficulty2,
                         difficulty3 = albumInfo.Difficulty3 ?? "0",
-                        difficulty4 = albumInfo.Difficulty4 ?? "0"
+                        difficulty4 = albumInfo.Difficulty4 ?? "0",
+                        difficulty5 = albumInfo.Difficulty5 ?? "0"
                     };
                     jsonArray.Add(customChartJson);
 

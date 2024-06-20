@@ -1,6 +1,7 @@
 ﻿using System.IO.Compression;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
+using Il2CppSystem.Runtime.Remoting.Messaging;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
 
@@ -143,5 +144,7 @@ namespace CustomAlbums.Data
                 Sheets.Add(difficulty, new Sheet(hash, this, difficulty));
             }
         }
+
+        public bool HasDifficulty(int difficulty) => Sheets.ContainsKey(difficulty);
     }
 }

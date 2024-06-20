@@ -31,9 +31,19 @@ namespace CustomAlbums.Patches
             {
                 if (!HasUpdate) return;
 
-                foreach (var (key, value) in AlbumManager.LoadedAlbums)
+                foreach (var (key, value) in AlbumManager.LoadedAlbums.Where(kv => kv.Value.HasDifficulty(4) || kv.Value.HasDifficulty(5)))
+                {
+                    // Quick check for Touhou charts
+                    if (value.HasDifficulty(5))
+                    {
+                        var newTouhouArray = new Il2CppStringArray(DBMusicTagDefine.s_BarrageModeSongUid.Length + 1);
+                        for (var i = 0; i < DBMusicTagDefine.s_BarrageModeSongUid.Length; i++)
+                            newTouhouArray[i] = DBMusicTagDefine.s_BarrageModeSongUid[i];
+                        newTouhouArray[^1] = value.Uid;
+                        DBMusicTagDefine.s_BarrageModeSongUid = newTouhouArray;
+                    }
                     // Enable hidden mode for charts containing map4
-                    if (value.Sheets.ContainsKey(4) && LoadedHiddens.Contains(value.Uid))
+                    if (LoadedHiddens.Contains(value.Uid))
                     {
                         var albumUid = value.Uid;
 
@@ -41,7 +51,7 @@ namespace CustomAlbums.Patches
                             new SpecialSongManager.HideBmsInfo(
                                 albumUid,
                                 value.Info.HideBmsDifficulty == "0"
-                                    ? value.Sheets.ContainsKey(3) ? 3 : 2
+                                    ? value.HasDifficulty(3) ? 3 : 2
                                     : value.Info.HideBmsDifficulty.ParseAsInt(),
                                 4,
                                 $"{key}_map4",
@@ -82,7 +92,7 @@ namespace CustomAlbums.Patches
                                 break;
                         }
                     }
-
+                }
                 HasUpdate = false;
             }
         }
@@ -189,7 +199,7 @@ namespace CustomAlbums.Patches
                 Il2CppSystem.Collections.Generic.List<string> newHiddenAlbums = new();
                 foreach (var (_, value) in AlbumManager.LoadedAlbums)
                 {
-                    if (value.Sheets.ContainsKey(DifficultyDefine.hide) && LoadedHiddens.Add(value.Uid))
+                    if (value.HasDifficulty(DifficultyDefine.hide) && LoadedHiddens.Add(value.Uid))
                         newHiddenAlbums.Add(value.Uid);
                 }
 

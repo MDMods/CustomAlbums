@@ -63,7 +63,7 @@ namespace CustomAlbums.Managers
             {
                 var unlockedHighest = SaveData.Highest.Where(kv =>
                     kv.Value.ContainsKey(3) && kv.Value.TryGetValue(2, out var chartSave) && chartSave.Evaluate >= 4).Select(kv => kv.Key);
-                var folderCharts = AlbumManager.LoadedAlbums.Where(kv => kv.Value.Sheets.ContainsKey(2) && kv.Value.Sheets.ContainsKey(3) && !kv.Value.IsPackaged).Select(kv => kv.Key);
+                var folderCharts = AlbumManager.LoadedAlbums.Where(kv => kv.Value.HasDifficulty(2) && kv.Value.HasDifficulty(3) && !kv.Value.IsPackaged).Select(kv => kv.Key);
                 var concat = unlockedHighest.Concat(folderCharts);
                 SaveData.UnlockedMasters.UnionWith(concat);
             }
@@ -212,7 +212,7 @@ namespace CustomAlbums.Managers
             newScore.AccuracyStr = (newScore.Accuracy / 100).ToStringInvariant("P2");
             newScore.Clear++;
 
-            if (musicDifficulty is 2 && AlbumManager.LoadedAlbums[albumName].Sheets.ContainsKey(3) && newScore.Evaluate >= 4)
+            if (musicDifficulty is 2 && AlbumManager.LoadedAlbums[albumName].HasDifficulty(3) && newScore.Evaluate >= 4)
                 SaveData.UnlockedMasters.Add(albumName);
 
             if (miss != 0) return;
