@@ -1,4 +1,5 @@
 ﻿using CustomAlbums.Data;
+using CustomAlbums.ModExtensions;
 using CustomAlbums.Utilities;
 using Il2CppPeroTools2.Resources;
 using UnityEngine;
@@ -27,9 +28,11 @@ namespace CustomAlbums.Managers
         internal static readonly FileSystemWatcher AlbumWatcher = new();
 
         private static int MaxCount { get; set; }
+
+        internal static event Events.LoadAlbumEvent OnAlbumLoaded;
         public static Dictionary<string, Album> LoadedAlbums { get; } = new();
 
-        public static Album LoadOne(string path)
+        internal static Album LoadOne(string path)
         {
             MaxCount = Math.Max(LoadedAlbums.Count, MaxCount);
             var fileName = File.GetAttributes(path).HasFlag(FileAttributes.Directory) ? Path.GetFileName(path) : Path.GetFileNameWithoutExtension(path);
@@ -48,6 +51,7 @@ namespace CustomAlbums.Managers
                         HideFlags.DontUnloadUnusedAsset;
 
                 Logger.Msg($"Loaded {albumName}: {album.Info.Name}");
+                OnAlbumLoaded?.Invoke(typeof(AlbumManager), new AlbumEventArgs(album));
                 return album;
             }
             catch (Exception ex)

@@ -34,3 +34,4 @@ using MelonLoader;
 [assembly: MelonInfo(typeof(CustomAlbums.Main), "CustomAlbums", "4.1.0", "Team Baller")]
 [assembly: MelonGame("PeroPeroGames", "MuseDash")]
 [assembly: MelonColor(255, 0, 255, 150)]
+[assembly: MelonPriority(int.MaxValue)]

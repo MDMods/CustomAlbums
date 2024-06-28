@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using CustomAlbums.Data;
 using CustomAlbums.Managers;
+using CustomAlbums.ModExtensions;
 using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2CppAssets.Scripts.Database;
@@ -31,6 +32,8 @@ namespace CustomAlbums.Patches
 
         private static int _latestAlbumNum;
         private static bool _doneLoadingAlbumsFlag;
+
+        internal static event Events.LoadAssetEvent OnAssetLoaded;
 
         /// <summary>
         ///     Binds the asset to a new key, while removing the old asset.
@@ -288,6 +291,8 @@ namespace CustomAlbums.Patches
             // Retrieve the pointer of the asset and the name of the asset
             var assetPtr = Hook.Trampoline(instance, assetNamePtr, nativeMethodInfo);
             var assetName = IL2CPP.Il2CppStringToManaged(assetNamePtr) ?? string.Empty;
+
+            OnAssetLoaded?.Invoke(typeof(AssetPatch), new AssetEventArgs(assetName, assetPtr));
 
             Logger.Msg($"Loading {assetName}!");
 
