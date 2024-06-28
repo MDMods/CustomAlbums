@@ -17,7 +17,7 @@ namespace CustomAlbums.Patches
         internal static class MusicStageCellPatch
         {
             private static readonly Logger Logger = new(nameof(MusicStageCellPatch));
-            private static readonly List<MusicStageCell> Cells = new();
+            private static readonly LinkedList<MusicStageCell> Cells = new();
 
             public static void AnimateCoversUpdate()
             {
@@ -25,33 +25,54 @@ namespace CustomAlbums.Patches
 
                 if (dbMusicTag == null) return;
 
-                for (var i = Cells.Count - 1; i >= 0; i--)
-                    if (Cells[i] == null || !Cells[i].enabled)
-                        Cells.RemoveAt(i);
-
-                foreach (var cell in Cells)
+                for (var node = Cells.First; node is not null;)
                 {
+                    var next = node.Next;
+                    var cell = node.Value;
                     var index = cell?.m_VariableBehaviour?.Cast<IVariable>().GetResult<int>() ?? -1;
 
                     var uid = dbMusicTag?.GetShowStageUidByIndex(index) ?? "?";
-                    if (uid == "?") continue;
+                    
+                    // If uid isn't defined
+                    if (uid is "?")
+                    {
+                        Cells.Remove(node);
+                        node = next;
+                        continue;
+                    }
 
                     var musicInfo = dbMusicTag?.GetMusicInfoFromAll(uid);
-                    if (musicInfo?.albumJsonIndex < AlbumManager.Uid) continue;
-
+                    
+                    // If cell is not custom
+                    if (musicInfo?.albumJsonIndex < AlbumManager.Uid)
+                    {
+                        Cells.Remove(node);
+                        node = next;
+                        continue;
+                    }
 
                     var album = AlbumManager.GetByUid(uid);
                     var animatedCover = album?.AnimatedCover;
-                    if (animatedCover is null || animatedCover.FramesPerSecond == 0) continue;
+                    
+                    // If cell is not animated
+                    if (animatedCover is null || animatedCover.FramesPerSecond is 0)
+                    {
+                        Cells.Remove(node);
+                        node = next;
+                        continue;
+                    }
+
+                    // Animate the cell, with one last null check
                     var frame = (int)Mathf.Floor(Time.time * 1000) %
                         (animatedCover.FramesPerSecond * animatedCover.FrameCount) / animatedCover.FramesPerSecond;
                     if (cell != null) cell.m_StageImg.sprite = animatedCover.Frames[frame];
+                    node = next;
                 }
             }
 
             private static void Prefix(MusicStageCell __instance)
             {
-                Cells.Add(__instance);
+                Cells.AddLast(__instance);
             }
         }
     }
