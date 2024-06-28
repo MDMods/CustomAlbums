@@ -1,8 +1,8 @@
-﻿using System.Globalization;
-using System.Text;
+﻿using System.Text;
 using System.Text.Json;
 using CustomAlbums.Data;
 using CustomAlbums.Utilities;
+using System.IO.Compression;
 
 namespace CustomAlbums.Managers
 {
@@ -63,7 +63,7 @@ namespace CustomAlbums.Managers
             {
                 var unlockedHighest = SaveData.Highest.Where(kv =>
                     kv.Value.ContainsKey(3) && kv.Value.TryGetValue(2, out var chartSave) && chartSave.Evaluate >= 4).Select(kv => kv.Key);
-                var folderCharts = AlbumManager.LoadedAlbums.Where(kv => kv.Value.Sheets.ContainsKey(2) && kv.Value.Sheets.ContainsKey(3) && !kv.Value.IsPackaged).Select(kv => kv.Key);
+                var folderCharts = AlbumManager.LoadedAlbums.Where(kv => kv.Value.HasDifficulty(2) && kv.Value.HasDifficulty(3) && !kv.Value.IsPackaged).Select(kv => kv.Key);
                 var concat = unlockedHighest.Concat(folderCharts);
                 SaveData.UnlockedMasters.UnionWith(concat);
             }
@@ -86,6 +86,36 @@ namespace CustomAlbums.Managers
             SaveData.FullCombo = fixedDictionaryFc;
         }
 
+        private static void RestoreBackup()
+        {
+            var backupPath = Path.Join(SaveLocation, "Backups", "Backups.zip");
+            
+            // If a backup does not exist at all
+            if (!File.Exists(backupPath))
+            {
+                Logger.Fail("No backups found. Please delete the CustomAlbums.json file in UserData folder to create a new save.");
+                return;
+            }
+
+            // Traverse the .zip file, trying every single backup in this archive
+            using var backupEntries = ZipFile.OpenRead(backupPath);
+            foreach (var backup in backupEntries.Entries.OrderByDescending(bak => bak.LastWriteTime)
+                         .Where(bak => bak.Name.EndsWith("CustomAlbums.json.bak")))
+            {
+                try
+                {
+                    SaveData = Json.Deserialize<CustomAlbumsSave>(backup.Open());
+                }
+                catch (Exception)
+                {
+                    continue;
+                }
+                Logger.Success($"Restored backup from {backup.LastWriteTime.DateTime}.");
+                return;
+            }
+            Logger.Fail("Could not restore save file. Please delete the CustomAlbums.json file in UserData folder to create a new save.");
+        }
+
         internal static void LoadSaveFile()
         {
             if (!ModSettings.SavingEnabled) return;
@@ -97,8 +127,15 @@ namespace CustomAlbums.Managers
             }
             catch (Exception ex)
             {
-                if (ex is FileNotFoundException) SaveData = new CustomAlbumsSave();
-                else Logger.Warning("Failed to load save file. " + ex.StackTrace);
+                if (ex is FileNotFoundException)
+                {
+                    SaveData = new CustomAlbumsSave();
+                }
+                else
+                {
+                    Logger.Warning("Could not load save file. Attempting to restore backup...");
+                    RestoreBackup();
+                }
             }
         }
 
@@ -121,6 +158,7 @@ namespace CustomAlbums.Managers
             }
         }
 
+        /// <summary>
         /// Saves custom score given scoring information.
         /// </summary>
         /// <param name="uid">The UID of the chart.</param>
@@ -171,10 +209,10 @@ namespace CustomAlbums.Managers
             newScore.Score = Math.Max(score, newScore.Score);
             newScore.Combo = Math.Max(maxCombo, newScore.Combo);
             newScore.Evaluate = Math.Max(newEvaluate, newScore.Evaluate);
-            newScore.AccuracyStr = string.Create(CultureInfo.InvariantCulture, $"{newScore.Accuracy / 100:P2}");
+            newScore.AccuracyStr = (newScore.Accuracy / 100).ToStringInvariant("P2");
             newScore.Clear++;
 
-            if (musicDifficulty is 2 && AlbumManager.LoadedAlbums[albumName].Sheets.ContainsKey(3) && newScore.Evaluate >= 4)
+            if (musicDifficulty is 2 && AlbumManager.LoadedAlbums[albumName].HasDifficulty(3) && newScore.Evaluate >= 4)
                 SaveData.UnlockedMasters.Add(albumName);
 
             if (miss != 0) return;

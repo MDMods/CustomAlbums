@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using CustomAlbums.Managers;
+﻿using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2Cpp;
@@ -14,10 +13,7 @@ namespace CustomAlbums.Patches
 {
     internal class HiddenSupportPatch
     {
-        // TODO: reduce data redundancy using reference counting dictionary
-        internal static HashSet<string> TagLoadedHiddens = new();
-
-        internal static HashSet<string> BmsInfoLoadedHiddens = new();
+        internal static HashSet<string> LoadedHiddens = new();
 
         internal static void UpdateHiddenCharts()
         {
@@ -29,23 +25,34 @@ namespace CustomAlbums.Patches
         internal static class HideBmsInfoDicPatch
         {
             internal static bool HasUpdate { get; set; } = true;
+            private static readonly Logger Logger = new(nameof(HideBmsInfoDicPatch));
 
             private static void Postfix(SpecialSongManager __instance)
             {
                 if (!HasUpdate) return;
 
-                foreach (var (key, value) in AlbumManager.LoadedAlbums)
-                    // Enable hidden mode for charts containing map4
-                    if (value.Sheets.ContainsKey(4) && BmsInfoLoadedHiddens.Add($"{AlbumManager.Uid}-{value.Index}"))
+                foreach (var (key, value) in AlbumManager.LoadedAlbums.Where(kv => kv.Value.HasDifficulty(4) || kv.Value.HasDifficulty(5)))
+                {
+                    // Quick check for Touhou charts
+                    if (value.HasDifficulty(5))
                     {
-                        var albumUid = $"{AlbumManager.Uid}-{value.Index}";
+                        var newTouhouArray = new Il2CppStringArray(DBMusicTagDefine.s_BarrageModeSongUid.Length + 1);
+                        for (var i = 0; i < DBMusicTagDefine.s_BarrageModeSongUid.Length; i++)
+                            newTouhouArray[i] = DBMusicTagDefine.s_BarrageModeSongUid[i];
+                        newTouhouArray[^1] = value.Uid;
+                        DBMusicTagDefine.s_BarrageModeSongUid = newTouhouArray;
+                    }
+                    // Enable hidden mode for charts containing map4
+                    if (LoadedHiddens.Contains(value.Uid))
+                    {
+                        var albumUid = value.Uid;
 
-                        __instance.m_HideBmsInfos.Add($"{AlbumManager.Uid}-{value.Index}",
+                        __instance.m_HideBmsInfos.Add(albumUid,
                             new SpecialSongManager.HideBmsInfo(
                                 albumUid,
                                 value.Info.HideBmsDifficulty == "0"
-                                    ? value.Sheets.ContainsKey(3) ? 3 : 2
-                                    : int.Parse(value.Info.HideBmsDifficulty, CultureInfo.InvariantCulture),
+                                    ? value.HasDifficulty(3) ? 3 : 2
+                                    : value.Info.HideBmsDifficulty.ParseAsInt(),
                                 4,
                                 $"{key}_map4",
                                 (Il2CppSystem.Func<bool>)delegate { return __instance.IsInvokeHideBms(albumUid); }
@@ -85,7 +92,7 @@ namespace CustomAlbums.Patches
                                 break;
                         }
                     }
-
+                }
                 HasUpdate = false;
             }
         }
@@ -101,7 +108,7 @@ namespace CustomAlbums.Patches
             private static bool Prefix(MusicInfo musicInfo, SpecialSongManager __instance)
             {
                 if (!musicInfo.uid.StartsWith($"{AlbumManager.Uid}-") ||
-                    !BmsInfoLoadedHiddens.Contains(musicInfo.uid)) return true;
+                    !LoadedHiddens.Contains(musicInfo.uid)) return true;
 
                 var hideBms = __instance.m_HideBmsInfos[musicInfo.uid];
                 __instance.m_IsInvokeHideDic[hideBms.uid] = true;
@@ -192,9 +199,8 @@ namespace CustomAlbums.Patches
                 Il2CppSystem.Collections.Generic.List<string> newHiddenAlbums = new();
                 foreach (var (_, value) in AlbumManager.LoadedAlbums)
                 {
-                    var uid = $"{AlbumManager.Uid}-{value.Index}";
-                    if (value.Sheets.ContainsKey(DifficultyDefine.hide) && TagLoadedHiddens.Add(uid))
-                        newHiddenAlbums.Add(uid);
+                    if (value.HasDifficulty(DifficultyDefine.hide) && LoadedHiddens.Add(value.Uid))
+                        newHiddenAlbums.Add(value.Uid);
                 }
 
                 var newHiddenArray =

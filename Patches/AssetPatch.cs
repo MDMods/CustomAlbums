@@ -1,5 +1,4 @@
-﻿using System.Globalization;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -97,7 +96,7 @@ namespace CustomAlbums.Patches
                     var albumInfo = albumObj.Info;
                     var customChartJson = new
                     {
-                        uid = $"{AlbumManager.Uid}-{albumObj.Index}",
+                        uid = albumObj.Uid,
                         name = albumInfo.Name,
                         author = albumInfo.Author,
                         bpm = albumInfo.Bpm,
@@ -112,10 +111,12 @@ namespace CustomAlbums.Patches
                         levelDesigner2 = albumInfo.LevelDesigner2 ?? albumInfo.LevelDesigner,
                         levelDesigner3 = albumInfo.LevelDesigner3 ?? albumInfo.LevelDesigner,
                         levelDesigner4 = albumInfo.LevelDesigner4 ?? albumInfo.LevelDesigner,
+                        levelDesigner5 = albumInfo.LevelDesigner5 ?? albumInfo.LevelDesigner,
                         difficulty1 = albumInfo.Difficulty1 ?? "0",
                         difficulty2 = albumInfo.Difficulty2,
                         difficulty3 = albumInfo.Difficulty3 ?? "0",
-                        difficulty4 = albumInfo.Difficulty4 ?? "0"
+                        difficulty4 = albumInfo.Difficulty4 ?? "0",
+                        difficulty5 = albumInfo.Difficulty5 ?? "0"
                     };
                     jsonArray.Add(customChartJson);
 
@@ -160,12 +161,12 @@ namespace CustomAlbums.Patches
                     title = AlbumManager.Languages[language]
                 });
 
-                // create and add the new asset with the correct lingual name of "Custom Albums"
+                // Create and add the new asset with the correct lingual name of "Custom Albums"
                 var newAsset = CreateTextAsset(assetName, JsonSerializer.Serialize(jsonArray));
                 if (!Singleton<ConfigManager>.instance.m_Dictionary.ContainsKey(assetName))
                     Singleton<ConfigManager>.instance.Add(assetName, newAsset.text);
 
-                // set cache and return newAsset's pointer if it non-null
+                // Set cache and return newAsset's pointer if it non-null
                 AssetCache[assetName] = newAsset;
                 return newAsset?.Pointer ?? assetPtr;
             });
@@ -205,7 +206,7 @@ namespace CustomAlbums.Patches
                     AlbumManager.LoadedAlbums.TryGetValue(albumKey, out var album);
                     if (suffix.StartsWith("_map"))
                     {
-                        newAsset = album?.Sheets[int.Parse(suffix[^1].ToString(), CultureInfo.InvariantCulture)].GetStage();
+                        newAsset = album?.Sheets[suffix[^1].ToString().ParseAsInt()].GetStage();
                         // Do not cache the StageInfos, this should be loaded into memory only when we need it
                         cache = false;
                     }
@@ -290,7 +291,7 @@ namespace CustomAlbums.Patches
 
             Logger.Msg($"Loading {assetName}!");
 
-            if (assetName.StartsWith("ALBUM") && int.TryParse(assetName.AsSpan(5), NumberStyles.Number, CultureInfo.InvariantCulture, out var albumNum) &&
+            if (assetName.StartsWith("ALBUM") && assetName[5..].TryParseAsInt(out var albumNum) &&
                 albumNum != AlbumManager.Uid + 1)
             {
                 // If done loading albums, we've found the maximum actual album

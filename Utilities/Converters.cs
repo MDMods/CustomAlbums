@@ -9,7 +9,7 @@ namespace CustomAlbums.Utilities
         {
             public override string Read(ref Utf8JsonReader reader, Type type, JsonSerializerOptions options)
             {
-                return reader.TokenType == JsonTokenType.Number ? reader.GetInt32().ToString() : reader.GetString();
+                return reader.TokenType is JsonTokenType.Number ? reader.GetInt32().ToString() : reader.GetString();
             }
 
             public override void Write(Utf8JsonWriter writer, string value, JsonSerializerOptions options)

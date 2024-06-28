@@ -1,6 +1,7 @@
 ﻿using System.IO.Compression;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
+using Il2CppSystem.Runtime.Remoting.Messaging;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
 
@@ -62,6 +63,7 @@ namespace CustomAlbums.Data
         public Dictionary<int, Sheet> Sheets { get; } = new();
         public string AlbumName =>
             IsPackaged ? $"album_{System.IO.Path.GetFileNameWithoutExtension(Path)}" : $"album_{System.IO.Path.GetFileName(Path)}_folder";
+        public string Uid => $"{AlbumManager.Uid}-{Index}";
 
         public bool HasFile(string name)
         {
@@ -142,5 +144,7 @@ namespace CustomAlbums.Data
                 Sheets.Add(difficulty, new Sheet(hash, this, difficulty));
             }
         }
+
+        public bool HasDifficulty(int difficulty) => Sheets.ContainsKey(difficulty);
     }
 }
