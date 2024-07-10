@@ -401,9 +401,20 @@ namespace CustomAlbums.Patches
         {
             private static void Postfix(PnlVictory __instance)
             {
+                // Fix for DJMax scrolling text bug
+                if (__instance.m_CurControls.mainPnl.transform.parent.name is "Djmax")
+                {
+                    var titleMask = __instance.m_CurControls.mainPnl.transform
+                        .Find("PnlVictory_3D").Find("SongTittle").Find("ImgSongTittleMask");
+
+                    var titleText = titleMask.Find("TxtSongTittle").gameObject;
+                    if (!titleText.active) titleMask.Find("MaskPos").gameObject.SetActive(true);
+                }
+
                 if (!ModSettings.SavingEnabled || !GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-")) return;
 
                 var albumName = AlbumManager.GetAlbumNameFromUid(GlobalDataBase.dbBattleStage.musicUid);
+
                 if (!SaveData.Highest.TryGetValue(albumName, out var highest))
                     return;
 
