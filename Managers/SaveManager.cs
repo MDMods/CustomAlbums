@@ -223,8 +223,6 @@ namespace CustomAlbums.Managers
 
             if (!SaveData.FullCombo[albumName].Contains(musicDifficulty))
                 SaveData.FullCombo[albumName].Add(musicDifficulty);
-
-            SaveSaveFile();
         }
     }
 }
