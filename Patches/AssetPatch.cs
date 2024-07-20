@@ -206,7 +206,7 @@ namespace CustomAlbums.Patches
                     AlbumManager.LoadedAlbums.TryGetValue(albumKey, out var album);
                     if (suffix.StartsWith("_map"))
                     {
-                        newAsset = album?.Sheets[suffix[^1].ToString().ParseAsInt()].GetStage();
+                        newAsset = album?.Sheets.GetValueOrDefault(suffix[^1].ToString().ParseAsInt())?.GetStage();
                         // Do not cache the StageInfos, this should be loaded into memory only when we need it
                         cache = false;
                     }
