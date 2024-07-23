@@ -1,11 +1,7 @@
 [![](https://dcbadge.vercel.app/api/server/mdmc)](https://discord.gg/mdmc)
- # CustomAlbums
-Full rewrite of [gamrguy/CustomAlbums](https://github.com/gamrguy/CustomAlbums) in .NET 6.0  
-This is now the only active and ongoing version of this mod; all other versions have been deprecated
-## Usage
-- Install MelonLoader into Muse Dash based on the dependency listed below
-- Download the [latest release](https://github.com/MDMods/CustomAlbums/releases) and place it in your Mods folder
-- Place any custom chart (.mdm) files into the generated `Custom_Albums` folder and enjoy
+# CustomAlbums
+A fork of [MDMods/CustomAlbums](https://github.com/MDMods/CustomAlbums).
+Uses [Balint817/BetterNativeHook](https://github.com/Balint817/BetterNativeHook) for cross-mod compatibility.
 ## Dependencies
 - [MelonLoader](https://github.com/LavaGang/MelonLoader/releases) v0.6.1
 - [Muse Dash on Steam](https://store.steampowered.com/app/774171/Muse_Dash/)
