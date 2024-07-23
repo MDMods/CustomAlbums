@@ -137,12 +137,7 @@ namespace CustomAlbums.Data
         {
             // Adds to the Sheets dictionary
             foreach (var difficulty in Info.Difficulties.Keys.Where(difficulty => HasFile($"map{difficulty}.bms")))
-            {
-                using var stream = OpenMemoryStream($"map{difficulty}.bms");
-                var hash = stream.GetHash();
-
-                Sheets.Add(difficulty, new Sheet(hash, this, difficulty));
-            }
+                Sheets.Add(difficulty, new Sheet(this, difficulty));
         }
 
         public bool HasDifficulty(int difficulty) => Sheets.ContainsKey(difficulty);
