@@ -10,19 +10,25 @@ namespace CustomAlbums.Data
     {
         private readonly Logger _logger = new(nameof(Sheet));
 
-        public Sheet(string md5, Album parentAlbum, int difficulty)
+        public Sheet(Album parentAlbum, int difficulty)
         {
-            Md5 = md5;
             ParentAlbum = parentAlbum;
             Difficulty = difficulty;
             MapName = $"{parentAlbum.AlbumName}_map{difficulty}";
         }
 
         public Album ParentAlbum { get; }
-        public string Md5 { get; }
         public string MapName { get; }
         public int Difficulty { get; }
         public bool TalkFileVersion2 { get; set; }
+        public string Md5
+        {
+            get
+            {
+                using var stream = ParentAlbum.OpenMemoryStream($"map{Difficulty}.bms");
+                return stream.GetHash();
+            }
+        }
 
         public StageInfo GetStage()
         {

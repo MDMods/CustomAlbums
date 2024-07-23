@@ -13,6 +13,7 @@ using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Il2CppAssets.Scripts.Structs;
+using Il2CppAssets.Scripts.UI.Panels;
 using Il2CppInterop.Common;
 using Il2CppPeroPeroGames.DataStatistics;
 using MelonLoader.NativeUtils;
@@ -227,6 +228,25 @@ namespace CustomAlbums.Patches
             DataHelper.selectedMusicUidFromInfoList = AlbumManager.LoadedAlbums.TryGetValue(SaveData.SelectedAlbum, out var album) ? album.Uid : "0-0";
         }
 
+        // Dumb hack that fixes the chart appearing locked on game start even if it is unlocked
+        [HarmonyPatch(typeof(PnlStage), nameof(PnlStage.Start))]
+        internal class StartPatch
+        {
+            private static void Postfix(PnlStage __instance)
+            {
+                var uid = DataHelper.selectedMusicUid;
+                if (!DataHelper.selectedMusicUid?.StartsWith($"{AlbumManager.Uid}-") ?? true) return;
+
+                var album = AlbumManager.GetByUid(uid);
+
+                if (album == null || (!DataHelper.isUnlockAllMaster && !SaveData.UnlockedMasters.Contains(album!.AlbumName))) return;
+
+                __instance.difficulty3Lock.SetActive(false);
+                __instance.difficulty3Master.SetActive(true);
+                __instance.difficulty3.enabled = true;
+            }
+        }
+
         [HarmonyPatch(typeof(PnlPreparation), nameof(PnlPreparation.OnEnable))]
         internal class PnlPreparationEnablePatch
         {
@@ -401,9 +421,20 @@ namespace CustomAlbums.Patches
         {
             private static void Postfix(PnlVictory __instance)
             {
+                // Fix for DJMax scrolling text bug
+                if (__instance.m_CurControls.mainPnl.transform.parent.name is "Djmax")
+                {
+                    var titleMask = __instance.m_CurControls.mainPnl.transform
+                        .Find("PnlVictory_3D").Find("SongTittle").Find("ImgSongTittleMask");
+
+                    var titleText = titleMask.Find("TxtSongTittle").gameObject;
+                    if (!titleText.active) titleMask.Find("MaskPos").gameObject.SetActive(true);
+                }
+
                 if (!ModSettings.SavingEnabled || !GlobalDataBase.dbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-")) return;
 
                 var albumName = AlbumManager.GetAlbumNameFromUid(GlobalDataBase.dbBattleStage.musicUid);
+
                 if (!SaveData.Highest.TryGetValue(albumName, out var highest))
                     return;
 

@@ -4,6 +4,7 @@ namespace CustomAlbums.Utilities
 {
     internal static class StreamExtensions
     {
+        private static readonly Logger Logger = new(nameof(StreamExtensions));
         public static string GetHash(this Stream stream)
         {
             byte[] hash;
@@ -29,8 +30,15 @@ namespace CustomAlbums.Utilities
         public static MemoryStream ToMemoryStream(this Stream stream)
         {
             var ms = new MemoryStream();
-            stream.CopyTo(ms);
-            ms.Position = 0;
+            try
+            {
+                stream.CopyTo(ms);
+                ms.Position = 0;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning(ex.Message);
+            }
 
             return ms;
         }
