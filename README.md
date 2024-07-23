@@ -1,6 +1,6 @@
 [![](https://dcbadge.vercel.app/api/server/mdmc)](https://discord.gg/mdmc)
 # CustomAlbums
-A fork of [MDMods/CustomAlbums](https://github.com/MDMods/CustomAlbums).
+A fork of [MDMods/CustomAlbums](https://github.com/MDMods/CustomAlbums). \
 Uses [Balint817/BetterNativeHook](https://github.com/Balint817/BetterNativeHook) for cross-mod compatibility.
 ## Dependencies
 - [MelonLoader](https://github.com/LavaGang/MelonLoader/releases) v0.6.1
