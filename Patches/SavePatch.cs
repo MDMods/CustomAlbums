@@ -13,6 +13,7 @@ using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Il2CppAssets.Scripts.Structs;
+using Il2CppAssets.Scripts.UI.Panels;
 using Il2CppInterop.Common;
 using Il2CppPeroPeroGames.DataStatistics;
 using MelonLoader.NativeUtils;
@@ -225,6 +226,25 @@ namespace CustomAlbums.Patches
             DataHelper.selectedAlbumUid = "music_package_999";
             DataHelper.selectedAlbumTagIndex = 999;
             DataHelper.selectedMusicUidFromInfoList = AlbumManager.LoadedAlbums.TryGetValue(SaveData.SelectedAlbum, out var album) ? album.Uid : "0-0";
+        }
+
+        // Dumb hack that fixes the chart appearing locked on game start even if it is unlocked
+        [HarmonyPatch(typeof(PnlStage), nameof(PnlStage.Start))]
+        internal class StartPatch
+        {
+            private static void Postfix(PnlStage __instance)
+            {
+                var uid = DataHelper.selectedMusicUid;
+                if (!DataHelper.selectedMusicUid?.StartsWith($"{AlbumManager.Uid}-") ?? true) return;
+
+                var album = AlbumManager.GetByUid(uid);
+
+                if (album == null || (!DataHelper.isUnlockAllMaster && !SaveData.UnlockedMasters.Contains(album!.AlbumName))) return;
+
+                __instance.difficulty3Lock.SetActive(false);
+                __instance.difficulty3Master.SetActive(true);
+                __instance.difficulty3.enabled = true;
+            }
         }
 
         [HarmonyPatch(typeof(PnlPreparation), nameof(PnlPreparation.OnEnable))]
