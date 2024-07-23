@@ -17,6 +17,8 @@ using Il2CppAssets.Scripts.UI.Panels;
 using Il2CppInterop.Common;
 using Il2CppPeroPeroGames.DataStatistics;
 using MelonLoader.NativeUtils;
+using System.Collections.ObjectModel;
+using BetterNativeHook;
 using static CustomAlbums.Managers.SaveManager;
 using ArgumentOutOfRangeException = System.ArgumentOutOfRangeException;
 using Environment = System.Environment;
@@ -40,8 +42,6 @@ namespace CustomAlbums.Patches
             "S",
             "S"
         };
-
-        private static readonly NativeHook<RecordBattleArgsDelegate> Hook = new();
 
         //
         // PANEL INJECTION SECTION
@@ -347,11 +347,15 @@ namespace CustomAlbums.Patches
         /// <summary>
         ///     Stops the game from saving custom chart score data.
         /// </summary>
-        [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
-        private static IntPtr RecordBattleArgsPatch(IntPtr instance, IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo)
+        private static bool RecordBattleArgsPatch(IntPtr instance, IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo, IntPtr trampolinePointer, out IntPtr newPointer)
         {
-            return !GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-") ? Hook.Trampoline(instance, args, isSuccess, nativeMethodInfo) : IntPtr.Zero;
+            newPointer = IntPtr.Zero;
+            return GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-");
         }
+
+        static MelonHookInfo MelonHookInfo;
+        static GenericNativeHook Hook;
+
 
         /// <summary>
         ///     Gets <c>RecordBattleArgs</c> and detours it using a
@@ -371,16 +375,21 @@ namespace CustomAlbums.Patches
                 Environment.Exit(1);
             }
 
-            var recordBattleArgsPointer = *(IntPtr*)(IntPtr)Il2CppInteropUtils
-                .GetIl2CppMethodInfoPointerFieldForGeneratedMethod(recordBattleArgsMethod).GetValue(null)!;
-
-            delegate* unmanaged[Cdecl]<IntPtr, IntPtr, IntPtr, IntPtr, IntPtr> detourPointer = &RecordBattleArgsPatch;
-
-            Hook.Detour = (IntPtr)detourPointer;
-            Hook.Target = recordBattleArgsPointer;
-            Hook.Attach();
+            Hook = GenericNativeHook.CreateInstance(out MelonHookInfo, recordBattleArgsMethod);
+            MelonHookInfo.HookCallbackEvent += HookCallback;
         }
-
+        private static void HookCallback(ReturnValueReference modifiedReturnValue, ReadOnlyCollection<ParameterReference> parameters)
+        {
+            IntPtr instance = parameters[0].GetNotNull();
+            IntPtr args = parameters[1].GetNotNull();
+            IntPtr isSuccess = parameters[2].GetNotNull();
+            IntPtr nativeMethodInfo = parameters[3].GetNotNull();
+            IntPtr? trampolinePointer = modifiedReturnValue.CurrentValue;
+            if (RecordBattleArgsPatch(instance, args, isSuccess, nativeMethodInfo, trampolinePointer, out var newPointer))
+            {
+                modifiedReturnValue.Override = newPointer;
+            };
+        }
         /// <summary>
         ///     Gets the score data of the custom chart and sends it to SaveManager for processing.
         /// </summary>
@@ -450,7 +459,7 @@ namespace CustomAlbums.Patches
                 if (!highest.ContainsKey(difficulty))
                     __instance.m_CurControls.newBest.SetActive(true);
                 if (PreviousScore != "-")
-                    __instance.m_CurControls.newBest.SetActive(score > int.Parse(PreviousScore));
+                    __instance.m_CurControls.newBest.SetActive(score > PreviousScore.ParseAsInt());
 
                 __instance.m_CurControls.highScoreTxt.text = PreviousScore;
             }
