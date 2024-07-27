@@ -3,6 +3,7 @@
     public class CustomAlbumsSave
     {
         public string SelectedAlbum { get; set; } = string.Empty;
+        public float Ability { get; set; } = 0;
         public HashSet<string> UnlockedMasters { get; set; } = new();
         public HashSet<string> Collections { get; set; } = new();
         public HashSet<string> Hides { get; set; } = new();

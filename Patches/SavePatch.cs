@@ -13,7 +13,6 @@ using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Il2CppAssets.Scripts.Structs;
-using Il2CppAssets.Scripts.UI.Panels;
 using Il2CppInterop.Common;
 using Il2CppPeroPeroGames.DataStatistics;
 using MelonLoader.NativeUtils;
@@ -210,7 +209,6 @@ namespace CustomAlbums.Patches
             
             if (ModSettings.SavingEnabled) SaveData.SelectedAlbum = AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList);
             DataHelper.selectedMusicUidFromInfoList = "0-0";
-            DataHelper.unlockMasters.RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
         }
 
         private static void InjectCustomData()
@@ -220,7 +218,6 @@ namespace CustomAlbums.Patches
             DataHelper.hides.AddManagedRange(SaveData.Hides.GetAlbumUidsFromNames());
             DataHelper.history.AddManagedRange(SaveData.History.GetAlbumUidsFromNames());
             DataHelper.collections.AddManagedRange(SaveData.Collections.GetAlbumUidsFromNames());
-            DataHelper.unlockMasters.AddManagedRange(SaveData.UnlockedMasters.GetAlbumUidsFromNames());
 
             if (!SaveData.SelectedAlbum.StartsWith("album_")) return;
             DataHelper.selectedAlbumUid = "music_package_999";
@@ -228,22 +225,36 @@ namespace CustomAlbums.Patches
             DataHelper.selectedMusicUidFromInfoList = AlbumManager.LoadedAlbums.TryGetValue(SaveData.SelectedAlbum, out var album) ? album.Uid : "0-0";
         }
 
-        // Dumb hack that fixes the chart appearing locked on game start even if it is unlocked
-        [HarmonyPatch(typeof(PnlStage), nameof(PnlStage.Start))]
-        internal class StartPatch
+        [HarmonyPatch(typeof(DataHelper), nameof(DataHelper.CheckMusicUnlockMaster))]
+        internal class CheckUnlockMaster
         {
-            private static void Postfix(PnlStage __instance)
+            private static bool Prefix(MusicInfo musicInfo, ref bool __result)
             {
-                var uid = DataHelper.selectedMusicUid;
-                if (!DataHelper.selectedMusicUid?.StartsWith($"{AlbumManager.Uid}-") ?? true) return;
+                SaveData.Ability = Math.Max(SaveData.Ability, GlobalDataBase.dbUi.ability);
+                var ability = GameAccountSystem.instance.IsLoggedIn() ? SaveData.Ability : 0;
+                var uid = musicInfo?.uid;
 
-                var album = AlbumManager.GetByUid(uid);
+                // If musicInfo or uid is null, run original
+                if (uid is null) return true;
 
-                if (album == null || (!DataHelper.isUnlockAllMaster && !SaveData.UnlockedMasters.Contains(album!.AlbumName))) return;
+                // Bugged vanilla state, do manual logic
+                if (GlobalDataBase.dbUi.ability == 0 && ability != 0)
+                {
+                    var vanillaParse = Formatting.TryParseAsInt(musicInfo.difficulty3, out var difficulty);
+                    var cond = !vanillaParse || ability >= difficulty;
+                    __result = cond || DataHelper.unlockMasters.Contains(uid) || SaveData.UnlockedMasters.Contains(AlbumManager.GetAlbumNameFromUid(uid)) || (!AlbumManager.GetByUid(musicInfo.uid)?.IsPackaged ?? false);
+                    return false;
+                }
 
-                __instance.difficulty3Lock.SetActive(false);
-                __instance.difficulty3Master.SetActive(true);
-                __instance.difficulty3.enabled = true;
+                // Non-bugged vanilla case
+                if (!uid.StartsWith($"{AlbumManager.Uid}-")) return true;
+
+                // Non-bugged custom case
+                var successParse = Formatting.TryParseAsInt(musicInfo.difficulty3, out var diffNum);
+                var abilityConditionOrGimmick = !successParse || ability >= diffNum;
+
+                __result = abilityConditionOrGimmick || SaveData.UnlockedMasters.Contains(AlbumManager.GetAlbumNameFromUid(uid)) || !AlbumManager.GetByUid(musicInfo.uid).IsPackaged;
+                return false;
             }
         }
 
