@@ -10,5 +10,17 @@
         public Queue<string> History { get; set; } = new();
         public Dictionary<string, Dictionary<int, CustomChartSave>> Highest { get; set; } = new();
         public Dictionary<string, List<int>> FullCombo { get; set; } = new();
+
+        internal bool IsEmpty()
+        {
+            return SelectedAlbum == string.Empty
+                && Ability == 0
+                && UnlockedMasters.Count == 0
+                && Collections.Count == 0
+                && Hides.Count == 0
+                && History.Count == 0
+                && Highest.Count == 0
+                && FullCombo.Count == 0;
+        }
     }
 }
