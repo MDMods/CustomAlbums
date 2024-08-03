@@ -347,7 +347,7 @@ namespace CustomAlbums.Patches
         /// <summary>
         ///     Stops the game from saving custom chart score data.
         /// </summary>
-        private static bool RecordBattleArgsPatch(IntPtr instance, IntPtr args, IntPtr isSuccess, IntPtr nativeMethodInfo, IntPtr trampolinePointer, out IntPtr newPointer)
+        private static bool RecordBattleArgsPatch(out IntPtr newPointer)
         {
             newPointer = IntPtr.Zero;
             return GlobalDataBase.s_DbBattleStage.musicUid.StartsWith($"{AlbumManager.Uid}-");
@@ -380,12 +380,11 @@ namespace CustomAlbums.Patches
         }
         private static void HookCallback(ReturnValueReference modifiedReturnValue, ReadOnlyCollection<ParameterReference> parameters)
         {
-            IntPtr instance = parameters[0].GetNotNull();
-            IntPtr args = parameters[1].GetNotNull();
-            IntPtr isSuccess = parameters[2].GetNotNull();
-            IntPtr nativeMethodInfo = parameters[3].GetNotNull();
-            IntPtr? trampolinePointer = modifiedReturnValue.CurrentValue;
-            if (RecordBattleArgsPatch(instance, args, isSuccess, nativeMethodInfo, trampolinePointer, out var newPointer))
+            //IntPtr instance = parameters[0].GetNotNull();
+            //IntPtr args = parameters[1].GetNotNull();
+            //IntPtr isSuccess = parameters[2].GetNotNull();
+            //IntPtr nativeMethodInfo = parameters[3].GetNotNull();
+            if (RecordBattleArgsPatch(out var newPointer))
             {
                 modifiedReturnValue.Override = newPointer;
             };
