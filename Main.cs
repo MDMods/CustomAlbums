@@ -28,7 +28,7 @@ namespace CustomAlbums
         {
             base.OnLateInitializeMelon();
             // TODO: Actually write HotReload
-            // HotReloadManager.OnLateInitializeMelon();
+            HotReloadManager.OnLateInitializeMelon();
         }
 
         /// <summary>
@@ -47,7 +47,7 @@ namespace CustomAlbums
         {
             base.OnFixedUpdate();
             // TODO: Actually write HotReload
-            // HotReloadManager.FixedUpdate();
+            HotReloadManager.FixedUpdate();
         }
     }
 }

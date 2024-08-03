@@ -97,30 +97,7 @@ namespace CustomAlbums.Patches
                 foreach (var (albumStr, albumObj) in AlbumManager.LoadedAlbums)
                 {
                     var albumInfo = albumObj.Info;
-                    var customChartJson = new
-                    {
-                        uid = albumObj.Uid,
-                        name = albumInfo.Name,
-                        author = albumInfo.Author,
-                        bpm = albumInfo.Bpm,
-                        music = $"{albumStr}_music",
-                        demo = $"{albumStr}_demo",
-                        cover = $"{albumStr}_cover",
-                        noteJson = $"{albumStr}_map",
-                        scene = albumInfo.Scene,
-                        unlockLevel = "0",
-                        levelDesigner = albumInfo.LevelDesigner,
-                        levelDesigner1 = albumInfo.LevelDesigner1 ?? albumInfo.LevelDesigner,
-                        levelDesigner2 = albumInfo.LevelDesigner2 ?? albumInfo.LevelDesigner,
-                        levelDesigner3 = albumInfo.LevelDesigner3 ?? albumInfo.LevelDesigner,
-                        levelDesigner4 = albumInfo.LevelDesigner4 ?? albumInfo.LevelDesigner,
-                        levelDesigner5 = albumInfo.LevelDesigner5 ?? albumInfo.LevelDesigner,
-                        difficulty1 = albumInfo.Difficulty1 ?? "0",
-                        difficulty2 = albumInfo.Difficulty2,
-                        difficulty3 = albumInfo.Difficulty3 ?? "0",
-                        difficulty4 = albumInfo.Difficulty4 ?? "0",
-                        difficulty5 = albumInfo.Difficulty5 ?? "0"
-                    };
+                    var customChartJson = new DummyMusicInfo(albumObj, albumStr);
                     jsonArray.Add(customChartJson);
 
                     // Configure the searchtaginfo
