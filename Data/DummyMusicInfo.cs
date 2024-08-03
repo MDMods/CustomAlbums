@@ -36,26 +36,26 @@ namespace CustomAlbums.Data
             difficulty4 = albumInfo.Difficulty4 ?? "0";
             difficulty5 = albumInfo.Difficulty5 ?? "0";
         }
-        public string uid;
-        public string name;
-        public string author;
-        public string bpm;
-        public string music;
-        public string demo;
-        public string cover;
-        public string noteJson;
-        public string scene;
-        public string unlockLevel;
-        public string levelDesigner;
-        public string levelDesigner1;
-        public string levelDesigner2;
-        public string levelDesigner3;
-        public string levelDesigner4;
-        public string levelDesigner5;
-        public string difficulty1;
-        public string difficulty2;
-        public string difficulty3;
-        public string difficulty4;
-        public string difficulty5;
+        public string uid { get; set; }
+        public string name { get; set; }
+        public string author { get; set; }
+        public string bpm { get; set; }
+        public string music { get; set; }
+        public string demo { get; set; }
+        public string cover { get; set; }
+        public string noteJson { get; set; }
+        public string scene { get; set; }
+        public string unlockLevel { get; set; }
+        public string levelDesigner { get; set; }
+        public string levelDesigner1 { get; set; }
+        public string levelDesigner2 { get; set; }
+        public string levelDesigner3 { get; set; }
+        public string levelDesigner4 { get; set; }
+        public string levelDesigner5 { get; set; }
+        public string difficulty1 { get; set; }
+        public string difficulty2 { get; set; }
+        public string difficulty3 { get; set; }
+        public string difficulty4 { get; set; }
+        public string difficulty5 { get; set; }
     }
 }
