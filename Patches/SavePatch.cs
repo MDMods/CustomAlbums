@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text.Json.Nodes;
+using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using HarmonyLib;
@@ -52,7 +52,7 @@ namespace CustomAlbums.Patches
         /// <param name="panel">The PnlRecord instance to set.</param>
         /// <param name="data">The custom chart data.</param>
         /// <param name="isFullCombo">If the selected chart has been FCed.</param>
-        private static void SetPanelWithData(PnlRecord panel, JsonNode data, bool isFullCombo)
+        private static void SetPanelWithData(PnlRecord panel, CustomChartSave data, bool isFullCombo)
         {
             // Enables the FC icon if chart has been FCed
             // Also sets the combo text to a gold color if it has been FCed
@@ -63,13 +63,13 @@ namespace CustomAlbums.Patches
             }
 
             // Sets all the PnlRecord data to custom chart data.
-            var evaluate = data["Evaluate"]!.GetValue<int>();
-            panel.txtAccuracy.text = data["AccuracyStr"]!.GetValue<string>();
-            panel.txtClear.text = data["Clear"]!.GetValue<float>().ToStringInvariant();
-            panel.txtCombo.text = data["Combo"]!.GetValue<int>().ToStringInvariant();
+            var evaluate = data.Evaluate;
+            panel.txtAccuracy.text = data.AccuracyStr;
+            panel.txtClear.text = data.Clear.ToStringInvariant();
+            panel.txtCombo.text = data.Combo.ToStringInvariant();
             panel.txtGrade.text = EvalToGrade[evaluate];
             panel.txtGrade.color = panel.gradeColor[evaluate];
-            panel.txtScore.text = data["Score"]!.GetValue<int>().ToStringInvariant();
+            panel.txtScore.text = data.Score.ToStringInvariant();
         }
 
         /// <summary>
@@ -113,20 +113,20 @@ namespace CustomAlbums.Patches
         {
             var currentMusicInfo = GlobalDataBase.s_DbMusicTag.CurMusicInfo();
 
-            // If the chart is not custom, run the original method, otherwise continue and don't run the original method
+            // If the chart is not custom, run the original method; otherwise, run our modified one
             if (currentMusicInfo.albumJsonIndex != AlbumManager.Uid + 1) return true;
 
             // Reset the panel to its default
             ClearAndRefreshPanels(__instance, forceReload);
             __instance.designerLongNameController?.Refresh();
+            
             if (!ModSettings.SavingEnabled) return false;
 
             var recordPanel = __instance.pnlRecord;
             var currentChartData = SaveData.GetChartSaveDataFromUid(currentMusicInfo.uid);
-            var highestExists = currentChartData.TryGetPropertyValue("Highest", out var currentChartHighest);
 
             // If no highest data exists then early return
-            if (!highestExists || currentChartHighest is null)
+            if ((currentChartData.Highest?.Count ?? 0) == 0)
             {
                 Logger.Msg($"No save data found for {currentMusicInfo.uid}, nothing to inject");
                 return false;
@@ -134,16 +134,9 @@ namespace CustomAlbums.Patches
 
             var difficulty = GetDifficulty(currentMusicInfo.uid);
 
-            currentChartData.TryGetPropertyValue("FullCombo", out var currentChartFullCombo);
+            var isFullCombo = currentChartData.FullCombo?.Contains(difficulty) ?? false;
+            var currentChartHighest = currentChartData.Highest.GetValueOrDefault(difficulty);
 
-            // LINQ query to see if difficulty is in the full combo list
-            // If currentChartFullCombo is null then there is no full combo so isFullCombo is false
-            var isFullCombo = currentChartFullCombo?.AsArray().Any(x => (int)x == difficulty) ?? false;
-
-            // Get the highest score for the difficulty that is selected
-            currentChartHighest = currentChartHighest[difficulty.ToString()];
-
-            // If the current chart has no data for the selected difficulty then early return
             if (currentChartHighest is null)
             {
                 Logger.Msg($"Save data was found for the chart, but not for difficulty {difficulty}");
