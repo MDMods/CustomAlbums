@@ -52,30 +52,5 @@ namespace CustomAlbums.Patches
                 return true;
             }
         }
-
-        /// <summary>
-        ///     Prevents the game from sending any analytics if the musicInfo is custom.
-        /// </summary>
-        [HarmonyPatch(typeof(ThinkingDataPeripheralHelper), nameof(ThinkingDataPeripheralHelper.PostToThinkingData))]
-        internal class PostToThinkingDataPatch
-        {
-            private static bool Prefix(string dataStatisticsEventDefinesName, MusicInfo musicInfo)
-            {
-                return !musicInfo.uid.StartsWith($"{AlbumManager.Uid}-");
-            }
-        }
-
-        /// <summary>
-        ///     Prevents the game from sending any analytics if the musicInfo is custom.
-        /// </summary>
-        [HarmonyPatch(typeof(ThinkingDataPeripheralHelper),
-            nameof(ThinkingDataPeripheralHelper.SendFavoriteMusicBehavior))]
-        internal class SendFavoriteMusicBehaviorPatch
-        {
-            private static bool Prefix(string dataStatisticsEventDefinesNameMusicInfo, MusicInfo musicInfo)
-            {
-                return !musicInfo.uid.StartsWith($"{AlbumManager.Uid}-");
-            }
-        }
     }
 }

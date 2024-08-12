@@ -219,7 +219,7 @@ namespace CustomAlbums.Patches
         }
 
         [HarmonyPatch(typeof(DataHelper), nameof(DataHelper.CheckMusicUnlockMaster))]
-        internal class CheckUnlockMaster
+        internal class CheckUnlockMasterPatch
         {
             private static bool Prefix(MusicInfo musicInfo, ref bool __result)
             {
@@ -233,6 +233,7 @@ namespace CustomAlbums.Patches
                 // Bugged vanilla state, do manual logic
                 if (GlobalDataBase.dbUi.ability == 0 && ability != 0)
                 {
+                    Logger.Msg("Fixing bugged vanilla state for master lock");
                     var vanillaParse = Formatting.TryParseAsInt(musicInfo.difficulty3, out var difficulty);
                     var cond = !vanillaParse || ability >= difficulty;
                     __result = cond || DataHelper.unlockMasters.Contains(uid) || SaveData.UnlockedMasters.Contains(AlbumManager.GetAlbumNameFromUid(uid)) || (!AlbumManager.GetByUid(musicInfo.uid)?.IsPackaged ?? false);
@@ -396,24 +397,6 @@ namespace CustomAlbums.Patches
             {
                 if (!musicUid.StartsWith($"{AlbumManager.Uid}-")) return;
                 SaveScore(musicUid, musicDifficulty, score, acc, maximumCombo, evaluate, miss);
-            }
-        }
-
-        /// <summary>
-        ///     Stops the game from sending analytics of custom charts.
-        /// </summary>
-        [HarmonyPatch(typeof(ThinkingDataBattleHelper))]
-        internal class SendMDPatch
-        {
-            private static MethodInfo[] TargetMethods()
-            {
-                return typeof(ThinkingDataBattleHelper).GetMethods(BindingFlags.Instance | BindingFlags.Public)
-                    .Where(method => method.Name.StartsWith("Send")).ToArray();
-            }
-
-            private static bool Prefix()
-            {
-                return !BattleHelper.MusicInfo().uid.StartsWith($"{AlbumManager.Uid}-");
             }
         }
 
