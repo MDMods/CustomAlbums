@@ -79,7 +79,8 @@ namespace CustomAlbums.Managers
 
         public static Album GetByUid(string uid)
         {
-            return LoadedAlbums.FirstOrDefault(album => album.Value.Index == uid[4..].ParseAsInt()).Value;
+            var uidAsInt = uid[4..].ParseAsInt();
+            return LoadedAlbums.Values.FirstOrDefault(album => album.Index == uidAsInt);
         }
         public static string GetAlbumNameFromUid(string uid)
         {

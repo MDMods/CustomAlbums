@@ -15,6 +15,7 @@ namespace CustomAlbums.Managers
         private static readonly Logger Logger = new(nameof(HotReloadManager));
         private static Queue<string> AlbumsAdded { get; } = new();
         private static Queue<string> AlbumsDeleted { get; } = new();
+        private static Queue<string> AlbumsChanged { get; } = new();
         private static List<string> AlbumUidsAdded { get; } = new();
         private static PnlStage PnlStageInstance { get; set; }
 
@@ -33,7 +34,6 @@ namespace CustomAlbums.Managers
                 return false;
             }
         }
-
         private static void RemoveAllCachedAssets(string albumName)
         {
             Logger.Msg("Removing " + albumName + "!");
@@ -65,6 +65,8 @@ namespace CustomAlbums.Managers
 
         private static void AddNewAlbum(int previousSize, string path)
         {
+            var configAlbum = Singleton<ConfigManager>.instance.GetConfigObject<DBConfigALBUM>(AlbumManager.Uid + 1);
+            
             //var album = AlbumManager.LoadOne(path);
             //GlobalDataBase.s_DbMusicTag.m_StageShowMusicUids.Add("");
         }
@@ -89,8 +91,13 @@ namespace CustomAlbums.Managers
             while (AlbumsAdded.Count > 0)
             {
                 var albumName = AlbumsAdded.Dequeue();
-                AddNewAlbum(previousSize, albumName);
+                //AddNewAlbum(previousSize, albumName);
                 Console.WriteLine($"Added album via hot-reload: \"{albumName}\"");
+            }
+            while (AlbumsChanged.Count > 0)
+            {
+                var albumName = AlbumsChanged.Dequeue();
+                Console.WriteLine($"Reloaded album via hot-reload: \"{albumName}\"");
             }
             while (AlbumsDeleted.Count > 0)
             {
@@ -120,6 +127,15 @@ namespace CustomAlbums.Managers
             {
                 Logger.Msg("Deleted file " + e.Name);
                 AlbumsDeleted.Enqueue(Path.GetFileNameWithoutExtension(e.Name));
+            };
+            AlbumManager.AlbumWatcher.Changed += (s, e) =>
+            {
+                Logger.Msg("Modified file " + e.Name);
+                while (!IsFileUnlocked(e.FullPath))
+                    // Thread sleep added to not poll the drive a ton
+                    Thread.Sleep(200);
+                AlbumsChanged.Enqueue(e.FullPath);
+
             };
 
             // Start the AlbumWatcher

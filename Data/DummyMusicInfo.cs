@@ -1,6 +1,9 @@
-﻿using System;
+﻿using CustomAlbums.Utilities;
+using Il2CppAssets.Scripts.Database;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Linq;
@@ -11,6 +14,32 @@ namespace CustomAlbums.Data
 {
     internal class DummyMusicInfo
     {
+        public MusicInfo ToMusicInfo()
+        {
+            return new MusicInfo
+            {
+                uid = uid,
+                name = name,
+                author = author,
+                music = music,
+                demo = demo,
+                cover = cover,
+                noteJson = noteJson,
+                scene = scene,
+                unlockLevel = 0,
+                levelDesigner = levelDesigner,
+                levelDesigner1 = levelDesigner1,
+                levelDesigner2 = levelDesigner2,
+                levelDesigner3 = levelDesigner3,
+                levelDesigner4 = levelDesigner4,
+                levelDesigner5 = levelDesigner5,
+                difficulty1 = difficulty1,
+                difficulty2 = difficulty2,
+                difficulty3 = difficulty3,
+                difficulty4 = difficulty4,
+                difficulty5 = difficulty5
+            };
+        }
         public DummyMusicInfo(Album albumObj, string albumStr)
         {
             var albumInfo = albumObj.Info;
