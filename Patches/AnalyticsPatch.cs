@@ -96,7 +96,7 @@ namespace CustomAlbums.Patches
         ///     Cleans search result analytics of custom charts.
         /// </summary>
         [HarmonyPatch(typeof(ThinkingDataPeripheralHelper), nameof(ThinkingDataPeripheralHelper.GetSearchResultInfo))]
-        internal class PostMusicSearchInfo
+        internal class GetSearchResultInfoPatch
         {
 
             private static bool Prefix(MusicInfo musicInfo)
