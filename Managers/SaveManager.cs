@@ -110,6 +110,9 @@ namespace CustomAlbums.Managers
                 {
                     continue;
                 }
+                
+                // If our backup that we are trying to load is valid but empty, continue to try and find the last save with data in it
+                if (SaveData.IsEmpty()) continue;
                 Logger.Success($"Restored backup from {backup.LastWriteTime.DateTime}.");
                 return;
             }
