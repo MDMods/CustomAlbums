@@ -1,7 +1,7 @@
 ﻿using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
-using System.Text.Json.Nodes;
+using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using HarmonyLib;
@@ -13,7 +13,6 @@ using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Il2CppAssets.Scripts.Structs;
-using Il2CppAssets.Scripts.UI.Panels;
 using Il2CppInterop.Common;
 using Il2CppPeroPeroGames.DataStatistics;
 using MelonLoader.NativeUtils;
@@ -53,7 +52,7 @@ namespace CustomAlbums.Patches
         /// <param name="panel">The PnlRecord instance to set.</param>
         /// <param name="data">The custom chart data.</param>
         /// <param name="isFullCombo">If the selected chart has been FCed.</param>
-        private static void SetPanelWithData(PnlRecord panel, JsonNode data, bool isFullCombo)
+        private static void SetPanelWithData(PnlRecord panel, CustomChartSave data, bool isFullCombo)
         {
             // Enables the FC icon if chart has been FCed
             // Also sets the combo text to a gold color if it has been FCed
@@ -64,13 +63,13 @@ namespace CustomAlbums.Patches
             }
 
             // Sets all the PnlRecord data to custom chart data.
-            var evaluate = data["Evaluate"]!.GetValue<int>();
-            panel.txtAccuracy.text = data["AccuracyStr"]!.GetValue<string>();
-            panel.txtClear.text = data["Clear"]!.GetValue<float>().ToStringInvariant();
-            panel.txtCombo.text = data["Combo"]!.GetValue<int>().ToStringInvariant();
+            var evaluate = data.Evaluate;
+            panel.txtAccuracy.text = data.AccuracyStr;
+            panel.txtClear.text = data.Clear.ToStringInvariant();
+            panel.txtCombo.text = data.Combo.ToStringInvariant();
             panel.txtGrade.text = EvalToGrade[evaluate];
             panel.txtGrade.color = panel.gradeColor[evaluate];
-            panel.txtScore.text = data["Score"]!.GetValue<int>().ToStringInvariant();
+            panel.txtScore.text = data.Score.ToStringInvariant();
         }
 
         /// <summary>
@@ -114,20 +113,20 @@ namespace CustomAlbums.Patches
         {
             var currentMusicInfo = GlobalDataBase.s_DbMusicTag.CurMusicInfo();
 
-            // If the chart is not custom, run the original method, otherwise continue and don't run the original method
+            // If the chart is not custom, run the original method; otherwise, run our modified one
             if (currentMusicInfo.albumJsonIndex != AlbumManager.Uid + 1) return true;
 
             // Reset the panel to its default
             ClearAndRefreshPanels(__instance, forceReload);
             __instance.designerLongNameController?.Refresh();
+            
             if (!ModSettings.SavingEnabled) return false;
 
             var recordPanel = __instance.pnlRecord;
             var currentChartData = SaveData.GetChartSaveDataFromUid(currentMusicInfo.uid);
-            var highestExists = currentChartData.TryGetPropertyValue("Highest", out var currentChartHighest);
 
             // If no highest data exists then early return
-            if (!highestExists || currentChartHighest is null)
+            if ((currentChartData.Highest?.Count ?? 0) == 0)
             {
                 Logger.Msg($"No save data found for {currentMusicInfo.uid}, nothing to inject");
                 return false;
@@ -135,16 +134,9 @@ namespace CustomAlbums.Patches
 
             var difficulty = GetDifficulty(currentMusicInfo.uid);
 
-            currentChartData.TryGetPropertyValue("FullCombo", out var currentChartFullCombo);
+            var isFullCombo = currentChartData.FullCombo?.Contains(difficulty) ?? false;
+            var currentChartHighest = currentChartData.Highest.GetValueOrDefault(difficulty);
 
-            // LINQ query to see if difficulty is in the full combo list
-            // If currentChartFullCombo is null then there is no full combo so isFullCombo is false
-            var isFullCombo = currentChartFullCombo?.AsArray().Any(x => (int)x == difficulty) ?? false;
-
-            // Get the highest score for the difficulty that is selected
-            currentChartHighest = currentChartHighest[difficulty.ToString()];
-
-            // If the current chart has no data for the selected difficulty then early return
             if (currentChartHighest is null)
             {
                 Logger.Msg($"Save data was found for the chart, but not for difficulty {difficulty}");
@@ -210,7 +202,6 @@ namespace CustomAlbums.Patches
             
             if (ModSettings.SavingEnabled) SaveData.SelectedAlbum = AlbumManager.GetAlbumNameFromUid(DataHelper.selectedMusicUidFromInfoList);
             DataHelper.selectedMusicUidFromInfoList = "0-0";
-            DataHelper.unlockMasters.RemoveAll((Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
         }
 
         private static void InjectCustomData()
@@ -220,7 +211,6 @@ namespace CustomAlbums.Patches
             DataHelper.hides.AddManagedRange(SaveData.Hides.GetAlbumUidsFromNames());
             DataHelper.history.AddManagedRange(SaveData.History.GetAlbumUidsFromNames());
             DataHelper.collections.AddManagedRange(SaveData.Collections.GetAlbumUidsFromNames());
-            DataHelper.unlockMasters.AddManagedRange(SaveData.UnlockedMasters.GetAlbumUidsFromNames());
 
             if (!SaveData.SelectedAlbum.StartsWith("album_")) return;
             DataHelper.selectedAlbumUid = "music_package_999";
@@ -228,22 +218,37 @@ namespace CustomAlbums.Patches
             DataHelper.selectedMusicUidFromInfoList = AlbumManager.LoadedAlbums.TryGetValue(SaveData.SelectedAlbum, out var album) ? album.Uid : "0-0";
         }
 
-        // Dumb hack that fixes the chart appearing locked on game start even if it is unlocked
-        [HarmonyPatch(typeof(PnlStage), nameof(PnlStage.Start))]
-        internal class StartPatch
+        [HarmonyPatch(typeof(DataHelper), nameof(DataHelper.CheckMusicUnlockMaster))]
+        internal class CheckUnlockMasterPatch
         {
-            private static void Postfix(PnlStage __instance)
+            private static bool Prefix(MusicInfo musicInfo, ref bool __result)
             {
-                var uid = DataHelper.selectedMusicUid;
-                if (!DataHelper.selectedMusicUid?.StartsWith($"{AlbumManager.Uid}-") ?? true) return;
+                SaveData.Ability = Math.Max(SaveData.Ability, GlobalDataBase.dbUi.ability);
+                var ability = GameAccountSystem.instance.IsLoggedIn() ? SaveData.Ability : 0;
+                var uid = musicInfo?.uid;
 
-                var album = AlbumManager.GetByUid(uid);
+                // If musicInfo or uid is null, run original
+                if (uid is null) return true;
 
-                if (album == null || (!DataHelper.isUnlockAllMaster && !SaveData.UnlockedMasters.Contains(album!.AlbumName))) return;
+                // Bugged vanilla state, do manual logic
+                if (GlobalDataBase.dbUi.ability == 0 && ability != 0)
+                {
+                    Logger.Msg("Fixing bugged vanilla state for master lock");
+                    var vanillaParse = Formatting.TryParseAsInt(musicInfo.difficulty3, out var difficulty);
+                    var cond = !vanillaParse || ability >= difficulty;
+                    __result = cond || DataHelper.unlockMasters.Contains(uid) || SaveData.UnlockedMasters.Contains(AlbumManager.GetAlbumNameFromUid(uid)) || (!AlbumManager.GetByUid(musicInfo.uid)?.IsPackaged ?? false);
+                    return false;
+                }
 
-                __instance.difficulty3Lock.SetActive(false);
-                __instance.difficulty3Master.SetActive(true);
-                __instance.difficulty3.enabled = true;
+                // Non-bugged vanilla case
+                if (!uid.StartsWith($"{AlbumManager.Uid}-")) return true;
+
+                // Non-bugged custom case
+                var successParse = Formatting.TryParseAsInt(musicInfo.difficulty3, out var diffNum);
+                var abilityConditionOrGimmick = !successParse || ability >= diffNum;
+
+                __result = abilityConditionOrGimmick || SaveData.UnlockedMasters.Contains(AlbumManager.GetAlbumNameFromUid(uid)) || !AlbumManager.GetByUid(musicInfo.uid).IsPackaged;
+                return false;
             }
         }
 
@@ -392,24 +397,6 @@ namespace CustomAlbums.Patches
             {
                 if (!musicUid.StartsWith($"{AlbumManager.Uid}-")) return;
                 SaveScore(musicUid, musicDifficulty, score, acc, maximumCombo, evaluate, miss);
-            }
-        }
-
-        /// <summary>
-        ///     Stops the game from sending analytics of custom charts.
-        /// </summary>
-        [HarmonyPatch(typeof(ThinkingDataBattleHelper))]
-        internal class SendMDPatch
-        {
-            private static MethodInfo[] TargetMethods()
-            {
-                return typeof(ThinkingDataBattleHelper).GetMethods(BindingFlags.Instance | BindingFlags.Public)
-                    .Where(method => method.Name.StartsWith("Send")).ToArray();
-            }
-
-            private static bool Prefix()
-            {
-                return !BattleHelper.MusicInfo().uid.StartsWith($"{AlbumManager.Uid}-");
             }
         }
 

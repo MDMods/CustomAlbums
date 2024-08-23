@@ -1,6 +1,4 @@
-﻿using System.Text.Json;
-using System.Text.Json.Nodes;
-using CustomAlbums.Data;
+﻿using CustomAlbums.Data;
 using CustomAlbums.Managers;
 
 namespace CustomAlbums.Utilities
@@ -9,26 +7,31 @@ namespace CustomAlbums.Utilities
     {
         private static readonly Logger Logger = new(nameof(SaveExtensions));
 
+        // This class is only needed when you're accessing GetChartSaveDataFromUid
+        // No need to make this part of the Data area since it's a fragment of other data classes
+        public class SaveData
+        {
+            public Dictionary<int, CustomChartSave> Highest { get; set; } 
+            public List<int> FullCombo { get; set; }
+        }
+
         /// <summary>
         ///     Gets the chart save data given the chart UID.
         /// </summary>
         /// <param name="save">The save file data class.</param>
         /// <param name="uid">The chart UID.</param>
         /// <returns>A JsonObject consisting of score information from the current chart's UID.</returns>
-        public static JsonObject GetChartSaveDataFromUid(this CustomAlbumsSave save, string uid)
+        public static SaveData GetChartSaveDataFromUid(this CustomAlbumsSave save, string uid)
         {
             var album = AlbumManager.GetByUid(uid);
 
             if (album is null) return null;
 
             var key = album!.AlbumName;
-            return new JsonObject
+            return new SaveData
             {
-                { nameof(save.Highest), JsonNode.Parse(JsonSerializer.Serialize(save.Highest.GetValueOrDefault(key))) },
-                {
-                    nameof(save.FullCombo),
-                    JsonNode.Parse(JsonSerializer.Serialize(save.FullCombo.GetValueOrDefault(key)))
-                }
+                Highest = save.Highest.GetValueOrDefault(key),
+                FullCombo = save.FullCombo.GetValueOrDefault(key)
             };
         }
     }

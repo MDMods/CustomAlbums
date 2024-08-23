@@ -655,16 +655,15 @@ namespace CustomAlbums
 
         private static float GetAnimationDuration(string scene, string animation)
         {
-            var resourceName =
-                Singleton<ConfigManager>.instance.GetConfigStringValue("boss", "scene_name", "boss_name", scene);
-            var controller = ResourcesManager.instance.LoadFromName<GameObject>(resourceName)
-                .GetComponent<SpineActionController>();
+            var controller = ResourcesManager.instance.LoadFromName<GameObject>(Boss.Instance.BossFestival($"{scene.Split("_")[1]}01_boss"))
+                    .GetComponent<SpineActionController>();
             var animations = controller.gameObject.GetComponent<SkeletonAnimation>().skeletonDataAsset
                 .GetSkeletonData(true).Animations;
-
+            
             var arr = new SkeletActionData[controller.actionData.Count];
             controller.actionData.CopyTo(arr, 0);
             var actionData = new List<SkeletActionData>(arr).Find(dd => dd.name == animation);
+            
             var animName = animation;
             if (actionData is { actionIdx: not null } && actionData.actionIdx.Length != 0)
                 animName = actionData.actionIdx[0];
