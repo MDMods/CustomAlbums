@@ -193,14 +193,12 @@ namespace CustomAlbums.Managers
             var albumName = album.AlbumName;
 
             // Create new album save 
-            if (!SaveData.Highest.ContainsKey(albumName))
-                SaveData.Highest.Add(albumName, new Dictionary<int, CustomChartSave>());
+            SaveData.Highest.TryAdd(albumName, new Dictionary<int, CustomChartSave>());
 
             var currChartScore = SaveData.Highest[albumName];
 
             // Create new save data if the difficulty doesn't exist
-            if (!currChartScore.ContainsKey(musicDifficulty))
-                currChartScore.Add(musicDifficulty, new CustomChartSave());
+            currChartScore.TryAdd(musicDifficulty, new CustomChartSave());
 
             // Set previous score for PnlVictory logic
             var newScore = currChartScore[musicDifficulty];
@@ -221,8 +219,7 @@ namespace CustomAlbums.Managers
             if (miss != 0) return;
 
             // If there were no misses then add the chart/difficulty to the FullCombo list
-            if (!SaveData.FullCombo.ContainsKey(albumName))
-                SaveData.FullCombo.Add(albumName, new List<int>());
+            SaveData.FullCombo.TryAdd(albumName, new List<int>());
 
             if (!SaveData.FullCombo[albumName].Contains(musicDifficulty))
                 SaveData.FullCombo[albumName].Add(musicDifficulty);

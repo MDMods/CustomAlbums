@@ -1,5 +1,4 @@
-﻿using System.Reflection;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using CustomAlbums.Data;
 using CustomAlbums.Managers;
@@ -13,8 +12,9 @@ using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Il2CppAssets.Scripts.Structs;
+using Il2CppAssets.Scripts.UI.Panels;
 using Il2CppInterop.Common;
-using Il2CppPeroPeroGames.DataStatistics;
+using MelonLoader;
 using MelonLoader.NativeUtils;
 using static CustomAlbums.Managers.SaveManager;
 using ArgumentOutOfRangeException = System.ArgumentOutOfRangeException;
@@ -26,6 +26,11 @@ namespace CustomAlbums.Patches
 {
     internal static class SavePatch
     {
+        internal static bool? _hqPresent = null;
+        internal static bool HQPresent => _hqPresent ??= MelonBase.FindMelon("Headquarters", "AshtonMemer") is not null;           
+
+        private static string OriginalNoNetText;
+
         internal static readonly Logger Logger = new(nameof(SavePatch));
 
         // A mapping of Evaluate->letter grade
@@ -119,7 +124,7 @@ namespace CustomAlbums.Patches
             // Reset the panel to its default
             ClearAndRefreshPanels(__instance, forceReload);
             __instance.designerLongNameController?.Refresh();
-            
+
             if (!ModSettings.SavingEnabled) return false;
 
             var recordPanel = __instance.pnlRecord;
@@ -161,20 +166,51 @@ namespace CustomAlbums.Patches
 
                 __result = index switch
                 {
-                    1 => __instance.m_MaskValue.ContainsKey("levelDesigner1") ? __instance.m_MaskValue["levelDesigner1"].ToString() : __instance.levelDesigner1,
-                    2 => __instance.m_MaskValue.ContainsKey("levelDesigner2") ? __instance.m_MaskValue["levelDesigner2"].ToString() : __instance.levelDesigner2,
-                    3 => __instance.m_MaskValue.ContainsKey("levelDesigner3") ? __instance.m_MaskValue["levelDesigner3"].ToString() : __instance.levelDesigner3,
-                    4 => __instance.m_MaskValue.ContainsKey("levelDesigner4") ? __instance.m_MaskValue["levelDesigner4"].ToString() : __instance.levelDesigner4,
-                    5 => __instance.m_MaskValue.ContainsKey("levelDesigner5") ? __instance.m_MaskValue["levelDesigner5"].ToString() : __instance.levelDesigner5,
+                    1 => __instance.m_MaskValue.TryGetValue("levelDesigner1", out var d1) ? d1.ToString() : __instance.levelDesigner1,
+                    2 => __instance.m_MaskValue.TryGetValue("levelDesigner2", out var d2) ? d2.ToString() : __instance.levelDesigner2,
+                    3 => __instance.m_MaskValue.TryGetValue("levelDesigner3", out var d3) ? d3.ToString() : __instance.levelDesigner3,
+                    4 => __instance.m_MaskValue.TryGetValue("levelDesigner4", out var d4) ? d4.ToString() : __instance.levelDesigner4,
+                    5 => __instance.m_MaskValue.TryGetValue("levelDesigner5", out var d5) ? d5.ToString() : __instance.levelDesigner5,
                     _ => throw new ArgumentOutOfRangeException(nameof(index), index, "The difficulty is not a valid index.")
                 };
 
-                if (string.IsNullOrEmpty(__result) || __result == "?") __result = __instance.m_MaskValue.ContainsKey("levelDesigner") ? __instance.m_MaskValue["levelDesigner"].ToString() : __instance.levelDesigner;
+                if (string.IsNullOrEmpty(__result) || __result == "?") __result = __instance.m_MaskValue.TryGetValue("levelDesigner", out var d) ? d.ToString() : __instance.levelDesigner;
                 if (!string.IsNullOrEmpty(__result)) return false;
 
                 __result = "?????";
                 return false;
 
+            }
+        }
+
+        /// <summary>
+        /// Stops the game from loading leaderboards on custom charts if Headquarters is not installed.
+        /// </summary>
+        [HarmonyPatch(typeof(PnlRank), nameof(PnlRank.UIRefresh))]
+        internal class PnlRankPatch
+        {
+            private static bool FirstRun = true;
+            private static bool Prefix(string uid, PnlRank __instance)
+            {
+                var noNetGo = __instance.noNet.GetComponent<UnityEngine.UI.Text>();
+                if (FirstRun) OriginalNoNetText = noNetGo.text;
+                // Check first run case when on a custom and HQ is not present
+                if (uid.StartsWith($"{AlbumManager.Uid}-") && _hqPresent == null && !HQPresent)
+                {
+                    Logger.Warning("Headquarters is not installed! Custom chart leaderboards will not function.");
+                }
+
+                // Vanilla chart or HQ present
+                if (!uid.StartsWith($"{AlbumManager.Uid}-") || HQPresent)
+                {
+                    noNetGo.text = OriginalNoNetText;
+                    return true;
+                }
+
+                // Custom and HQ not present
+                noNetGo.text = "Headquarters mod is not loaded! ~(*´Д｀)";
+                __instance.noNet.SetActive(true);
+                return false;
             }
         }
 
