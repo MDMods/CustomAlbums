@@ -193,7 +193,11 @@ namespace CustomAlbums.Patches
             private static bool Prefix(string uid, PnlRank __instance)
             {
                 var noNetGo = __instance.noNet.GetComponent<UnityEngine.UI.Text>();
-                if (FirstRun) OriginalNoNetText = noNetGo.text;
+                if (FirstRun)
+                {
+                    OriginalNoNetText = noNetGo.text;
+                    FirstRun = false;
+                }
                 // Check first run case when on a custom and HQ is not present
                 if (uid.StartsWith($"{AlbumManager.Uid}-") && _hqPresent == null && !HQPresent)
                 {
