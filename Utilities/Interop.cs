@@ -2,7 +2,7 @@
 
 namespace CustomAlbums.Utilities
 {
-    internal class Interop
+    public class Interop
     {
         /// <summary>
         ///     A workaround to a memory corruption issue of creating Il2CppSystem.TypeValue types using C#'s <c>new</c> operator.
