@@ -109,6 +109,28 @@ namespace CustomAlbums.Data
             throw new FileNotFoundException();
         }
 
+        public Stream OpenNullableStream(string file)
+        {
+            if (IsPackaged)
+            {
+                using var zip = ZipFile.OpenRead(Path);
+                var entry = zip.GetEntry(file);
+
+                if (entry != null)
+                {
+                    return entry.Open().ToMemoryStream();
+                }
+
+                return null;
+            }
+
+            var path = $"{Path}\\{file}";
+            if (File.Exists(path))
+                return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+
+            return null;
+        }
+
         public MemoryStream OpenMemoryStream(string file)
         {
             if (IsPackaged)

@@ -2,7 +2,7 @@
 
 namespace CustomAlbums.Utilities
 {
-    internal static class StreamExtensions
+    public static class StreamExtensions
     {
         private static readonly Logger Logger = new(nameof(StreamExtensions));
         public static string GetHash(this Stream stream)
