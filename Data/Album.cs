@@ -8,7 +8,7 @@ namespace CustomAlbums.Data
 {
     public class Album
     {
-        private readonly Logger _logger = new(nameof(Album));
+        private static readonly Logger Logger = new(nameof(Album));
 
         public Album(string path, int index)
         {
@@ -17,7 +17,7 @@ namespace CustomAlbums.Data
                 // Load album from directory
                 if (!File.Exists($"{path}\\info.json"))
                 {
-                    _logger.Error($"Could not find info.json at: {path}\\info.json");
+                    Logger.Error($"Could not find info.json at: {path}\\info.json");
                     throw new FileNotFoundException();
                 }
 
@@ -31,7 +31,7 @@ namespace CustomAlbums.Data
                 var info = zip.GetEntry("info.json");
                 if (info == null)
                 {
-                    _logger.Error($"Could not find info.json in package: {path}");
+                    Logger.Error($"Could not find info.json in package: {path}");
                     throw new FileNotFoundException();
                 }
 
@@ -41,7 +41,7 @@ namespace CustomAlbums.Data
             }
             else
             {
-                _logger.Error($"Could not find album at: {path}");
+                Logger.Error($"Could not find album at: {path}");
                 throw new FileNotFoundException();
             }
 
@@ -97,7 +97,7 @@ namespace CustomAlbums.Data
                     return entry.Open().ToMemoryStream();
                 }
 
-                _logger.Error($"Could not find file in package: {file}");
+                Logger.Error($"Could not find file in package: {file}");
                 throw new FileNotFoundException();
             }
 
@@ -105,7 +105,7 @@ namespace CustomAlbums.Data
             if (File.Exists(path))
                 return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
-            _logger.Error($"Could not find file: {path}");
+            Logger.Error($"Could not find file: {path}");
             throw new FileNotFoundException();
         }
 
@@ -143,7 +143,7 @@ namespace CustomAlbums.Data
                     return entry.Open().ToMemoryStream();
                 }
 
-                _logger.Error($"Could not find file in package: {file}");
+                Logger.Error($"Could not find file in package: {file}");
                 throw new FileNotFoundException();
             }
 
@@ -151,7 +151,7 @@ namespace CustomAlbums.Data
             if (File.Exists(path))
                 return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite).ToMemoryStream();
 
-            _logger.Error($"Could not find file: {path}");
+            Logger.Error($"Could not find file: {path}");
             throw new FileNotFoundException();
         }
         private void GetSheets()

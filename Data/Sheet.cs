@@ -8,7 +8,7 @@ namespace CustomAlbums.Data
 {
     public class Sheet
     {
-        private readonly Logger _logger = new(nameof(Sheet));
+        private static readonly Logger Logger = new(nameof(Sheet));
 
         public Sheet(Album parentAlbum, int difficulty)
         {
@@ -58,7 +58,7 @@ namespace CustomAlbums.Data
                     var talkFile = Json.Deserialize<JsonObject>(talkStream);
                     if (talkFile.TryGetPropertyValue("version", out var node) && node?.GetValue<int>() == 2)
                     {
-                        _logger.Msg("Version 2 talk file!");
+                        Logger.Msg("Version 2 talk file!");
                         TalkFileVersion2 = true;
                     }
 
