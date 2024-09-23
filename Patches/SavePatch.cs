@@ -192,10 +192,10 @@ namespace CustomAlbums.Patches
             private static bool FirstRun = true;
             private static bool Prefix(string uid, PnlRank __instance)
             {
-                var noNetGo = __instance.noNet.GetComponent<UnityEngine.UI.Text>();
+                var noNetComp = __instance.noNet.GetComponent<UnityEngine.UI.Text>();
                 if (FirstRun)
                 {
-                    OriginalNoNetText = noNetGo.text;
+                    OriginalNoNetText = noNetComp.text;
                     FirstRun = false;
                 }
                 // Check first run case when on a custom and HQ is not present
@@ -207,12 +207,12 @@ namespace CustomAlbums.Patches
                 // Vanilla chart or HQ present
                 if (!uid.StartsWith($"{AlbumManager.Uid}-") || HQPresent)
                 {
-                    noNetGo.text = OriginalNoNetText;
+                    noNetComp.text = OriginalNoNetText;
                     return true;
                 }
 
                 // Custom and HQ not present
-                noNetGo.text = "Headquarters mod is not loaded! ~(*´Д｀)";
+                noNetComp.text = "Headquarters mod is not loaded! ~(*´Д｀)";
                 __instance.noNet.SetActive(true);
                 return false;
             }
