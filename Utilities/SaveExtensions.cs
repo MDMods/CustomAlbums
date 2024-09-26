@@ -20,7 +20,7 @@ namespace CustomAlbums.Utilities
         /// </summary>
         /// <param name="save">The save file data class.</param>
         /// <param name="uid">The chart UID.</param>
-        /// <returns>A JsonObject consisting of score information from the current chart's UID.</returns>
+        /// <returns>A <see cref="SaveData"/> object consisting of score information from the current chart's UID.</returns>
         public static SaveData GetChartSaveDataFromUid(this CustomAlbumsSave save, string uid)
         {
             var album = AlbumManager.GetByUid(uid);
