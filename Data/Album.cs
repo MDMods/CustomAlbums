@@ -10,9 +10,10 @@ namespace CustomAlbums.Data
     {
         private static readonly Logger Logger = new(nameof(Album));
 
-        public Album(string path, int index)
+        public Album(string path, int index, string packName = null)
         {
-            if (Directory.Exists(path))
+            // If packName is not null then it's a file path, not a folder chart
+            if (Directory.Exists(path) && packName == null)
             {
                 // Load album from directory
                 if (!File.Exists($"{path}\\info.json"))
@@ -27,6 +28,7 @@ namespace CustomAlbums.Data
             else if (File.Exists(path))
             {
                 // Load album from package
+                PackName = packName;
                 using var zip = ZipFile.OpenRead(path);
                 var info = zip.GetEntry("info.json");
                 if (info == null)
@@ -38,6 +40,9 @@ namespace CustomAlbums.Data
                 using var stream = info.Open();
                 Info = Json.Deserialize<AlbumInfo>(stream);
                 IsPackaged = true;
+                
+                // CurrentPack will always be null if album is not in a pack
+                IsPack = AlbumManager.CurrentPack != null;
             }
             else
             {
@@ -54,6 +59,8 @@ namespace CustomAlbums.Data
         public int Index { get; }
         public string Path { get; }
         public bool IsPackaged { get; }
+        public bool IsPack { get; }
+        public string PackName { get; }
         public AlbumInfo Info { get; }
         public Sprite Cover => this.GetCover();
         public AnimatedCover AnimatedCover => this.GetAnimatedCover();
@@ -61,7 +68,9 @@ namespace CustomAlbums.Data
         public AudioClip Demo => this.GetAudio("demo");
         public Dictionary<int, Sheet> Sheets { get; } = new();
         public string AlbumName =>
-            IsPackaged ? $"album_{System.IO.Path.GetFileNameWithoutExtension(Path)}" : $"album_{System.IO.Path.GetFileName(Path)}_folder";
+            IsPackaged ? 
+                $"album_{System.IO.Path.GetFileNameWithoutExtension(Path)}{(PackName != null ? $"_{PackName}" : string.Empty)}" 
+                : $"album_{System.IO.Path.GetFileName(Path)}_folder";
         public string Uid => $"{AlbumManager.Uid}-{Index}";
 
         public bool HasFile(string name)

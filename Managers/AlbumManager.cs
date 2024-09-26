@@ -1,6 +1,8 @@
 ﻿using CustomAlbums.Data;
 using CustomAlbums.ModExtensions;
 using CustomAlbums.Utilities;
+using Il2CppAssets.Scripts.PeroTools.Commons;
+using Il2CppAssets.Scripts.PeroTools.GeneralLocalization;
 using Il2CppPeroTools2.Resources;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
@@ -29,20 +31,55 @@ namespace CustomAlbums.Managers
         internal static Events.LoadAlbumEvent OnAlbumLoaded;
 
         private static int MaxCount { get; set; }
+        internal static string CurrentPack { get; set; } = null;
         public static Dictionary<string, Album> LoadedAlbums { get; } = new();
+
+
+        public static void LoadMany(string directory)
+        {
+            // Get the files from the directory
+            var files = Directory.EnumerateFiles(directory);
+
+            // Filter for .mdm files and find the pack.json file
+            var mdms = files.Where(file => Path.GetExtension(file).EqualsCaseInsensitive(".mdm")).ToList();
+            var json = files.FirstOrDefault(file => Path.GetFileName(file).EqualsCaseInsensitive("pack.json"));
+
+            // Initialize pack and variables
+            var pack = PackManager.CreatePack(json);
+            CurrentPack = pack.Title;
+            pack.StartIndex = MaxCount;
+
+            // Count successfully loaded .mdm files
+            pack.Length = mdms.Count(file => LoadOne(file) != null);
+
+            // Set the current pack to null and add the pack to the pack list
+            CurrentPack = null;
+            PackManager.AddPack(pack);
+        }
 
         public static Album LoadOne(string path)
         {
             MaxCount = Math.Max(LoadedAlbums.Count, MaxCount);
-            var fileName = File.GetAttributes(path).HasFlag(FileAttributes.Directory) ? Path.GetFileName(path) : Path.GetFileNameWithoutExtension(path);
+            var isDirectory = File.GetAttributes(path).HasFlag(FileAttributes.Directory);
+            var fileName = isDirectory ? Path.GetFileName(path) : Path.GetFileNameWithoutExtension(path);
+            
             if (LoadedAlbums.ContainsKey(fileName)) return null;
-
+            
             try
             {
-                var album = new Album(path, MaxCount);
+                if (isDirectory && Directory.EnumerateFiles(path)
+                    .Any(file => Path.GetFileName(file)
+                    .EqualsCaseInsensitive("pack.json")))
+                {
+                    LoadMany(path);
+                    return null;
+                }
+
+                var album = new Album(path, MaxCount, CurrentPack);
                 if (album.Info is null) return null;
 
                 var albumName = album.AlbumName;
+                
                 LoadedAlbums.Add(albumName, album);
 
                 if (album.HasFile("cover.png") || album.HasFile("cover.gif"))
@@ -93,6 +130,14 @@ namespace CustomAlbums.Managers
         {
             return albumNames.Where(name => LoadedAlbums.ContainsKey(name))
                 .Select(name => $"{Uid}-{LoadedAlbums[name].Index}");
+        }
+
+        public static string GetCustomAlbumsTitle()
+        {
+            return Languages.GetValueOrDefault(
+                SingletonScriptableObject<LocalizationSettings>
+                .instance?
+                .GetActiveOption("Language") ?? "English");
         }
     }
 }
