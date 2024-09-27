@@ -17,7 +17,7 @@ namespace CustomAlbums.Managers
                 uidIndex >= pack.StartIndex && uidIndex < pack.StartIndex + pack.Length);
 
             // If the pack has no albums in it return null, otherwise return pack (will be null if it doesn't exist)
-            return pack.Length == 0 ? null : pack;
+            return pack?.Length == 0 ? null : pack;
         }
 
         internal static Pack CreatePack(string file)
