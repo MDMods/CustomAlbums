@@ -258,7 +258,7 @@ namespace CustomAlbums.Patches
             DataHelper.selectedMusicUidFromInfoList = AlbumManager.LoadedAlbums.TryGetValue(SaveData.SelectedAlbum, out var album) ? album.Uid : "0-0";
         }
 
-        [HarmonyPatch(typeof(DataHelper), nameof(DataHelper.CheckMusicUnlockMaster))]
+        [HarmonyPatch(typeof(DataHelper), nameof(DataHelper.CheckMusicUnlockMaster), new Type[] { typeof(MusicInfo), typeof(bool) })]
         internal class CheckUnlockMasterPatch
         {
             private static bool Prefix(MusicInfo musicInfo, ref bool __result)
