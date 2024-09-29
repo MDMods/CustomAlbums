@@ -18,9 +18,11 @@ namespace CustomAlbums.Patches
         {
             private static readonly Logger Logger = new(nameof(MusicStageCellPatch));
             private static readonly LinkedList<MusicStageCell> Cells = new();
+            internal static string CurrentScene { get; set; }
 
             public static void AnimateCoversUpdate()
             {
+                if (CurrentScene is not "UISystem_PC") return;
                 var dbMusicTag = GlobalDataBase.dbMusicTag;
 
                 if (dbMusicTag == null) return;

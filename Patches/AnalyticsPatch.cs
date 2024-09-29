@@ -1,7 +1,6 @@
 ﻿using CustomAlbums.Managers;
 using HarmonyLib;
 using Il2CppAssets.Scripts.Database;
-using Il2CppAssets.Scripts.Structs.Modules;
 using Il2CppPeroPeroGames.DataStatistics;
 using System.Reflection;
 using UnityEngine;
@@ -102,10 +101,8 @@ namespace CustomAlbums.Patches
             private static bool Prefix(MusicInfo musicInfo)
             {
                 var runCond = !musicInfo.uid.StartsWith($"{AlbumManager.Uid}-");
-                if (runCond) return true;
-                
-                Logger.Msg("Blocking custom album from being added to search analytics.");
-                return false;
+                if (!runCond) Logger.Msg("Blocking custom album from being added to search analytics.");
+                return runCond;
             }    
         }
     }

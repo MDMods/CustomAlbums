@@ -1,4 +1,5 @@
 ﻿using CustomAlbums.Data;
+using CustomAlbums.ModExtensions;
 using CustomAlbums.Utilities;
 using Il2CppPeroTools2.Resources;
 using UnityEngine;
@@ -25,6 +26,7 @@ namespace CustomAlbums.Managers
 
         private static readonly Logger Logger = new(nameof(AlbumManager));
         internal static readonly FileSystemWatcher AlbumWatcher = new();
+        internal static Events.LoadAlbumEvent OnAlbumLoaded;
 
         private static int MaxCount { get; set; }
         public static Dictionary<string, Album> LoadedAlbums { get; } = new();
@@ -48,6 +50,7 @@ namespace CustomAlbums.Managers
                         HideFlags.DontUnloadUnusedAsset;
 
                 Logger.Msg($"Loaded {albumName}: {album.Info.Name}");
+                OnAlbumLoaded?.Invoke(typeof(AlbumManager), new AlbumEventArgs(album));
                 return album;
             }
             catch (Exception ex)

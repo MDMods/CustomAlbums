@@ -49,5 +49,11 @@ namespace CustomAlbums
             // TODO: Actually write HotReload
             // HotReloadManager.FixedUpdate();
         }
+
+        public override void OnSceneWasLoaded(int buildIndex, string sceneName)
+        {
+            base.OnSceneWasLoaded(buildIndex, sceneName);
+            MusicStageCellPatch.CurrentScene = sceneName;
+        }
     }
 }
