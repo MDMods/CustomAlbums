@@ -5,7 +5,7 @@ namespace CustomAlbums.Managers
 {
     internal class PackManager
     {
-        private static List<Pack> Packs = new();
+        private static readonly List<Pack> Packs = new();
         internal static Pack GetPackFromUid(string uid)
         {
             // If the uid is not custom or parsing the index fails
