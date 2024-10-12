@@ -132,6 +132,10 @@ namespace CustomAlbums.Managers
                 .Select(name => $"{Uid}-{LoadedAlbums[name].Index}");
         }
 
+        /// <summary>
+        ///     Gets the current "Custom Albums" title based on language.
+        /// </summary>
+        /// <returns>The current "Custom Albums" title based on language.</returns>
         public static string GetCustomAlbumsTitle()
         {
             return Languages.GetValueOrDefault(
