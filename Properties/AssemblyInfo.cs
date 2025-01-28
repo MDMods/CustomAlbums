@@ -7,7 +7,7 @@ using MelonLoader;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("CustomAlbums")]
-[assembly: AssemblyCopyright("Copyright © Muse Dash Modding Community 2024")]
+[assembly: AssemblyCopyright("Copyright © Muse Dash Modding Community 2025")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -29,8 +29,8 @@ using MelonLoader;
 // You can specify all the values or you can default the Build and Revision Numbers
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
-[assembly: AssemblyVersion("4.1.3.0")]
-[assembly: AssemblyFileVersion("4.1.3.0")]
-[assembly: MelonInfo(typeof(CustomAlbums.Main), "CustomAlbums", "4.1.3", "Team Baller")]
+[assembly: AssemblyVersion("4.1.4.0")]
+[assembly: AssemblyFileVersion("4.1.4.0")]
+[assembly: MelonInfo(typeof(CustomAlbums.Main), "CustomAlbums", "4.1.4", "Two Fellas")]
 [assembly: MelonGame("PeroPeroGames", "MuseDash")]
 [assembly: MelonColor(255, 0, 255, 150)]
