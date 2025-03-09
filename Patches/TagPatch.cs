@@ -24,7 +24,7 @@ namespace CustomAlbums.Patches
                 var customInfo = new CustomTagInfo
                 {
                     tag_name = AlbumManager.Languages.ToIl2Cpp(),
-                    tag_picture = "https://mdmc.moe/cdn/melon.png",
+                    tag_picture = "https://cdn.mdmc.moe/static/melon.png",
                     music_list = AlbumManager.GetAllUid().ToIl2Cpp()
                 };
 
