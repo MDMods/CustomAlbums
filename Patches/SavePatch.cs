@@ -432,11 +432,10 @@ namespace CustomAlbums.Patches
         [HarmonyPatch(typeof(GameAccountSystem), nameof(GameAccountSystem.UploadScore))]
         internal class UploadScorePatch
         {
-            private static void Postfix(string musicUid, int musicDifficulty, string characterUid, string elfinUid,
-                int hp, int score, float acc, int maximumCombo, string evaluate, int miss)
+            private static void Postfix(SceneUploadResultData resData)
             {
-                if (!musicUid.StartsWith($"{AlbumManager.Uid}-")) return;
-                SaveScore(musicUid, musicDifficulty, score, acc, maximumCombo, evaluate, miss);
+                if (!resData.musicUid.StartsWith($"{AlbumManager.Uid}-")) return;
+                SaveScore(resData.musicUid, resData.musicDifficulty, resData.score, resData.accuracy, resData.combo, resData.evaluate, resData.miss);
             }
         }
 

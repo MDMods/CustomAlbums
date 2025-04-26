@@ -8,6 +8,7 @@ using Il2CppAssets.Scripts.PeroTools.Managers;
 using Il2CppAssets.Scripts.UI.Tips;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppPeroPeroGames.GlobalDefines;
+using MelonLoader;
 
 namespace CustomAlbums.Patches
 {
@@ -43,55 +44,35 @@ namespace CustomAlbums.Patches
                         DBMusicTagDefine.s_BarrageModeSongUid = newTouhouArray;
                     }
                     // Enable hidden mode for charts containing map4
-                    if (LoadedHiddens.Contains(value.Uid))
+                    if (!LoadedHiddens.Contains(value.Uid)) continue;
+
+                    var albumUid = value.Uid;
+
+                    __instance.m_HideBmsInfos.Add(albumUid,
+                        new SpecialSongManager.HideBmsInfo(
+                            albumUid,
+                            value.Info.HideBmsDifficulty == "0"
+                                ? value.HasDifficulty(3) ? 3 : 2
+                                : value.Info.HideBmsDifficulty.ParseAsInt(),
+                            4,
+                            $"{key}_map4",
+                            new Func<bool>(() => __instance.IsInvokeHideBms(albumUid))
+                        ));
+
+                    // Add chart to the appropriate list for their hidden type
+                    var hideMusicInfo = new HideMusicInfo
                     {
-                        var albumUid = value.Uid;
-
-                        __instance.m_HideBmsInfos.Add(albumUid,
-                            new SpecialSongManager.HideBmsInfo(
-                                albumUid,
-                                value.Info.HideBmsDifficulty == "0"
-                                    ? value.HasDifficulty(3) ? 3 : 2
-                                    : value.Info.HideBmsDifficulty.ParseAsInt(),
-                                4,
-                                $"{key}_map4",
-                                (Il2CppSystem.Func<bool>)delegate { return __instance.IsInvokeHideBms(albumUid); }
-                            ));
-
-                        // Add chart to the appropriate list for their hidden type
-                        switch (value.Info.HideBmsMode)
+                        musicUid = albumUid,
+                        invokeType = value.Info.HideBmsMode switch
                         {
-                            case "CLICK":
-                                var newClickArr = new Il2CppStringArray(__instance.m_ClickHideUids.Length + 1);
-
-                                for (var i = 0; i < __instance.m_ClickHideUids.Length; i++)
-                                    newClickArr[i] = __instance.m_ClickHideUids[i];
-                                newClickArr[^1] = albumUid;
-
-                                __instance.m_ClickHideUids = newClickArr;
-                                break;
-
-                            case "PRESS":
-                                var newPressArr = new Il2CppStringArray(__instance.m_LongPressHideUids.Length + 1);
-
-                                for (var i = 0; i < __instance.m_LongPressHideUids.Length; i++)
-                                    newPressArr[i] = __instance.m_LongPressHideUids[i];
-                                newPressArr[^1] = albumUid;
-
-                                __instance.m_LongPressHideUids = newPressArr;
-                                break;
-
-                            case "TOGGLE":
-                                var newToggleArr = new Il2CppStringArray(__instance.m_ToggleChangedHideUids.Length + 1);
-
-                                for (var i = 0; i < __instance.m_ToggleChangedHideUids.Length; i++)
-                                    newToggleArr[i] = __instance.m_ToggleChangedHideUids[i];
-                                newToggleArr[^1] = albumUid;
-
-                                __instance.m_ToggleChangedHideUids = newToggleArr;
-                                break;
+                            "CLICK" => (int)HiddenInvokeType.Click,
+                            "PRESS" => (int)HiddenInvokeType.LongPress,
+                            "TOGGLE" => (int)HiddenInvokeType.Toggle,
+                            _ => (int)HiddenInvokeType.None
                         }
-                    }
+                    };
+
+                    __instance.m_ConfigHideMusic.m_HideMusicObjectMapping[albumUid] = hideMusicInfo;
                 }
                 HasUpdate = false;
             }
@@ -223,5 +204,14 @@ namespace CustomAlbums.Patches
                 HasUpdate = false;
             }
         }
+    }
+
+    internal enum HiddenInvokeType
+    {
+        None = 0,
+        LongPress = 1,
+        Toggle = 2,
+        Click = 3,
+        Special = 4
     }
 }
