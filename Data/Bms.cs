@@ -2,7 +2,6 @@
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
-using Il2CppFormulaBase;
 using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
 
@@ -331,6 +330,9 @@ namespace CustomAlbums.Data
         {
             NoteData = new Dictionary<string, NoteConfigData>();
 
+            // NOTE: PPG has officially gone mad. The new scene 12 does not appear in the scene list, so we can't really use the scene list anymore.
+            Span<int> sceneSpan = stackalloc int[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+
             foreach (var config in NoteDataMananger.instance.noteDatas)
             {
                 // Ignore april fools variants (these are handled elsewhere)
@@ -355,16 +357,14 @@ namespace CustomAlbums.Data
                 if (anyScene)
                 {
                     scenes = new List<string>();
-                    foreach (var scene in Singleton<StageBattleComponent>.instance.sceneInfo)
+
+                    foreach (var scene in sceneSpan)
                     {
                         // Special handling for collectibles in touhou scene
-                        if (config.GetNoteType() is NoteType.Hp or NoteType.Music && scene.Value == 8)
+                        if (config.GetNoteType() is NoteType.Hp or NoteType.Music && scene == 8)
                             continue;
 
-                        // Fix for 10+ scenes
-                        var sceneSuffix = scene.Value.ToString().Length == 1
-                            ? $"0{scene.Value}"
-                            : scene.Value.ToString();
+                        var sceneSuffix = scene.ToString().PadLeft(2, '0');
                         scenes.Add($"scene_{sceneSuffix}");
                     }
                 }
@@ -417,6 +417,7 @@ namespace CustomAlbums.Data
             var speedGround = speedAir;
 
             var objectId = 1;
+
             for (var i = 0; i < Notes.Count; i++)
             {
                 var note = Notes[i];
@@ -433,6 +434,7 @@ namespace CustomAlbums.Data
                     pathway = 1;
                 else if (channelType.HasFlag(ChannelType.Ground) || channelType.HasFlag(ChannelType.Event))
                     pathway = 0;
+
                 if (pathway == -1) continue;
 
                 // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
@@ -474,6 +476,7 @@ namespace CustomAlbums.Data
 
                 var speed = pathway == 1 ? speedAir : speedGround;
                 var scene = Info["GENRE"]?.GetValue<string>();
+
                 if (!NoteData!.TryGetValue(GetNoteDataKey(bmsKey, pathway, speed, scene), out var configData))
                     continue;
 

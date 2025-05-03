@@ -25,7 +25,7 @@ jobs:
 
     - name: Download Dependencies
       run: |
-        wget -O dependencies.zip https://mdmc.moe/cdn/cadeps.zip
+        wget -O dependencies.zip https://cdn.mdmc.moe/static/cadeps.zip
         unzip dependencies.zip -d dependencies
 
     - name: Restore and Build
