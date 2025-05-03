@@ -39,6 +39,7 @@ namespace CustomAlbums.Patches
         {
             private static void Prefix(Il2CppSystem.Collections.Generic.List<int> sceneEggIdsBuffer)
             {
+                // Return if there are no scene eggs or if the scene eggs have special logic
                 if (IgnoreSceneEggs(out var album, SceneEggs.None, SceneEggs.Christmas, SceneEggs.BadApple)) return;
 
                 // Adds the scene egg to the buffer
@@ -52,18 +53,17 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        ///     Makes scene_05 be scene_05_christmas if the Christmas SceneEgg is enabled or scene_08 be scene_touhou_black if
-        ///     BadApple is enabled.
+        ///     Makes scene_05 be scene_05_christmas if the Christmas SceneEgg is enabled.
         /// </summary>
         [HarmonyPatch(typeof(GameMusicScene), nameof(GameMusicScene.SceneFestival))]
         internal class SceneFestivalPatch
         {
             private static bool Prefix(string sceneFestivalName, ref string __result)
             {
-                // If the scene is not scene_05 or scene_08 then there is no Christmas or Bad Apple
+                // If the scene is not scene_05 or scene_08 then there is no Christmas
                 if (sceneFestivalName != "scene_05") return true;
 
-                // Ignore the actual SceneEggs (and BadApple)
+                // Ignore the actual SceneEggs
                 if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.None,
                         SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku, SceneEggs.BadApple, SceneEggs.RinLen)) return true;
 
@@ -97,10 +97,10 @@ namespace CustomAlbums.Patches
         [HarmonyPatch(typeof(DBTouhou), nameof(DBTouhou.AwakeInit))]
         internal class BadApplePatch
         {
-            private static void Postfix(ref string __state)
+            private static void Postfix()
             {
                 if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.None,
-                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku, SceneEggs.Christmas, SceneEggs.RinLen)) return;
+                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku, SceneEggs.Christmas, SceneEggs.RinLen, SceneEggs.BlueArchive)) return;
 
                 GlobalDataBase.dbTouhou.isBadApple = true;
 
