@@ -9,11 +9,12 @@ This mod was written from the ground-up by [MDMC](https://github.com/MDMods), so
 ## Dependencies
 - [MelonLoader v0.6.1](https://github.com/LavaGang/MelonLoader/releases/tag/v0.6.1)
 - [Muse Dash on Steam](https://store.steampowered.com/app/774171/Muse_Dash/)
+- [Muse Plus DLC on Steam](https://store.steampowered.com/app/2593750/Muse_Dash__Muse_Plus/) (or Just as Planned)
 ## Building
 - Install MelonLoader into Muse Dash and run it once
 - Run SetPath.cmd as administrator and follow the instructions
-- Build tested with Visual Studio 2022, MelonLoader 0.6.1, Muse Dash 5.1.0
-- Will NOT work on MelonLoader 0.6.2. Newer versions might work, but 0.6.1 is recommended
+- Build tested with Visual Studio 2022, MelonLoader v0.6.1, Muse Dash v5.3.0
+- Will NOT work on MelonLoader v0.6.2. Newer versions might work, but v0.6.1 is recommended
 ## Credits & Contributions
 - [ALLMarvelous](https://github.com/ALLMarvelous) - Lead Developer
 - [Mr. Talk](https://github.com/SB15-MD) - Lead Developer
