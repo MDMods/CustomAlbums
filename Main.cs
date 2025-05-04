@@ -12,7 +12,7 @@ namespace CustomAlbums
 
         public const string MelonName = "CustomAlbums";
         public const string MelonAuthor = "Two Fellas";
-        public const string MelonVersion = "4.1.6";
+        public const string MelonVersion = "4.1.7";
 
         public override void OnInitializeMelon()
         {
