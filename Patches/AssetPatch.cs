@@ -39,7 +39,7 @@ namespace CustomAlbums.Patches
         /// </summary>
         /// <param name="oldAssetName">The old assetName.</param>
         /// <param name="newAssetName">The new assetName where the value should be bound.</param>
-        /// <returns>true if the key was successfully bound; otherwise, false.</returns>
+        /// <returns><see langword="true"/> if the key was successfully bound; otherwise, <see langword="false"/>.</returns>
         internal static bool ModifyCacheKey(string oldAssetName, string newAssetName)
         {
             var success = AssetCache.Remove(oldAssetName, out var asset);
@@ -50,7 +50,7 @@ namespace CustomAlbums.Patches
         ///     Removes a KeyValuePair from the asset cache.
         /// </summary>
         /// <param name="key">The key corresponding to the value to be removed.</param>
-        /// <returns>true if the entry was successfully removed; otherwise, false.</returns>
+        /// <returns><see langword="true"/> if the entry was successfully removed; otherwise, <see langword="false"/>.</returns>
         internal static bool RemoveFromCache(string key)
         {
             return AssetCache.Remove(key);
@@ -240,8 +240,8 @@ namespace CustomAlbums.Patches
         }
 
         /// <summary>
-        ///     Gets <c>LoadFromName&lt;TextAsset&gt;</c> and detours it using a
-        ///     <c>NativeHook&lt;LoadFromNameDelegate&gt;</c> to <c>LoadFromNamePatch</c>.
+        ///     Gets <see cref="ResourcesManager.LoadFromName{}"/> where T : <see cref="TextAsset"/> and detours it using a
+        ///     <see cref="NativeHook{}"/> where T : <see cref="LoadFromNameDelegate"/> to <c>LoadFromNamePatch</c>.
         /// </summary>
         internal static unsafe void AttachHook()
         {
@@ -277,11 +277,11 @@ namespace CustomAlbums.Patches
         ///     Modifies certain game data as it get loaded.
         ///     The game data that is modified directly adds support for custom albums.
         /// </summary>
-        /// <param name="instance">The instance of ResourceManager calling LoadFromName.</param>
+        /// <param name="instance">The instance of <c>ResourceManager</c> calling <c>LoadFromName</c>.</param>
         /// <param name="assetNamePtr">The pointer to the string assetName.</param>
         /// <param name="nativeMethodInfo">Method info used by the original method.</param>
         /// <returns>
-        ///     A pointer of either a newly created asset if it exists or the original asset pointer if a new one was not
+        ///     An <see cref="IntPtr"/> of either a newly created asset if it exists or the original asset <see cref="IntPtr"/> if a new one was not
         ///     created.
         /// </returns>
         [UnmanagedCallersOnly(CallConvs = new[] { typeof(CallConvCdecl) })]
@@ -348,7 +348,7 @@ namespace CustomAlbums.Patches
         /// </summary>
         /// <param name="name"></param>
         /// <param name="text"></param>
-        /// <returns>A new TextAsset initialized with the parameters.</returns>
+        /// <returns>A new <see cref="TextAsset"/> initialized with the parameters.</returns>
         private static TextAsset CreateTextAsset(string name, string text)
         {
             return new TextAsset(text)

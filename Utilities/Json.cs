@@ -49,8 +49,8 @@ namespace CustomAlbums.Utilities
         /// <summary>
         ///     Fixes strange issue where getting a single as a decimal does not work.
         /// </summary>
-        /// <param name="node">A JsonNode</param>
-        /// <returns>The decimal value</returns>
+        /// <param name="node">A <see cref="JsonNode"/></param>
+        /// <returns>The parsed <see cref="decimal"/> value</returns>
         public static decimal GetValueAsDecimal(this JsonNode node)
         {
             return node.ToString().TryParseAsDecimal(out var result) ? result : 0M;

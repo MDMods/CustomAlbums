@@ -10,6 +10,7 @@ using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore.HostComponent;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
+using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Il2CppAssets.Scripts.Structs;
 using Il2CppAssets.Scripts.UI.Panels;
@@ -52,9 +53,9 @@ namespace CustomAlbums.Patches
         //
 
         /// <summary>
-        ///     Sets the PnlRecord (score, combo, accuracy) to the custom chart data.
+        ///     Sets the <see cref="PnlRecord"/> (score, combo, accuracy) to the custom chart data.
         /// </summary>
-        /// <param name="panel">The PnlRecord instance to set.</param>
+        /// <param name="panel">The <see cref="PnlRecord"/> instance to set.</param>
         /// <param name="data">The custom chart data.</param>
         /// <param name="isFullCombo">If the selected chart has been FCed.</param>
         private static void SetPanelWithData(PnlRecord panel, CustomChartSave data, bool isFullCombo)
@@ -79,9 +80,10 @@ namespace CustomAlbums.Patches
 
         /// <summary>
         ///     Clears the current pnlRecord and refreshes the panel if needed.
-        ///     <param name="panelPreparation">The PnlPreparation instance.</param>
-        ///     <param name="reload">Whether panelPreparation should force reload the leaderboards.</param>
-        /// </summary>
+        /// </summary>  
+        /// <param name="panelPreparation">The <see cref="PnlPreparation"/> instance.</param>
+        /// <param name="reload">Whether panelPreparation should force reload the leaderboards.</param>
+        /// 
         private static void ClearAndRefreshPanels(PnlPreparation panelPreparation, bool reload)
         {
             panelPreparation.pnlRecord.Clear();
@@ -111,8 +113,8 @@ namespace CustomAlbums.Patches
         /// <summary>
         ///     Grabs the custom chart data and injects the PnlRecord with the chart data.
         /// </summary>
-        /// <param name="__instance">The PnlPreparation instance.</param>
-        /// <param name="forceReload">Whether the PnlPreparation instance should force reload the leaderboards.</param>
+        /// <param name="__instance">The <see cref="PnlPreparation"/> instance.</param>
+        /// <param name="forceReload">Whether the <see cref="PnlPreparation"/> instance should force reload the leaderboards.</param>
         /// <returns></returns>
         private static bool InjectPnlPreparation(PnlPreparation __instance, bool forceReload)
         {
@@ -231,6 +233,8 @@ namespace CustomAlbums.Patches
                 (Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
             DataHelper.collections.RemoveAll(
                 (Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
+            DataHelper.highest.RemoveAll(
+                (Il2CppSystem.Predicate<IData>)(data => data.GetUid().StartsWith($"{AlbumManager.Uid}-")));
 
             if (DataHelper.selectedAlbumUid == "music_package_999")
                 DataHelper.selectedAlbumUid = "music_package_0";
