@@ -10,6 +10,7 @@ using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore.HostComponent;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
+using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
 using Il2CppAssets.Scripts.PeroTools.Platforms.Steam;
 using Il2CppAssets.Scripts.Structs;
 using Il2CppAssets.Scripts.UI.Panels;
@@ -232,6 +233,8 @@ namespace CustomAlbums.Patches
                 (Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
             DataHelper.collections.RemoveAll(
                 (Il2CppSystem.Predicate<string>)(uid => uid.StartsWith($"{AlbumManager.Uid}-")));
+            DataHelper.highest.RemoveAll(
+                (Il2CppSystem.Predicate<IData>)(data => data.GetUid().StartsWith($"{AlbumManager.Uid}-")));
 
             if (DataHelper.selectedAlbumUid == "music_package_999")
                 DataHelper.selectedAlbumUid = "music_package_0";
