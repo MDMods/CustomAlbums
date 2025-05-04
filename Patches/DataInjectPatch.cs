@@ -93,7 +93,6 @@ namespace CustomAlbums.Patches
             data.fields.Add("failCount", CreateIVariable(save.FailCount));
             data.fields.Add("passed", CreateIVariable(save.Passed));
 
-            Logger.Msg("Yippee! IData made for " + album.Info.Name, false);
             return data.Cast<IData>();
         }
 
