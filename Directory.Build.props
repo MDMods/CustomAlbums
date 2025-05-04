@@ -180,8 +180,4 @@
             <HintPath>$(MelonAssemblies)\UnityEngine.UnityWebRequestModule.dll</HintPath>
         </Reference>
     </ItemGroup>
-
-    <PropertyGroup>
-        <OutputPath>$(MsBuildThisFileDirectory)\Output\$(Configuration)\</OutputPath>
-    </PropertyGroup>
 </Project>
