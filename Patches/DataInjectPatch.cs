@@ -1,6 +1,5 @@
 ﻿using CustomAlbums.Data;
 using CustomAlbums.Managers;
-using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
@@ -16,7 +15,6 @@ namespace CustomAlbums.Patches
     internal class DataInjectPatch
     {
         internal static readonly IDataList DataList = new();
-        private static readonly Logger Logger = new(nameof(DataInjectPatch));
 
         // ReSharper disable once InconsistentNaming
         private static void Postfix(ref IDataList __result)
@@ -28,13 +26,9 @@ namespace CustomAlbums.Patches
             {
                 var combined1 = new IDataList();
                 foreach (var item in highest)
-                {
                     combined1.Add(item);
-                }
                 foreach (var item in DataList)
-                {
                     combined1.Add(item);
-                }
 
                 __result = combined1;
                 return;
@@ -47,10 +41,7 @@ namespace CustomAlbums.Patches
                 foreach (var (difficulty, save) in albumDic)
                 {
                     if (!AlbumManager.LoadedAlbums.TryGetValue(albumName, out var album))
-                    {
-                        Logger.Warning($"No album found for key {albumName}.");
                         continue;
-                    }
 
                     var data = CreateIData(album, difficulty, save);
                     DataList.Add(data);
