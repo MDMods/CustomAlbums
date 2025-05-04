@@ -1,0 +1,18 @@
+<Project>
+	<Target Name="Repack" AfterTargets="Build">
+		<PropertyGroup>
+			<WorkingDirectory>$(OutputPath)</WorkingDirectory>
+		</PropertyGroup>
+		<ItemGroup>
+			<InputAssemblies Include="$(OutputPath)$(AssemblyName).dll" />
+			<InputAssemblies Include="$(OutputPath)NAudio.Core.dll" />
+			<InputAssemblies Include="$(OutputPath)NAudio.Vorbis.dll" />
+			<InputAssemblies Include="$(OutputPath)NLayer.dll" />
+			<InputAssemblies Include="$(OutputPath)NVorbis.dll" />
+			<InputAssemblies Include="$(OutputPath)SixLabors.ImageSharp.dll" />
+			<IlRepackLibs Include="$(OutputPath)" />
+			<IlRepackLibs Include="$(MelonNET6)" />
+		</ItemGroup>
+		<ILRepack LibraryPath="@(IlRepackLibs)" OutputFile="$(OutputPath)$(AssemblyName).dll" InputAssemblies="@(InputAssemblies)" Parallel="true" />
+	</Target>
+</Project>
