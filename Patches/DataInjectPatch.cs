@@ -70,7 +70,7 @@ namespace CustomAlbums.Patches
         /// <param name="difficulty">The difficulty of the chart.</param>
         /// <param name="save">The CustomChartSave object containing the save data.</param>
         /// <returns></returns>
-        internal static IData CreateIData(Album album, int difficulty, CustomChartSave save)
+        internal static IData CreateIData(Album album, int difficulty, ChartSave save)
         {
             var data = new Il2CppAssets.Scripts.PeroTools.Nice.Datas.Data();
 
@@ -81,7 +81,6 @@ namespace CustomAlbums.Patches
             data.fields.Add("accuracy", CreateIVariable(save.Accuracy));
             data.fields.Add("accuracyStr", CreateIVariable(save.AccuracyStr));
             data.fields.Add("clear", CreateIVariable(save.Clear));
-            data.fields.Add("failCount", CreateIVariable(save.FailCount));
             data.fields.Add("passed", CreateIVariable(save.Passed));
 
             return data.Cast<IData>();

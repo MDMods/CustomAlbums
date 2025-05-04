@@ -58,7 +58,7 @@ namespace CustomAlbums.Patches
         /// <param name="panel">The <see cref="PnlRecord"/> instance to set.</param>
         /// <param name="data">The custom chart data.</param>
         /// <param name="isFullCombo">If the selected chart has been FCed.</param>
-        private static void SetPanelWithData(PnlRecord panel, CustomChartSave data, bool isFullCombo)
+        private static void SetPanelWithData(PnlRecord panel, ChartSave data, bool isFullCombo)
         {
             // Enables the FC icon if chart has been FCed
             // Also sets the combo text to a gold color if it has been FCed

@@ -1,4 +1,5 @@
-﻿using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
+﻿using CustomAlbums.Data;
+using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
 
 namespace CustomAlbums.Utilities
 {
@@ -38,6 +39,39 @@ namespace CustomAlbums.Utilities
             }
 
             return -1;
+        }
+
+        /// <summary>
+        /// Gets the IData object from a list by its uid and difficulty.
+        /// </summary>
+        /// <param name="dataList">The IData list.</param>
+        /// <param name="uid">The uid of the chart.</param>
+        /// <param name="difficulty">The difficulty of the chart.</param>
+        /// <returns>The IData object, or null if not found.</returns>
+        public static IData GetIDataByUid(this Il2CppSystem.Collections.Generic.List<IData> dataList, string uid, int difficulty)
+        {
+            foreach (var data in dataList)
+            {
+                if (data.GetUid() == $"{uid}_{difficulty}")
+                {
+                    return data;
+                }
+            }
+
+            return null;
+        }
+
+        public static ChartSave ToChartSave(this IData data)
+        {
+            return new ChartSave
+            {
+                Evaluate = data.fields["evaluate"].GetResult<int>(),
+                Score = data.fields["score"].GetResult<int>(),
+                Combo = data.fields["combo"].GetResult<int>(),
+                Accuracy = data.fields["accuracy"].GetResult<float>(),
+                AccuracyStr = data.fields["accuracyStr"].GetResult<string>(),
+                Clear = data.fields["clear"].GetResult<float>()
+            };
         }
     }
 }
