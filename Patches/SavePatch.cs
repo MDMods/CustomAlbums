@@ -236,6 +236,15 @@ namespace CustomAlbums.Patches
             DataHelper.highest.RemoveAll(
                 (Il2CppSystem.Predicate<IData>)(data => data.GetUid().StartsWith($"{AlbumManager.Uid}-")));
 
+            var keysToRemove = new List<string>();
+
+            foreach (var kvp in DataHelper.dicLevelConfig) 
+                if (kvp.key.StartsWith("999"))
+                    keysToRemove.Add(kvp.key);
+
+            foreach (var key in keysToRemove)
+                DataHelper.dicLevelConfig.Remove(key);
+
             if (DataHelper.selectedAlbumUid == "music_package_999")
                 DataHelper.selectedAlbumUid = "music_package_0";
 
