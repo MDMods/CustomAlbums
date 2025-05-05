@@ -1,54 +1,44 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>disable</Nullable>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <Platforms>AnyCPU;x64</Platforms>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
-  </PropertyGroup>
-
-  <ItemGroup>
-    <None Remove="Directory.Build.props" />
-    <None Remove="SetPath.cmd" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.40">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
-    <PackageReference Include="NAudio.Vorbis" Version="1.5.0" />
-    <PackageReference Include="NLayer" Version="1.16.0" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
-    <PackageReference Include="System.Net.Http" Version="4.3.4" />
-    <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
-  </ItemGroup>
-
-  <Target Name="ILRepacker" AfterTargets="Build">
     <PropertyGroup>
-      <WorkingDirectory>$(OutputPath)</WorkingDirectory>
+        <TargetFramework>net6.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>disable</Nullable>
+        <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <Platforms>x64</Platforms>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
-    <ItemGroup>
-      <InputAssemblies Include="$(OutputPath)\$(AssemblyName).dll" />
-      <InputAssemblies Include="$(OutputPath)\NAudio.Core.dll" />
-      <InputAssemblies Include="$(OutputPath)\NAudio.Vorbis.dll" />
-      <InputAssemblies Include="$(OutputPath)\NLayer.dll" />
-      <InputAssemblies Include="$(OutputPath)\NVorbis.dll" />
-      <InputAssemblies Include="$(OutputPath)\SixLabors.ImageSharp.dll" />
-      <IlRepackLibs Include="$(OutputPath)" />
-      <IlRepackLibs Include="$(MelonNET6)" />
-    </ItemGroup>
-    <ILRepack LibraryPath="@(IlRepackLibs)" OutputFile="$(OutputPath)\$(AssemblyName).dll" InputAssemblies="@(InputAssemblies)" Parallel="true" />
-  </Target>
-  
-  <Target Name="ILRepackCopy" AfterTargets="ILRepacker" Condition="'$(WORKER)' != 'GitHub'">
-    <Copy SourceFiles="$(OutputPath)\$(AssemblyName).dll" DestinationFolder="$(GameFolder)\Mods" />
-    <Message Text="Copied DLL -&gt; $(GameFolder)\Mods\$(ProjectName).dll" Importance="High" />
-  </Target>
 
-  <Target Name="WarnDeprecatedPath" AfterTargets="Build" Condition="!Exists('$(MD_DIRECTORY)')">
-    <Message Text="Warning: MD_NET6_DIRECTORY is no longer in use. Please remove the environment variable and run SetPath.cmd again." Importance="High" />
-  </Target>
+	<ItemGroup>
+        <None Remove="Directory.Build.props" />
+		<None Remove="SetPath.cmd" />
+		<None Remove=".gitattributes" />
+		<None Remove=".gitignore" />
+		<None Remove="LICENSE" />
+		<None Remove="README.md" />
+		<None Remove="ILRepack.targets" />
+	</ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.40">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+		<PackageReference Include="NAudio.Vorbis" Version="1.5.0">
+			<ExcludeAssets>contentFiles</ExcludeAssets>
+		</PackageReference>
+        <PackageReference Include="NLayer" Version="1.16.0" />
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
+        <PackageReference Include="System.Net.Http" Version="4.3.4" />
+        <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
+    </ItemGroup>
+
+    <Target Name="CopyMod" AfterTargets="Repack" Condition="'$(WORKER)' != 'GitHub'">
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GameFolder)\Mods" />
+        <Message Text="Copied assembly to '$(GameFolder)\Mods\$(ProjectName).dll'" Importance="High" />
+    </Target>
+
+    <Target Name="WarnDeprecatedPath" AfterTargets="Build" Condition="!Exists('$(MD_DIRECTORY)')">
+        <Message Text="Warning: MD_NET6_DIRECTORY is no longer in use. Please remove the environment variable and run SetPath.cmd again." Importance="High" />
+    </Target>
 </Project>

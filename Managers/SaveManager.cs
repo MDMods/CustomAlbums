@@ -29,25 +29,25 @@ namespace CustomAlbums.Managers
             // If we need to fix the history
             if (firstHistory != null && firstHistory.StartsWith("pkg_"))
             {
-                var fixedQueue = new Queue<string>(SaveData.History.Count);
+                var fixedList = new List<string>(SaveData.History.Count);
                 foreach (var history in SaveData.History.Where(history => history.StartsWith("pkg_")))
                 {
                     stringBuilder.Clear();
                     stringBuilder.Append(history);
                     stringBuilder.Remove(0, 4);
                     stringBuilder.Insert(0, "album_");
-                    fixedQueue.Enqueue(stringBuilder.ToString());
+                    fixedList.Add(stringBuilder.ToString());
                 }
 
-                SaveData.History = fixedQueue;
+                SaveData.History = fixedList;
             }
 
             // If we need to fix the highest
-            if (!firstHighest.Equals(default(KeyValuePair<string, Dictionary<int, CustomChartSave>>)) &&
+            if (!firstHighest.Equals(default(KeyValuePair<string, Dictionary<int, ChartSave>>)) &&
                 firstHighest.Key.StartsWith("pkg_"))
             {
                 var fixedDictionaryHighest =
-                    new Dictionary<string, Dictionary<int, CustomChartSave>>(SaveData.Highest.Count);
+                    new Dictionary<string, Dictionary<int, ChartSave>>(SaveData.Highest.Count);
                 foreach (var (key, value) in SaveData.Highest.Where(kv => kv.Key.StartsWith("pkg_")))
                 {
                     stringBuilder.Clear();
@@ -194,12 +194,12 @@ namespace CustomAlbums.Managers
             var albumName = album.AlbumName;
 
             // Create new album save 
-            SaveData.Highest.TryAdd(albumName, new Dictionary<int, CustomChartSave>());
+            SaveData.Highest.TryAdd(albumName, new Dictionary<int, ChartSave>());
 
             var currChartScore = SaveData.Highest[albumName];
 
             // Create new save data if the difficulty doesn't exist
-            currChartScore.TryAdd(musicDifficulty, new CustomChartSave());
+            currChartScore.TryAdd(musicDifficulty, new ChartSave());
 
             // Set previous score for PnlVictory logic
             var newScore = currChartScore[musicDifficulty];

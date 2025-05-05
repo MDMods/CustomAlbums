@@ -11,7 +11,7 @@ namespace CustomAlbums.Utilities
         // No need to make this part of the Data area since it's a fragment of other data classes
         public class SaveData
         {
-            public Dictionary<int, CustomChartSave> Highest { get; set; } 
+            public Dictionary<int, ChartSave> Highest { get; set; } 
             public List<int> FullCombo { get; set; }
         }
 

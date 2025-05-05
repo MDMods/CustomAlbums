@@ -1,6 +1,5 @@
 ﻿using CustomAlbums.Data;
 using CustomAlbums.Managers;
-using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
@@ -16,7 +15,6 @@ namespace CustomAlbums.Patches
     internal class DataInjectPatch
     {
         internal static readonly IDataList DataList = new();
-        private static readonly Logger Logger = new(nameof(DataInjectPatch));
 
         // ReSharper disable once InconsistentNaming
         private static void Postfix(ref IDataList __result)
@@ -28,13 +26,9 @@ namespace CustomAlbums.Patches
             {
                 var combined1 = new IDataList();
                 foreach (var item in highest)
-                {
                     combined1.Add(item);
-                }
                 foreach (var item in DataList)
-                {
                     combined1.Add(item);
-                }
 
                 __result = combined1;
                 return;
@@ -47,10 +41,7 @@ namespace CustomAlbums.Patches
                 foreach (var (difficulty, save) in albumDic)
                 {
                     if (!AlbumManager.LoadedAlbums.TryGetValue(albumName, out var album))
-                    {
-                        Logger.Warning($"No album found for key {albumName}.");
                         continue;
-                    }
 
                     var data = CreateIData(album, difficulty, save);
                     DataList.Add(data);
@@ -79,7 +70,7 @@ namespace CustomAlbums.Patches
         /// <param name="difficulty">The difficulty of the chart.</param>
         /// <param name="save">The CustomChartSave object containing the save data.</param>
         /// <returns></returns>
-        internal static IData CreateIData(Album album, int difficulty, CustomChartSave save)
+        internal static IData CreateIData(Album album, int difficulty, ChartSave save)
         {
             var data = new Il2CppAssets.Scripts.PeroTools.Nice.Datas.Data();
 
@@ -90,7 +81,6 @@ namespace CustomAlbums.Patches
             data.fields.Add("accuracy", CreateIVariable(save.Accuracy));
             data.fields.Add("accuracyStr", CreateIVariable(save.AccuracyStr));
             data.fields.Add("clear", CreateIVariable(save.Clear));
-            data.fields.Add("failCount", CreateIVariable(save.FailCount));
             data.fields.Add("passed", CreateIVariable(save.Passed));
 
             return data.Cast<IData>();

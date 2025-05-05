@@ -1,6 +1,6 @@
 ﻿namespace CustomAlbums.Data
 {
-    public class CustomChartSave
+    public class ChartSave
     {
         public int Evaluate { get; set; } = 0;
         public int Score { get; set; } = 0;
