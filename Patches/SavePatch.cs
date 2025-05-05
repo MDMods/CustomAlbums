@@ -381,10 +381,15 @@ namespace CustomAlbums.Patches
                 if (!musicUid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
 
-                if (SaveData.History.Count == 10)
-                    SaveData.History.Dequeue();
+                var albumName = AlbumManager.GetAlbumNameFromUid(musicUid);
 
-                SaveData.History.Enqueue(AlbumManager.GetAlbumNameFromUid(musicUid));
+                // Remove album from history if it exists
+                SaveData.History.Remove(albumName);
+                SaveData.History.Add(albumName);
+
+                if (SaveData.History.Count > 10)
+                    SaveData.History.RemoveAt(0);
+
                 return true;
             }
         }

@@ -29,17 +29,17 @@ namespace CustomAlbums.Managers
             // If we need to fix the history
             if (firstHistory != null && firstHistory.StartsWith("pkg_"))
             {
-                var fixedQueue = new Queue<string>(SaveData.History.Count);
+                var fixedList = new List<string>(SaveData.History.Count);
                 foreach (var history in SaveData.History.Where(history => history.StartsWith("pkg_")))
                 {
                     stringBuilder.Clear();
                     stringBuilder.Append(history);
                     stringBuilder.Remove(0, 4);
                     stringBuilder.Insert(0, "album_");
-                    fixedQueue.Enqueue(stringBuilder.ToString());
+                    fixedList.Add(stringBuilder.ToString());
                 }
 
-                SaveData.History = fixedQueue;
+                SaveData.History = fixedList;
             }
 
             // If we need to fix the highest
