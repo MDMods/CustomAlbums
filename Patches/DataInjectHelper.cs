@@ -6,7 +6,7 @@ using Il2CppAssets.Scripts.PeroTools.Nice.Variables;
 
 namespace CustomAlbums.Patches
 {
-    internal class DataInjectPatch
+    internal class DataInjectHelper
     {
         /// <summary>
         /// Processes all saved custom album high scores and queues them to be included in <see cref="DataHelper.highest"/>.
