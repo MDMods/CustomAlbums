@@ -3,7 +3,6 @@ using System.Text.Json;
 using CustomAlbums.Data;
 using CustomAlbums.Utilities;
 using System.IO.Compression;
-using CustomAlbums.Patches;
 
 namespace CustomAlbums.Managers
 {
@@ -216,16 +215,6 @@ namespace CustomAlbums.Managers
 
             if (musicDifficulty is 2 && AlbumManager.LoadedAlbums[albumName].HasDifficulty(3) && newScore.Evaluate >= 4)
                 SaveData.UnlockedMasters.Add(albumName);
-
-            // Update the IData for the played chart
-            var dataIndex = DataInjectPatch.DataList.GetIndexByUid(album.Uid, musicDifficulty);
-            if (dataIndex != -1)
-            {
-                DataInjectPatch.DataList.RemoveAt(dataIndex);
-            }
-
-            var newIData = DataInjectPatch.CreateIData(album, musicDifficulty, newScore);
-            DataInjectPatch.DataList.Add(newIData);
 
             // If there were no misses then add the chart/difficulty to the FullCombo list
             if (miss != 0) return;
