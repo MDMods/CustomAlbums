@@ -10,7 +10,7 @@ namespace CustomAlbums.Patches
 {
 
     [HarmonyPatch(typeof(PnlStage), nameof(PnlStage.RefreshDiffUI))]
-    internal class DifficultyGradePatch
+    internal class DifficultyGradeIconPatch
     { 
         private static int GetEvaluate(Dictionary<int, Data.ChartSave> highest, int diff) => highest.GetValueOrDefault(diff)?.Evaluate ?? -1;
 
