@@ -226,7 +226,7 @@ namespace CustomAlbums.Managers
             }
 
             var newIData = DataInjectPatch.CreateIData(album, musicDifficulty, newScore);
-            DataInjectPatch.DataQueue.Add(newIData);
+            DataHelper.highest.Add(newIData);
 
             // If there were no misses then add the chart/difficulty to the FullCombo list
             if (miss != 0) return;

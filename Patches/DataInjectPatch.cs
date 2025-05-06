@@ -1,40 +1,21 @@
 ﻿using CustomAlbums.Data;
 using CustomAlbums.Managers;
-using CustomAlbums.Utilities;
-using HarmonyLib;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
 using Il2CppAssets.Scripts.PeroTools.Nice.Variables;
-using IDataList = Il2CppSystem.Collections.Generic.List<Il2CppAssets.Scripts.PeroTools.Nice.Interface.IData>;
 
 namespace CustomAlbums.Patches
 {
-    /// <summary>
-    /// This patch modifies the highest property of DataHelper to include custom charts.
-    /// </summary>
-    [HarmonyPatch(typeof(DataHelper), nameof(DataHelper.highest), MethodType.Getter)]
     internal class DataInjectPatch
     {
-        internal static readonly List<IData> DataQueue = new();
-
-        // ReSharper disable once InconsistentNaming
-        private static void Postfix(ref IDataList __result)
-        {
-            var highest = __result;
-            if (highest == null) return;
-
-            highest.AddManagedRange(DataQueue);
-            DataQueue.Clear();
-        }
         /// <summary>
         /// Processes all saved custom album high scores and queues them to be included in <see cref="DataHelper.highest"/>.
-        /// It converts valid entries into Muse Dash-compatible IData objects via <see cref="CreateIData"/>,
-        /// and adds them to the <see cref="DataQueue"/> for later injection into the game's official data.
         /// Unloaded albums are skipped.
         /// </summary>
-        internal static void QueueAll()
+        internal static void AddAll()
         {
             var customsHighest = SaveManager.SaveData.Highest;
+            var highest = DataHelper.highest;
 
             foreach (var (albumName, albumDic) in customsHighest)
             {
@@ -44,7 +25,7 @@ namespace CustomAlbums.Patches
                         continue;
 
                     var data = CreateIData(album, difficulty, save);
-                    DataQueue.Add(data);
+                    highest.Add(data);
                 }
             }
         }

@@ -264,7 +264,7 @@ namespace CustomAlbums.Patches
             DataHelper.hides.AddManagedRange(SaveData.Hides.GetAlbumUidsFromNames());
             DataHelper.history.AddManagedRange(SaveData.History.GetAlbumUidsFromNames());
             DataHelper.collections.AddManagedRange(SaveData.Collections.GetAlbumUidsFromNames());
-            DataInjectPatch.QueueAll();
+            DataInjectPatch.AddAll();
 
             if (!SaveData.SelectedAlbum.StartsWith("album_")) return;
             DataHelper.selectedAlbumUid = "music_package_999";
