@@ -1,5 +1,6 @@
 ﻿using CustomAlbums.Data;
 using CustomAlbums.Managers;
+using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.PeroTools.Nice.Interface;
@@ -14,26 +15,25 @@ namespace CustomAlbums.Patches
     [HarmonyPatch(typeof(DataHelper), nameof(DataHelper.highest), MethodType.Getter)]
     internal class DataInjectPatch
     {
-        internal static readonly IDataList DataList = new();
+        internal static readonly List<IData> DataQueue = new();
 
         // ReSharper disable once InconsistentNaming
         private static void Postfix(ref IDataList __result)
         {
-            var highest = DataHelper.s_DataManager["Achievement"]["highest"].GetResult<IDataList>();
+            var highest = __result;
             if (highest == null) return;
 
-            if (DataList.Count > 0)
-            {
-                var combined1 = new IDataList();
-                foreach (var item in highest)
-                    combined1.Add(item);
-                foreach (var item in DataList)
-                    combined1.Add(item);
-
-                __result = combined1;
-                return;
-            }
-
+            highest.AddManagedRange(DataQueue);
+            DataQueue.Clear();
+        }
+        /// <summary>
+        /// Processes all saved custom album high scores and queues them to be included in <see cref="DataHelper.highest"/>.
+        /// It converts valid entries into Muse Dash-compatible IData objects via <see cref="CreateIData"/>,
+        /// and adds them to the <see cref="DataQueue"/> for later injection into the game's official data.
+        /// Unloaded albums are skipped.
+        /// </summary>
+        internal static void QueueAll()
+        {
             var customsHighest = SaveManager.SaveData.Highest;
 
             foreach (var (albumName, albumDic) in customsHighest)
@@ -44,23 +44,9 @@ namespace CustomAlbums.Patches
                         continue;
 
                     var data = CreateIData(album, difficulty, save);
-                    DataList.Add(data);
+                    DataQueue.Add(data);
                 }
             }
-
-            // combine the two lists highest and data
-            var combined = new IDataList();
-            foreach (var item in highest)
-            {
-                combined.Add(item);
-            }
-            foreach (var item in DataList)
-            {
-                combined.Add(item);
-            }
-
-            // set the result to the combined list
-            __result = combined;
         }
 
         /// <summary>
