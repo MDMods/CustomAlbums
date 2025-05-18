@@ -4,6 +4,7 @@ using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.GeneralLocalization;
 using Il2CppPeroTools2.Resources;
+using System.IO.Compression;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
 
@@ -14,6 +15,7 @@ namespace CustomAlbums.Managers
         public const int Uid = 999;
         public const string SearchPath = "Custom_Albums";
         public const string SearchPattern = "*.mdm";
+        public const string PackSearchPattern = "*.mdp";
         public static readonly string JsonName = $"ALBUM{Uid + 1}";
         public static readonly string MusicPackage = $"music_package_{Uid}";
 
@@ -35,26 +37,68 @@ namespace CustomAlbums.Managers
         public static Dictionary<string, Album> LoadedAlbums { get; } = new();
 
 
-        public static void LoadMany(string directory)
+        public static void LoadPack(string directory)
         {
             // Get the files from the directory
-            var files = Directory.EnumerateFiles(directory);
+            try
+            {
+                var zipFiles = ZipFile.OpenRead(directory);
 
-            // Filter for .mdm files and find the pack.json file
-            var mdms = files.Where(file => Path.GetExtension(file).EqualsCaseInsensitive(".mdm")).ToList();
-            var json = files.FirstOrDefault(file => Path.GetFileName(file).EqualsCaseInsensitive("pack.json"));
+                // Filter for .mdm files and find the pack.json file
+                var mdms = zipFiles.Entries.Where(file => file.Name.EndsWith(".mdm"));
+                var json = zipFiles.Entries.FirstOrDefault(file => file.Name.EndsWith(".json"));
 
-            // Initialize pack and variables
-            var pack = PackManager.CreatePack(json);
-            CurrentPack = pack.Title;
-            pack.StartIndex = MaxCount;
+                // Initialize pack and variables
+                var pack = PackManager.CreatePack(json);
+                CurrentPack = pack.Title;
+                pack.StartIndex = MaxCount;
 
-            // Count successfully loaded .mdm files
-            pack.Length = mdms.Count(file => LoadOne(file) != null);
+                // Count successfully loaded .mdm files
+                pack.Length = mdms.Count(mdm => LoadOne(directory, mdm, mdm.Name) != null);
 
-            // Set the current pack to null and add the pack to the pack list
-            CurrentPack = null;
-            PackManager.AddPack(pack);
+                // Set the current pack to null and add the pack to the pack list
+                CurrentPack = null;
+                PackManager.AddPack(pack);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Failed to load album at {directory}. Reason: {ex.Message}");
+                Logger.Warning(ex.StackTrace);
+            }
+        }
+
+        public static Album LoadOne(string directory, ZipArchiveEntry mdm, string fullFileName)
+        {
+            var fileName = Path.GetFileNameWithoutExtension(fullFileName);
+            MaxCount = Math.Max(LoadedAlbums.Count, MaxCount);
+            
+            if (LoadedAlbums.ContainsKey(fileName)) return null;
+
+            try
+            {
+                var album = new Album(directory, mdm, MaxCount, CurrentPack);
+                if (album.Info is null) return null;
+
+                var albumName = album.AlbumName;
+                Logger.Msg("Adding " + albumName + " as a pack!");
+
+                LoadedAlbums.Add(albumName, album);
+
+                if (album.HasFile("cover.png") || album.HasFile("cover.gif"))
+                    ResourcesManager.instance.LoadFromName<Sprite>($"{albumName}_cover").hideFlags |=
+                        HideFlags.DontUnloadUnusedAsset;
+
+                Logger.Msg($"Loaded {albumName}: {album.Info.Name}");
+                OnAlbumLoaded?.Invoke(typeof(AlbumManager), new AlbumEventArgs(album));
+                return album;
+            }
+            catch (Exception ex)
+            {
+                Logger.Warning($"Failed to load album at {fileName}. Reason: {ex.Message}");
+                Logger.Warning(ex.StackTrace);
+            }
+
+            return null;
         }
 
         public static Album LoadOne(string path)
@@ -67,14 +111,6 @@ namespace CustomAlbums.Managers
             
             try
             {
-                if (isDirectory && Directory.EnumerateFiles(path)
-                    .Any(file => Path.GetFileName(file)
-                    .EqualsCaseInsensitive("pack.json")))
-                {
-                    LoadMany(path);
-                    return null;
-                }
-
                 var album = new Album(path, MaxCount, CurrentPack);
                 if (album.Info is null) return null;
 
@@ -102,12 +138,15 @@ namespace CustomAlbums.Managers
         public static void LoadAlbums()
         {
             LoadedAlbums.Clear();
-
+            
+            var packs = new List<string>();
             var files = new List<string>();
             files.AddRange(Directory.GetFiles(SearchPath, SearchPattern));
             files.AddRange(Directory.GetDirectories(SearchPath));
+            packs.AddRange(Directory.GetFiles(SearchPath, PackSearchPattern));
 
             foreach (var file in files) LoadOne(file);
+            foreach (var pack in packs) LoadPack(pack);
 
             Logger.Msg($"Finished loading {LoadedAlbums.Count} albums.", false);
         }

@@ -1,5 +1,6 @@
 ﻿using CustomAlbums.Data;
 using CustomAlbums.Utilities;
+using System.IO.Compression;
 
 namespace CustomAlbums.Managers
 {
@@ -14,15 +15,15 @@ namespace CustomAlbums.Managers
 
             // Retrieve the pack that the uid belongs to
             var pack = Packs.FirstOrDefault(pack =>
-                uidIndex >= pack.StartIndex && uidIndex < pack.StartIndex + pack.Length);
+                uidIndex > pack.StartIndex && uidIndex <= pack.StartIndex + pack.Length);
 
             // If the pack has no albums in it return null, otherwise return pack (will be null if it doesn't exist)
             return pack?.Length == 0 ? null : pack;
         }
 
-        internal static Pack CreatePack(string file)
+        internal static Pack CreatePack(ZipArchiveEntry json)
         {
-            return Json.Deserialize<Pack>(File.OpenRead(file));
+            return Json.Deserialize<Pack>(json.Open());
         }
 
         internal static void AddPack(Pack pack)
