@@ -236,6 +236,15 @@ namespace CustomAlbums.Patches
             DataHelper.highest.RemoveAll(
                 (Il2CppSystem.Predicate<IData>)(data => data.GetUid().StartsWith($"{AlbumManager.Uid}-")));
 
+            var keysToRemove = new List<string>();
+
+            foreach (var kvp in DataHelper.dicLevelConfig) 
+                if (kvp.key.StartsWith("999"))
+                    keysToRemove.Add(kvp.key);
+
+            foreach (var key in keysToRemove)
+                DataHelper.dicLevelConfig.Remove(key);
+
             if (DataHelper.selectedAlbumUid == "music_package_999")
                 DataHelper.selectedAlbumUid = "music_package_0";
 
@@ -381,10 +390,15 @@ namespace CustomAlbums.Patches
                 if (!musicUid.StartsWith($"{AlbumManager.Uid}-")) return true;
                 if (!ModSettings.SavingEnabled) return false;
 
-                if (SaveData.History.Count == 10)
-                    SaveData.History.Dequeue();
+                var albumName = AlbumManager.GetAlbumNameFromUid(musicUid);
 
-                SaveData.History.Enqueue(AlbumManager.GetAlbumNameFromUid(musicUid));
+                // Remove album from history if it exists
+                SaveData.History.Remove(albumName);
+                SaveData.History.Add(albumName);
+
+                if (SaveData.History.Count > 10)
+                    SaveData.History.RemoveAt(0);
+
                 return true;
             }
         }
