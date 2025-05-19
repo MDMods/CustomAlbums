@@ -31,10 +31,10 @@ jobs:
     - name: Restore and Build
       run: |
         dotnet restore CustomAlbums.sln
-        dotnet build "/p:MelonNET6=./dependencies;WORKER=GitHub" CustomAlbums.sln
+        dotnet build -c Release "/p:MelonNET6=./dependencies;WORKER=GitHub" CustomAlbums.sln
 
     - name: Upload Artifact
       uses: actions/upload-artifact@v4
       with:
         name: CustomAlbums.dll
-        path: ./Output/Debug/CustomAlbums.dll
+        path: ./bin/Release/CustomAlbums.dll
