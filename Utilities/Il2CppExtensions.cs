@@ -1,4 +1,5 @@
-﻿using System.Collections.ObjectModel;
+﻿using Il2CppInterop.Runtime.InteropTypes.Arrays;
+using System.Collections.ObjectModel;
 
 namespace CustomAlbums.Utilities
 {
@@ -70,6 +71,31 @@ namespace CustomAlbums.Utilities
             if (key == null || !dict.ContainsKey(key)) return false;
             outValue = dict[key];
             return true;
+        }
+
+        public static unsafe Il2CppStructArray<T> MemCopyFromManaged<T>(this T[] arr, long? size = null) where T : unmanaged
+        {
+            var len = arr.Length;
+            if (size is not null && size < 0) 
+                throw new ArgumentOutOfRangeException(nameof(size), "The size to copy cannot be negative.");
+            
+            var lenCopy = size ?? len;
+            if (lenCopy > len)
+                throw new ArgumentOutOfRangeException(nameof(size), "The size to copy is larger than the array length.");
+
+
+            var il2CppArray = new Il2CppStructArray<T>(len);
+
+            fixed (void* managedArrayBase = &arr[0])
+            {
+                Buffer.MemoryCopy(
+                    managedArrayBase,
+                    IntPtr.Add(il2CppArray.Pointer, 4 * IntPtr.Size).ToPointer(),
+                    checked(il2CppArray.Length * sizeof(T)),
+                    checked(lenCopy * sizeof(T)));
+            }
+
+            return il2CppArray;
         }
     }
 }

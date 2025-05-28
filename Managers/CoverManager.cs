@@ -20,10 +20,11 @@ namespace CustomAlbums.Managers
 
         public static Sprite GetCover(this Album album)
         {
-            if (!album.HasFile("cover.png")) return null;
+            if (!album.HasPng) return null;
             if (CachedCovers.TryGetValue(album.Index, out var cached)) return cached;
 
-            using var stream = album.OpenMemoryStream("cover.png");
+            using var stream = album.OpenNullableStream("cover.png")?.ToMemoryStream();
+            if (stream is null) return null;
 
             var bytes = stream.ReadFully();
 
@@ -32,7 +33,7 @@ namespace CustomAlbums.Managers
             {
                 wrapMode = TextureWrapMode.MirrorOnce
             };
-            texture.LoadImage(bytes);
+            texture.LoadImage(bytes.MemCopyFromManaged());
 
             var cover = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
             CachedCovers.Add(album.Index, cover);
@@ -42,14 +43,17 @@ namespace CustomAlbums.Managers
 
         public static unsafe AnimatedCover GetAnimatedCover(this Album album)
         {
+            return null;
             // Early return statements
-            if (!album.HasFile("cover.gif")) return null;
+            if (!album.HasGif) return null;
             if (CachedAnimatedCovers.TryGetValue(album.Index, out var cached)) return cached;
 
             Config.PreferContiguousImageBuffers = true;
 
             // Open and load the gif
-            using var stream = album.OpenMemoryStream("cover.gif");
+            using var stream = album.OpenNullableStream("cover.gif").ToMemoryStream();
+            if (stream is null) return null;
+
             using var gif = Image.Load<Rgba32>(new DecoderOptions { Configuration = Config }, stream);
 
             // For some reason Unity loads textures upside down?
