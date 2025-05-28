@@ -31,6 +31,9 @@ namespace CustomAlbums.Data
             // CurrentPack will always be null if album is not in a pack
             IsPack = AlbumManager.CurrentPack != null;
 
+            HasGif = openedZip.GetEntry("cover.gif") != null;
+            HasPng = openedZip.GetEntry("cover.png") != null;
+
             Index = index;
             Path = directory;
             PackAlbumName = System.IO.Path.GetFileNameWithoutExtension(mdm.Name);
@@ -51,6 +54,8 @@ namespace CustomAlbums.Data
 
                 using var fileStream = File.OpenRead($"{path}\\info.json");
                 Info = Json.Deserialize<AlbumInfo>(fileStream);
+                HasGif = File.Exists(System.IO.Path.Combine(path, "cover.gif"));
+                HasPng = File.Exists(System.IO.Path.Combine(path, "cover.png"));
             }
             else if (File.Exists(path))
             {
@@ -70,6 +75,9 @@ namespace CustomAlbums.Data
                 
                 // CurrentPack will always be null if album is not in a pack
                 IsPack = AlbumManager.CurrentPack != null;
+
+                HasGif = zip.GetEntry("cover.gif") != null;
+                HasPng = zip.GetEntry("cover.png") != null;
             }
             else
             {
@@ -88,6 +96,8 @@ namespace CustomAlbums.Data
         public string Path { get; }
         public bool IsPackaged { get; }
         public bool IsPack { get; }
+        public bool HasPng { get; }
+        public bool HasGif { get; }
         public string PackName { get; }
         public AlbumInfo Info { get; }
         public Sprite Cover => this.GetCover();

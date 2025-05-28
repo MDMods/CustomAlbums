@@ -12,7 +12,8 @@ namespace CustomAlbums.Patches
         private static readonly Logger Logger = new(nameof(PackPatch));
         
         [HarmonyPatch(typeof(LongSongNameController), nameof(LongSongNameController.Refresh), new[] { typeof(string), typeof(bool), typeof(float) })]
-        internal class RefreshPatch {
+        internal class RefreshPatch 
+        {
             private static void SetColor(string colorHex, LongSongNameController instance)
             {
                 var fixedColor = UnityEngine.ColorUtility.TryParseHtmlString(colorHex, out var color) ? color : UnityEngine.Color.white;

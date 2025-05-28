@@ -53,6 +53,8 @@ namespace CustomAlbums.Managers
                 CurrentPack = pack.Title;
                 pack.StartIndex = MaxCount;
 
+                MaxCount = Math.Max(LoadedAlbums.Count, MaxCount);
+
                 // Count successfully loaded .mdm files
                 pack.Length = mdms.Count(mdm => LoadOne(directory, mdm, mdm.Name) != null);
 
@@ -84,7 +86,7 @@ namespace CustomAlbums.Managers
 
                 LoadedAlbums.Add(albumName, album);
 
-                if (album.HasFile("cover.png") || album.HasFile("cover.gif"))
+                if (album.HasPng || album.HasGif)
                     ResourcesManager.instance.LoadFromName<Sprite>($"{albumName}_cover").hideFlags |=
                         HideFlags.DontUnloadUnusedAsset;
 
@@ -118,7 +120,7 @@ namespace CustomAlbums.Managers
                 
                 LoadedAlbums.Add(albumName, album);
 
-                if (album.HasFile("cover.png") || album.HasFile("cover.gif"))
+                if (album.HasPng || album.HasGif)
                     ResourcesManager.instance.LoadFromName<Sprite>($"{albumName}_cover").hideFlags |=
                         HideFlags.DontUnloadUnusedAsset;
 

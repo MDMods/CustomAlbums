@@ -14,11 +14,11 @@ namespace CustomAlbums.Managers
                 !uid[4..].TryParseAsInt(out var uidIndex)) return null;
 
             // Retrieve the pack that the uid belongs to
-            var pack = Packs.FirstOrDefault(pack =>
-                uidIndex > pack.StartIndex && uidIndex <= pack.StartIndex + pack.Length);
+            var retrievedPack = Packs.FirstOrDefault(pack =>
+                uidIndex >= pack.StartIndex && uidIndex < pack.StartIndex + pack.Length);
 
             // If the pack has no albums in it return null, otherwise return pack (will be null if it doesn't exist)
-            return pack?.Length == 0 ? null : pack;
+            return retrievedPack?.Length is 0 ? null : retrievedPack;
         }
 
         internal static Pack CreatePack(ZipArchiveEntry json)
