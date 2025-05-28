@@ -22,7 +22,11 @@ namespace CustomAlbums.Patches
 
             public static void AnimateCoversUpdate()
             {
-                if (CurrentScene is not "UISystem_PC") return;
+                if (CurrentScene is not "UISystem_PC")
+                {
+                    Cells.Clear();
+                    return;
+                }
                 var dbMusicTag = GlobalDataBase.dbMusicTag;
 
                 if (dbMusicTag == null) return;

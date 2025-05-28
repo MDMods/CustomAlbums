@@ -43,7 +43,6 @@ namespace CustomAlbums.Managers
 
         public static unsafe AnimatedCover GetAnimatedCover(this Album album)
         {
-            return null;
             // Early return statements
             if (!album.HasGif) return null;
             if (CachedAnimatedCovers.TryGetValue(album.Index, out var cached)) return cached;

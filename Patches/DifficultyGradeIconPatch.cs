@@ -29,7 +29,9 @@ namespace CustomAlbums.Patches
             if (uid.StartsWith($"{AlbumManager.Uid}-"))
             {
                 // Gets the highest data from save data
-                var customHighest = SaveManager.SaveData.GetChartSaveDataFromUid(uid).Highest;
+                var customHighest = SaveManager.SaveData.GetChartSaveDataFromUid(uid)?.Highest;
+
+                if (customHighest == null) return;
 
                 // Get the Evaluate value from each, set diff3 to diff4 if hidden is invoked
                 var diff1 = GetEvaluate(customHighest, 1);
