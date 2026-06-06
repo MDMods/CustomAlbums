@@ -1,9 +1,9 @@
-﻿using System.Text.Json.Nodes;
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.GameCore.Managers;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
+using Decimal = Il2CppSystem.Decimal;
 
 namespace CustomAlbums.Data
 {
@@ -306,20 +306,13 @@ namespace CustomAlbums.Data
             ["3F"] = BmsId.BossBullet2LaneShift
         };
 
-        public JsonObject Info { get; set; }
-        public JsonArray Notes { get; set; }
-        public JsonArray NotesPercent { get; set; }
+        public BmsInfo Info { get; set; }
+        public List<RawNote> Notes { get; set; }
+        public List<TimeSigEntry> NotesPercent { get; set; }
         public string Md5 { get; set; }
         public Dictionary<string, NoteConfigData> NoteData { get; set; }
 
-        public float Bpm
-        {
-            get
-            {
-                var bpmString = Info["BPM"]?.GetValue<string>() ?? Info["BPM01"]?.GetValue<string>() ?? string.Empty;
-                return bpmString.TryParseAsFloat(out var bpm) ? bpm : 0f;
-            }
-        }
+        public float Bpm => Info.Bpm;
 
         public static string GetNoteDataKey(string bmsId, int pathway, int speed, string scene)
         {
@@ -384,48 +377,52 @@ namespace CustomAlbums.Data
 
             foreach (var note in Notes)
             {
-                var bmsKey = note["value"]?.GetValue<string>() ?? string.Empty;
-                if (string.IsNullOrEmpty(bmsKey)) continue;
+                if (string.IsNullOrEmpty(note.Value)) continue;
 
-                var channelTone = note["tone"]?.GetValue<string>() ?? string.Empty;
-                if (!Channels.TryGetValue(channelTone, out var channel)) continue;
+                if (!Channels.TryGetValue(note.Tone, out var channel)) continue;
 
                 if (channel.HasFlag(ChannelType.Scene))
                     sceneEvents.Add(new SceneEvent
                     {
-                        time = note["time"].GetValueAsIl2CppDecimal(),
-                        uid = $"SceneEvent/{bmsKey}"
+                        time = (Decimal)(float)(decimal)note.Time,
+                        uid = $"SceneEvent/{note.Value}"
                     });
                 else if (channel.HasFlag(ChannelType.SpBpmDirect) || channel.HasFlag(ChannelType.SpBpmLookup))
                     sceneEvents.Add(new SceneEvent
                     {
-                        time = note["time"].GetValueAsIl2CppDecimal(),
+                        time = (Decimal)(float)(decimal)note.Time,
                         uid = "SceneEvent/OnBPMChanged",
-                        value = note["value"]?.GetValue<string>() ?? string.Empty
+                        value = note.Value
                     });
             }
 
             return sceneEvents;
         }
 
-        public JsonArray GetNoteData()
+        public List<ProcessedNote> GetNoteData()
         {
             if (NoteData is null || NoteData.Count == 0) InitNoteData();
-            var processed = new JsonArray();
+            var processed = new List<ProcessedNote>();
 
-            var speedAir = (Info["PLAYER"]?.GetValue<string>() ?? "1").ParseAsInt();
+            var speedAir = Info.Player;
             var speedGround = speedAir;
 
             var objectId = 1;
 
+            // Track which note indices have been consumed as hold-note endpoints
+            var consumedIndices = new HashSet<int>();
+
             for (var i = 0; i < Notes.Count; i++)
             {
-                var note = Notes[i];
-                if (note is null) continue;
+                if (consumedIndices.Contains(i)) continue;
 
-                var bmsKey = note["value"]?.GetValue<string>() ?? "00";
+                var note = Notes[i];
+
+                var bmsKey = note.Value;
+                if (string.IsNullOrEmpty(bmsKey)) continue;
+
                 var bmsId = BmsIds.GetValueOrDefault(bmsKey, BmsId.None);
-                var channel = note["tone"]?.GetValue<string>() ?? string.Empty;
+                var channel = note.Tone;
                 var channelType = Channels.GetValueOrDefault(channel, ChannelType.None);
 
                 // Handle lane type
@@ -475,12 +472,12 @@ namespace CustomAlbums.Data
                 }
 
                 var speed = pathway == 1 ? speedAir : speedGround;
-                var scene = Info["GENRE"]?.GetValue<string>();
+                var scene = Info.Genre;
 
                 if (!NoteData!.TryGetValue(GetNoteDataKey(bmsKey, pathway, speed, scene), out var configData))
                     continue;
 
-                var time = note["time"]?.GetValueAsDecimal() ?? 0M;
+                var time = (decimal)note.Time;
 
                 // Hold note & masher 
                 var holdLength = 0M;
@@ -492,27 +489,28 @@ namespace CustomAlbums.Data
                     else
                         for (var j = i + 1; j < Notes.Count; j++)
                         {
+                            if (consumedIndices.Contains(j)) continue;
+
                             var holdEndNote = Notes[j];
-                            var holdEndTime = holdEndNote?["time"]?.GetValueAsDecimal() ?? 0M;
-                            var holdEndBmsKey = holdEndNote?["value"]?.GetValue<string>() ?? string.Empty;
-                            var holdEndChannel = holdEndNote?["tone"]?.GetValue<string>() ?? string.Empty;
+                            var holdEndTime = (decimal)holdEndNote.Time;
+                            var holdEndBmsKey = holdEndNote.Value;
+                            var holdEndChannel = holdEndNote.Tone;
 
                             if (holdEndBmsKey != bmsKey || holdEndChannel != channel) continue;
                             holdLength = holdEndTime - time;
-                            Notes[j]!["value"] = "";
+                            consumedIndices.Add(j);
                             break;
                         }
                 }
 
-                processed.Add(new JsonObject
-                {
-                    ["id"] = objectId++,
-                    ["time"] = time,
-                    ["note_uid"] = configData.uid,
-                    ["length"] = holdLength,
-                    ["pathway"] = pathway,
-                    ["blood"] = !isHold && channelType.HasFlag(ChannelType.SpBlood)
-                });
+                processed.Add(new ProcessedNote(
+                    Id: objectId++,
+                    Time: time,
+                    NoteUid: configData.uid,
+                    Length: holdLength,
+                    Pathway: pathway,
+                    Blood: !isHold && channelType.HasFlag(ChannelType.SpBlood)
+                ));
             }
 
             return processed;

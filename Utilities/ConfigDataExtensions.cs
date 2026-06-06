@@ -1,6 +1,7 @@
-﻿using System.Text.Json.Nodes;
+using CustomAlbums.Data;
 using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
+using Decimal = Il2CppSystem.Decimal;
 
 namespace CustomAlbums.Utilities
 {
@@ -39,15 +40,18 @@ namespace CustomAlbums.Utilities
                    || config.ibms_id == "17";
         }
 
-        public static MusicConfigData ToMusicConfigData(this JsonNode node)
+        /// <summary>
+        ///     Converts a <see cref="ProcessedNote"/> to a <see cref="MusicConfigData"/> Il2Cpp struct.
+        /// </summary>
+        public static MusicConfigData ToMusicConfigData(this ProcessedNote note)
         {
             var config = Interop.CreateTypeValue<MusicConfigData>();
-            config.id = node["id"]?.GetValue<int>() ?? -1;
-            config.time = node["time"].GetValueAsIl2CppDecimal();
-            config.note_uid = node["note_uid"]?.GetValue<string>() ?? string.Empty;
-            config.length = node["length"].GetValueAsIl2CppDecimal();
-            config.pathway = node["pathway"]?.GetValue<int>() ?? 0;
-            config.blood = node["blood"]?.GetValue<bool>() ?? false;
+            config.id = note.Id;
+            config.time = (Decimal)(float)note.Time;
+            config.note_uid = note.NoteUid;
+            config.length = (Decimal)(float)note.Length;
+            config.pathway = note.Pathway;
+            config.blood = note.Blood;
 
             return config;
         }

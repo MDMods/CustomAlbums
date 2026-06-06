@@ -1,4 +1,4 @@
-﻿using System.Text.Json.Nodes;
+using System.Text.Json.Nodes;
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.Database;
 using Il2CppAssets.Scripts.GameCore;
@@ -42,7 +42,7 @@ namespace CustomAlbums.Data
 
             var stageInfo = BmsLoader.TransmuteData(bms);
             stageInfo.mapName = MapName;
-            stageInfo.scene = bms.Info["GENRE"]?.GetValue<string>() ?? string.Empty;
+            stageInfo.scene = bms.Info.Genre;
             stageInfo.music = $"{ParentAlbum.Index}";
             stageInfo.difficulty = Difficulty;
             stageInfo.bpm = bms.Bpm;

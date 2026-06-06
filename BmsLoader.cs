@@ -1,4 +1,3 @@
-﻿using System.Text.Json.Nodes;
 using CustomAlbums.Data;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
@@ -12,6 +11,7 @@ using Il2CppGameLogic;
 using Il2CppPeroPeroGames.GlobalDefines;
 using Il2CppPeroTools2.Resources;
 using Il2CppSpine.Unity;
+using System.Diagnostics;
 using UnityEngine;
 using static CustomAlbums.Data.BmsStates;
 using Animation = Il2CppSpine.Animation;
@@ -27,21 +27,26 @@ namespace CustomAlbums
         private static Decimal _delay;
         private static readonly Logger Logger = new(nameof(BmsLoader));
 
+        private static readonly Dictionary<string, float> StartDelayCache = new();
+        private static readonly Dictionary<(string scene, string animation), float> AnimationDurationCache = new();
+
+        private static readonly HashSet<string> SceneAgnosticPrefixes = new() { "00", "em", "bo" };
+
         /// <summary>
         ///     Creates a Bms object from a BMS file.
         /// </summary>
         /// <param name="stream">MemoryStream of BMS file.</param>
         /// <param name="bmsName">Name of BMS score.</param>
-        /// <returns>Loaded Bms object.</returns>
+        /// <returns>Loaded Bms object, or null if critical data is missing.</returns>
         internal static Bms Load(Stream stream, string bmsName)
         {
             Logger.Msg($"Loading bms {bmsName}...");
 
             var bpmDict = new Dictionary<string, float>();
-            var notePercents = new Dictionary<int, JsonObject>();
-            var dataList = new List<JsonObject>();
-            var notesArray = new JsonArray();
-            var info = new JsonObject();
+            var timeSigEntries = new Dictionary<int, TimeSigEntry>();
+            var bpmEntries = new List<BpmEntry>();
+            var rawNotes = new List<RawNote>();
+            var info = new BmsInfo();
 
             using var streamReader = new StreamReader(stream);
             while (streamReader.ReadLine()?.Trim() is { } line)
@@ -54,50 +59,58 @@ namespace CustomAlbums
                 if (line.Contains(' '))
                 {
                     // Parse header
-                    var split = line.Split(' ');
-                    var key = split[0];
-                    var value = split[1];
+                    var spaceIndex = line.IndexOf(' ');
+                    var key = line[..spaceIndex];
+                    var value = line[(spaceIndex + 1)..];
 
-                    info[key] = value;
+                    // Skip WAV definition
+                    if (key.StartsWith("WAV")) continue;
 
-                    if (!key.Contains("BPM")) continue;
-
-                    var bpmKey = string.IsNullOrEmpty(key[3..]) ? "00" : key[3..];
-                    bpmDict.Add(bpmKey, value.ParseAsFloat());
-
-                    if (bpmKey != "00") continue;
-
-                    var freq = 60f / value.ParseAsFloat() * 4f;
-                    var obj = new JsonObject
+                    // Map known headers to typed properties
+                    if (!ParseHeader(info, key, value, bpmDict, bpmEntries))
                     {
-                        { "tick", 0f },
-                        { "freq", freq }
-                    };
-                    dataList.Add(obj);
+                        // Store unrecognized headers in fallback dictionary
+                        info.Extra[key] = value;
+                    }
                 }
                 else if (line.Contains(':'))
                 {
                     // Parse data field
-                    var split = line.Split(':');
-                    var key = split[0];
-                    var value = split[1];
+                    var colonIndex = line.IndexOf(':');
+                    if (colonIndex < 5)
+                    {
+                        Logger.Warning($"Malformed data line (key too short): #{line}");
+                        continue;
+                    }
 
-                    var beat = key[..3].ParseAsInt();
+                    var key = line[..colonIndex];
+                    var value = line[(colonIndex + 1)..];
+
+                    if (!key[..3].TryParseAsInt(out var beat))
+                    {
+                        Logger.Warning($"Malformed measure number in: #{line}");
+                        continue;
+                    }
+
                     var typeCode = key.Substring(3, 2);
-                    
+
                     if (!Bms.Channels.TryGetValue(typeCode, out var type)) continue;
 
                     if (type is Bms.ChannelType.SpTimesig)
                     {
-                        var obj = new JsonObject
-                        {
-                            { "beat", beat },
-                            { "percent", value.ParseAsFloat() }
-                        };
-                        notePercents.Add(beat, obj);
+                        if (value.TryParseAsFloat(out var percent))
+                            timeSigEntries[beat] = new TimeSigEntry(beat, percent);
+                        else
+                            Logger.Warning($"Invalid time signature value: {value}");
                     }
                     else
                     {
+                        if (value.Length % 2 != 0)
+                        {
+                            Logger.Warning($"Odd-length data field (must be pairs of 2 chars): #{line}");
+                            continue;
+                        }
+
                         var objLength = value.Length / 2;
                         for (var i = 0; i < objLength; i++)
                         {
@@ -109,120 +122,201 @@ namespace CustomAlbums
                             if (type is Bms.ChannelType.SpBpmDirect or Bms.ChannelType.SpBpmLookup)
                             {
                                 // Handle BPM changes
-                                var freqDivide = type == Bms.ChannelType.SpBpmLookup &&
-                                                 bpmDict.TryGetValue(note, out var bpm)
-                                    ? bpm
-                                    : Convert.ToInt32(note, 16);
-                                var freq = 60f / freqDivide * 4f;
-
-                                var obj = new JsonObject
+                                float freqDivide;
+                                if (type == Bms.ChannelType.SpBpmLookup && bpmDict.TryGetValue(note, out var bpm))
                                 {
-                                    { "tick", tick },
-                                    { "freq", freq }
-                                };
-                                dataList.Add(obj);
-                                dataList.Sort((l, r) =>
+                                    freqDivide = bpm;
+                                }
+                                else
                                 {
-                                    var tickL = l["tick"].GetValue<float>();
-                                    var tickR = r["tick"].GetValue<float>();
-
-                                    return tickR.CompareTo(tickL);
-                                });
-                            }
-                            else
-                            {
-                                // Parse other note data
-                                var time = 0f; // num3
-                                var totalOffset = 0f; // num4
-
-                                var data = dataList.FindAll(d => d["tick"].GetValue<float>() < tick);
-                                for (var j = data.Count - 1; j >= 0; j--)
-                                {
-                                    var obj = data[j];
-                                    var offset = 0f; // num5
-                                    var freq = obj["freq"].GetValue<float>(); // num6
-
-                                    if (j - 1 >= 0)
+                                    try
                                     {
-                                        var prevObj = data[j - 1];
-                                        offset = prevObj["tick"].GetValue<float>() - obj["tick"].GetValue<float>();
+                                        freqDivide = Convert.ToInt32(note, 16);
                                     }
-
-                                    if (j == 0) offset = tick - obj["tick"].GetValue<float>();
-
-                                    var localOffset = totalOffset; // num7
-                                    totalOffset += offset;
-                                    var floorOffset = Mathf.FloorToInt(localOffset); // num8
-                                    var ceilOffset = Mathf.CeilToInt(totalOffset); // num9
-
-                                    for (var k = floorOffset; k < ceilOffset; k++)
+                                    catch (FormatException)
                                     {
-                                        var off = 1f; // num10
-
-                                        if (k == floorOffset)
-                                            off = k + 1 - localOffset;
-                                        if (k == ceilOffset - 1)
-                                            off = totalOffset - (ceilOffset - 1);
-                                        if (ceilOffset == floorOffset + 1)
-                                            off = totalOffset - localOffset;
-
-                                        notePercents.TryGetValue(k, out var node);
-                                        var percent = node?["percent"].GetValue<float>() ?? 1f;
-                                        time += Mathf.RoundToInt(off * percent * freq / 1E-06f) * 1E-06F;
+                                        Logger.Warning($"Invalid hex BPM value: {note}");
+                                        continue;
                                     }
                                 }
 
-                                var noteObj = new JsonObject
-                                {
-                                    { "time", time },
-                                    { "value", note },
-                                    { "tone", typeCode }
-                                };
-                                notesArray.Add(noteObj);
+                                var freq = 60f / freqDivide * 4f;
+                                bpmEntries.Add(new BpmEntry(tick, freq));
+                            }
+                            else
+                            {
+                                var noteObj = new RawNote(
+                                    Time: CalculateNoteTime(tick, bpmEntries, timeSigEntries),
+                                    Value: note,
+                                    Tone: typeCode
+                                );
+                                rawNotes.Add(noteObj);
                             }
                         }
                     }
                 }
             }
 
-            var list = notesArray.ToList();
-            list.Sort((l, r) =>
+            // Validate required headers
+            if (string.IsNullOrEmpty(info.Genre))
+                Logger.Warning($"BMS '{bmsName}' is missing required GENRE header.");
+            if (info.Bpm <= 0)
+                Logger.Warning($"BMS '{bmsName}' has no valid BPM.");
+
+            // Sort notes by time, with events (channel "15") sorted before notes at the same timestamp
+            rawNotes.Sort((l, r) =>
             {
-                var lTime = l["time"]!.GetValue<float>();
-                var rTime = r["time"]!.GetValue<float>();
-                var lTone = l["tone"]!.GetValue<string>();
-                var rTone = r["tone"]!.GetValue<string>();
-
                 // Accurate for note sorting up to 6 decimal places
-                var lScore = (long)(lTime * 1000000) * 10 + (lTone == "15" ? 0 : 1);
-                var rScore = (long)(rTime * 1000000) * 10 + (rTone == "15" ? 0 : 1);
-
-                return Math.Sign(lScore - rScore);
+                var lScore = (long)(l.Time * 1000000) * 10 + (l.Tone == "15" ? 0 : 1);
+                var rScore = (long)(r.Time * 1000000) * 10 + (r.Tone == "15" ? 0 : 1);
+                return lScore.CompareTo(rScore);
             });
 
-            notesArray.Clear();
-            list.ForEach(notesArray.Add);
-
-            var percentsArray = new JsonArray();
-            notePercents.Values.ToList().ForEach(percentsArray.Add);
             var bms = new Bms
             {
                 Info = info,
-                Notes = notesArray,
-                NotesPercent = percentsArray,
+                Notes = rawNotes,
+                NotesPercent = timeSigEntries.Values.ToList(),
                 Md5 = stream.GetHash()
             };
-            bms.Info["NAME"] = bmsName;
-            bms.Info["NEW"] = true;
+            bms.Info.Name = bmsName;
 
-            if (bms.Info.TryGetPropertyValue("BANNER", out var banner))
-                bms.Info["BANNER"] = "cover/" + banner;
-            else
-                bms.Info["BANNER"] = "cover/none_cover.png";
+            if (!string.IsNullOrEmpty(info.Banner))
+                bms.Info.Banner = "cover/" + info.Banner;
 
             Logger.Msg($"Loaded bms {bmsName}.");
 
             return bms;
+        }
+
+        /// <summary>
+        ///     Parses a known BMS header into the <see cref="BmsInfo"/> object.
+        /// </summary>
+        /// <returns><c>true</c> if the header was recognized and parsed, <c>false</c> otherwise.</returns>
+        private static bool ParseHeader(BmsInfo info, string key, string value,
+            Dictionary<string, float> bpmDict, List<BpmEntry> bpmEntries)
+        {
+            // Handle BPMxx headers (BPM, BPM01, BPM02, etc.)
+            if (key.StartsWith("BPM"))
+            {
+                if (!value.TryParseAsFloat(out var bpmValue))
+                {
+                    Logger.Warning($"Invalid BPM value: {value}");
+                    return true; // Recognized but invalid
+                }
+
+                var bpmKey = key.Length > 3 ? key[3..] : "00";
+                bpmDict[bpmKey] = bpmValue;
+
+                if (bpmKey == "00")
+                {
+                    info.Bpm = bpmValue;
+                    var freq = 60f / bpmValue * 4f;
+                    bpmEntries.Add(new BpmEntry(0f, freq));
+                }
+
+                return true;
+            }
+
+            switch (key)
+            {
+                case "PLAYER":
+                    if (value.TryParseAsInt(out var player)) info.Player = player;
+                    return true;
+                case "GENRE":
+                    info.Genre = value;
+                    return true;
+                case "TITLE":
+                    info.Title = value;
+                    return true;
+                case "ARTIST":
+                    info.Artist = value;
+                    return true;
+                case "LEVELDESIGN":
+                    info.LevelDesign = value;
+                    return true;
+                case "BANNER":
+                    info.Banner = value;
+                    return true;
+                case "RANK":
+                    if (value.TryParseAsInt(out var rank)) info.Rank = rank;
+                    return true;
+                case "LNTYPE":
+                    if (value.TryParseAsInt(out var lnType)) info.LnType = lnType;
+                    return true;
+                case "PLAYLEVEL":
+                    info.PlayLevel = value;
+                    return true;
+                default:
+                    return false;
+            }
+        }
+
+        /// <summary>
+        ///     Calculates the absolute time (in seconds) for a note at a given tick position,
+        ///     accounting for BPM changes and time signature changes.
+        ///     Reverse-engineered from the official game's BMS-to-time conversion.
+        /// </summary>
+        /// <param name="tick">The beat position of the note.</param>
+        /// <param name="bpmEntries">All BPM change entries parsed so far, in insertion order.</param>
+        /// <param name="timeSigEntries">Time signature changes by measure number.</param>
+        /// <returns>Absolute time in seconds.</returns>
+        private static float CalculateNoteTime(float tick, List<BpmEntry> bpmEntries,
+            Dictionary<int, TimeSigEntry> timeSigEntries)
+        {
+            // Build a sorted (ascending by tick) list of BPM entries that occur before this note
+            // We must sort because BPM entries may have been added in any order from the BMS data
+            var relevantBpms = new List<BpmEntry>();
+            foreach (var entry in bpmEntries)
+            {
+                if (entry.Tick < tick)
+                    relevantBpms.Add(entry);
+            }
+
+            if (relevantBpms.Count == 0) return 0f;
+            relevantBpms.Sort();
+
+            var accumulatedTime = 0f;
+            var totalBeatOffset = 0f;
+
+            // Walk through BPM segments from earliest to latest
+            for (var j = 0; j < relevantBpms.Count; j++)
+            {
+                var entry = relevantBpms[j];
+                var beatFrequency = entry.Freq;
+
+                // Calculate how many beats this segment covers
+                float segmentBeats;
+                if (j < relevantBpms.Count - 1)
+                    segmentBeats = relevantBpms[j + 1].Tick - entry.Tick;
+                else
+                    segmentBeats = tick - entry.Tick;
+
+                var previousOffset = totalBeatOffset;
+                totalBeatOffset += segmentBeats;
+                var floorBeat = Mathf.FloorToInt(previousOffset);
+                var ceilBeat = Mathf.CeilToInt(totalBeatOffset);
+
+                for (var k = floorBeat; k < ceilBeat; k++)
+                {
+                    var beatFraction = 1f;
+
+                    if (k == floorBeat)
+                        beatFraction = k + 1 - previousOffset;
+                    if (k == ceilBeat - 1)
+                        beatFraction = totalBeatOffset - (ceilBeat - 1);
+                    if (ceilBeat == floorBeat + 1)
+                        beatFraction = totalBeatOffset - previousOffset;
+
+                    var timeSigMultiplier = timeSigEntries.TryGetValue(k, out var timeSig)
+                        ? timeSig.Percent
+                        : 1f;
+                    accumulatedTime +=
+                        Mathf.RoundToInt(beatFraction * timeSigMultiplier * beatFrequency / 1E-06f) * 1E-06F;
+                }
+            }
+
+            return accumulatedTime;
         }
 
         /// <summary>
@@ -232,6 +326,8 @@ namespace CustomAlbums
         /// <returns>The transmuted StageInfo object.</returns>
         internal static StageInfo TransmuteData(Bms bms)
         {
+            var stopwatch = Stopwatch.StartNew();
+
             if (NoteData.Count == 0) InitNoteData();
             MusicDataManager.Clear();
             _delay = 0;
@@ -264,6 +360,9 @@ namespace CustomAlbums
                 stageInfo.musicDatas.Add(musicData);
             stageInfo.delay = _delay;
 
+            stopwatch.Stop();
+            Logger.Msg($"Transmuted BMS in {stopwatch.Elapsed}", false);
+
             MusicDataManager.Clear();
             return stageInfo;
         }
@@ -283,10 +382,10 @@ namespace CustomAlbums
             }
         }
 
-        private static void LoadMusicData(JsonArray noteData)
+        private static void LoadMusicData(List<ProcessedNote> noteData)
         {
             short noteId = 1;
-            foreach (var node in noteData)
+            foreach (var note in noteData)
             {
                 if (noteId == short.MaxValue)
                 {
@@ -295,7 +394,7 @@ namespace CustomAlbums
                     break;
                 }
 
-                var configData = node.ToMusicConfigData();
+                var configData = note.ToMusicConfigData();
                 if (configData.time < 0) continue;
 
                 // Create a new note for each configData
@@ -349,7 +448,7 @@ namespace CustomAlbums
 
         private static void ProcessBossData(Bms bms)
         {
-            var scene = bms.Info["GENRE"]?.GetValue<string>() ?? string.Empty;
+            var scene = bms.Info.Genre;
             var bossData = MusicDataManager.Data.Where(mData => mData.isBossNote).ToList();
 
             // If the boss is not used for some reason, no need to process animations.
@@ -389,8 +488,8 @@ namespace CustomAlbums
             }
 
             // Fix incorrect phase gears
-            var phaseGearConfig = Interop.CreateTypeValue<NoteConfigData>();
-            phaseGearConfig.ibms_id = "";
+            NoteConfigData cachedGearConfig = null;
+            var allNoteData = SingletonScriptableObject<NoteDataMananger>.instance.noteDatas;
 
             for (var i = 0; i < bossData.Count; i++)
             {
@@ -399,9 +498,7 @@ namespace CustomAlbums
                 if (data.noteData.GetNoteType() != NoteType.Block) continue;
 
                 // Find the next boss animation that is not a gear
-                var bossAnimAhead = Interop.CreateTypeValue<MusicData>();
-                bossAnimAhead.configData.time = Decimal.MinValue;
-
+                MusicData bossAnimAhead = null;
                 for (var j = i + 1; j < bossData.Count; j++)
                 {
                     var dataAhead = bossData[j];
@@ -411,25 +508,23 @@ namespace CustomAlbums
                     break;
                 }
 
-                MusicData bossAnimBefore;
-                if (i > 0)
-                {
-                    bossAnimBefore = bossData[i - 1];
-                }
-                else
-                {
-                    bossAnimBefore = Interop.CreateTypeValue<MusicData>();
-                    bossAnimBefore.configData.time = Decimal.MinValue;
-                }
+                MusicData bossAnimBefore = i > 0 ? bossData[i - 1] : null;
 
-                var diffToAhead = Math.Abs((float)data.configData.time - (float)bossAnimAhead.configData.time);
-                var diffToBefore = Math.Abs((float)data.configData.time - (float)bossAnimBefore.configData.time);
+                var aheadTime = bossAnimAhead?.configData.time ?? Decimal.MinValue;
+                var beforeTime = bossAnimBefore?.configData.time ?? Decimal.MinValue;
+
+                var diffToAhead = Math.Abs((float)data.configData.time - (float)aheadTime);
+                var diffToBefore = Math.Abs((float)data.configData.time - (float)beforeTime);
                 var ahead = diffToAhead < diffToBefore;
 
-                var stateBehind = i > 0 ? AnimStatesRight[bossAnimBefore.noteData.boss_action] : BossState.OffScreen;
-                var stateAhead = AnimStatesLeft.TryGetValue(bossAnimAhead.noteData.boss_action, out var state)
-                    ? state
+                var stateBehind = bossAnimBefore != null
+                    ? AnimStatesRight[bossAnimBefore.noteData.boss_action]
                     : BossState.OffScreen;
+                
+                var stateAhead = BossState.OffScreen;
+                if (bossAnimAhead != null && AnimStatesLeft.TryGetValue(bossAnimAhead.noteData.boss_action, out var parsedState))
+                    stateAhead = parsedState;
+
                 var usedState = ahead ? stateAhead : stateBehind;
                 var correctState = usedState is BossState.Phase1 or BossState.Phase2;
                 if (!correctState)
@@ -448,13 +543,14 @@ namespace CustomAlbums
 
                 var phase = usedState == BossState.Phase1 ? 1 : 2;
 
-                var noteData = SingletonScriptableObject<NoteDataMananger>.instance.noteDatas;
-                if (phaseGearConfig.ibms_id != data.noteData.ibms_id
-                    || phaseGearConfig.pathway != data.noteData.pathway
-                    || phaseGearConfig.scene != data.noteData.scene
-                    || phaseGearConfig.speed != data.noteData.speed
-                    || !phaseGearConfig.boss_action.StartsWith($"boss_far_atk_{phase}"))
-                    foreach (var d in noteData)
+                // Use cached gear config if it matches, otherwise search for a new one
+                if (cachedGearConfig == null
+                    || cachedGearConfig.ibms_id != data.noteData.ibms_id
+                    || cachedGearConfig.pathway != data.noteData.pathway
+                    || cachedGearConfig.scene != data.noteData.scene
+                    || cachedGearConfig.speed != data.noteData.speed
+                    || !cachedGearConfig.boss_action.StartsWith($"boss_far_atk_{phase}"))
+                    foreach (var d in allNoteData)
                     {
                         if (d.ibms_id != data.noteData.ibms_id
                             || d.pathway != data.noteData.pathway
@@ -462,9 +558,12 @@ namespace CustomAlbums
                             || d.speed != data.noteData.speed
                             || !d.boss_action.StartsWith($"boss_far_atk_{phase}")) continue;
 
-                        phaseGearConfig = d;
+                        cachedGearConfig = d;
                         break;
                     }
+
+                if (cachedGearConfig == null) continue;
+                var phaseGearConfig = cachedGearConfig;
 
                 var fixedConfigData = Interop.CreateTypeValue<MusicConfigData>();
                 fixedConfigData.blood = data.configData.blood;
@@ -545,7 +644,7 @@ namespace CustomAlbums
 
         private static void ProcessDelay(Bms bms)
         {
-            var scene = bms.Info["GENRE"]?.GetValue<string>() ?? string.Empty;
+            var scene = bms.Info.Genre;
             var sceneIndex = scene.Split('_')[1].ParseAsInt();
             var sceneInfo = Singleton<StageBattleComponent>.instance.sceneInfo;
             var delayCache = new Dictionary<string, Decimal>();
@@ -565,7 +664,7 @@ namespace CustomAlbums
                         if (type != NoteType.Hp && type != NoteType.Music)
                         {
                             var prefix = prefabName[..2];
-                            if (!new[] { "00", "em", "bo" }.Contains(prefix))
+                            if (prefix is not "00" and not "em" and not "bo")
                                 prefabName = prefabName.Remove(0, 2).Insert(0, $"{sceneIndex:D2}");
                         }
 
@@ -612,14 +711,14 @@ namespace CustomAlbums
 
                 if (geminiCache.TryGetValue(mData.tick, out var geminiList))
                 {
-                    var isNoteGemini = Bms.BmsIds[mData.noteData.ibms_id ?? "00"] == Bms.BmsId.Gemini;
+                    var isNoteGemini = Bms.BmsIds[mData.noteData.ibms_id] == Bms.BmsId.Gemini;
                     var isTargetGemini = false;
                     var target = Interop.CreateTypeValue<MusicData>();
 
                     foreach (var gemini in geminiList.Where(gemini => mData.isAir != gemini.isAir))
                     {
                         target = gemini;
-                        isTargetGemini = Bms.BmsIds[gemini.noteData.ibms_id ?? "00"] == Bms.BmsId.Gemini;
+                        isTargetGemini = Bms.BmsIds[gemini.noteData.ibms_id] == Bms.BmsId.Gemini;
 
                         if (isNoteGemini && isTargetGemini) break;
                         if (!isNoteGemini) break;
@@ -649,25 +748,40 @@ namespace CustomAlbums
 
         private static float GetStartDelay(string prefab)
         {
-            return ResourcesManager.instance.LoadFromName<GameObject>(prefab).GetComponent<SpineActionController>()
-                .startDelay;
+            if (StartDelayCache.TryGetValue(prefab, out var cached))
+                return cached;
+
+            var delay = ResourcesManager.instance.LoadFromName<GameObject>(prefab)
+                .GetComponent<SpineActionController>().startDelay;
+            StartDelayCache[prefab] = delay;
+            return delay;
         }
 
         private static float GetAnimationDuration(string scene, string animation)
         {
-            var controller = ResourcesManager.instance.LoadFromName<GameObject>(Boss.Instance.BossFestival($"{scene.Split("_")[1]}01_boss"))
-                    .GetComponent<SpineActionController>();
+            var cacheKey = (scene, animation);
+            if (AnimationDurationCache.TryGetValue(cacheKey, out var cached))
+                return cached;
+
+            var controller = ResourcesManager.instance
+                .LoadFromName<GameObject>(Boss.Instance.BossFestival($"{scene.Split("_")[1]}01_boss"))
+                .GetComponent<SpineActionController>();
             var animations = controller.gameObject.GetComponent<SkeletonAnimation>().skeletonDataAsset
                 .GetSkeletonData(true).Animations;
-            
-            var arr = new SkeletActionData[controller.actionData.Count];
-            controller.actionData.CopyTo(arr, 0);
-            var actionData = new List<SkeletActionData>(arr).Find(dd => dd.name == animation);
-            
+
             var animName = animation;
-            if (actionData is { actionIdx: not null } && actionData.actionIdx.Length != 0)
-                animName = actionData.actionIdx[0];
-            return animations.Find((Il2CppSystem.Predicate<Animation>)((Animation a) => a.Name == animName)).Duration;
+            foreach (var actionData in controller.actionData)
+            {
+                if (actionData.name != animation) continue;
+                if (actionData.actionIdx is { Length: > 0 })
+                    animName = actionData.actionIdx[0];
+                break;
+            }
+
+            var duration = animations
+                .Find((Il2CppSystem.Predicate<Animation>)((Animation a) => a.Name == animName)).Duration;
+            AnimationDurationCache[cacheKey] = duration;
+            return duration;
         }
     }
 }
