@@ -1,7 +1,9 @@
-﻿using System.IO.Compression;
+using System.Collections;
+using System.IO.Compression;
 using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using UnityEngine;
+using UnityEngine.Networking;
 using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums.Data
@@ -31,7 +33,6 @@ namespace CustomAlbums.Data
             // CurrentPack will always be null if album is not in a pack
             IsPack = AlbumManager.CurrentPack != null;
 
-            HasGif = openedZip.GetEntry("cover.gif") != null;
             HasPng = openedZip.GetEntry("cover.png") != null;
 
             Index = index;
@@ -54,7 +55,6 @@ namespace CustomAlbums.Data
 
                 using var fileStream = File.OpenRead($"{path}\\info.json");
                 Info = Json.Deserialize<AlbumInfo>(fileStream);
-                HasGif = File.Exists(System.IO.Path.Combine(path, "cover.gif"));
                 HasPng = File.Exists(System.IO.Path.Combine(path, "cover.png"));
             }
             else if (File.Exists(path))
@@ -76,7 +76,6 @@ namespace CustomAlbums.Data
                 // CurrentPack will always be null if album is not in a pack
                 IsPack = AlbumManager.CurrentPack != null;
 
-                HasGif = zip.GetEntry("cover.gif") != null;
                 HasPng = zip.GetEntry("cover.png") != null;
             }
             else
@@ -97,11 +96,78 @@ namespace CustomAlbums.Data
         public bool IsPackaged { get; }
         public bool IsPack { get; }
         public bool HasPng { get; }
-        public bool HasGif { get; }
         public string PackName { get; }
         public AlbumInfo Info { get; }
-        public Sprite Cover => this.GetCover();
-        public AnimatedCover AnimatedCover => this.GetAnimatedCover();
+
+        private Sprite _cover;
+        private bool _isCoverLoading;
+        private static Sprite _defaultCover;
+        public static Sprite DefaultCover 
+        {
+            get 
+            {
+                if (_defaultCover != null) return _defaultCover;
+                var tex = new Texture2D(2, 2);
+                _defaultCover = Sprite.Create(tex, new Rect(0, 0, 2, 2), new Vector2(0.5f, 0.5f));
+                _defaultCover.hideFlags |= HideFlags.DontUnloadUnusedAsset;
+                return _defaultCover;
+            }
+        }
+
+        public Sprite Cover
+        {
+            get
+            {
+                if (_cover != null) return _cover;
+                if (!_isCoverLoading && HasPng)
+                {
+                    _isCoverLoading = true;
+                    MelonLoader.MelonCoroutines.Start(LoadCoverAsync());
+                }
+                return DefaultCover;
+            }
+        }
+
+        private IEnumerator LoadCoverAsync()
+        {
+            string url;
+            string cacheDir = System.IO.Path.Combine(MelonLoader.Utils.MelonEnvironment.UserDataDirectory, "CustomAlbums", "Cache");
+            if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
+            
+            if (IsPack || IsPackaged)
+            {
+                string cacheFile = System.IO.Path.Combine(cacheDir, $"{Uid}_cover.png");
+                if (System.IO.File.Exists(cacheFile)) File.Delete(cacheFile);
+
+                using var stream = OpenNullableStream("cover.png");
+                if (stream != null)
+                {
+                    using var fs = File.OpenWrite(cacheFile);
+                    stream.CopyTo(fs);
+                }
+                
+                url = "file:///" + cacheFile.Replace('\\', '/');
+            }
+            else
+            {
+                url = "file:///" + System.IO.Path.Combine(Path, "cover.png").Replace('\\', '/');
+            }
+
+            var request = UnityWebRequestTexture.GetTexture(url);
+            yield return request.SendWebRequest();
+
+            if (!request.isHttpError && !request.isNetworkError)
+            {
+                var texture = DownloadHandlerTexture.GetContent(request);
+                texture.wrapMode = TextureWrapMode.MirrorOnce;
+                _cover = Sprite.Create(texture, new Rect(0, 0, texture.width, texture.height), new Vector2(0.5f, 0.5f));
+                _cover.hideFlags |= HideFlags.DontUnloadUnusedAsset;
+                
+                CustomAlbums.Patches.AssetPatch.UpdateCache($"{AlbumName}_cover", _cover);
+            }
+            
+            _isCoverLoading = false;
+        }
         public AudioClip Music => this.GetAudio();
         public AudioClip Demo => this.GetAudio("demo");
         public Dictionary<int, Sheet> Sheets { get; } = new();

@@ -9,7 +9,6 @@
 			<InputAssemblies Include="$(OutputPath)NAudio.Vorbis.dll" />
 			<InputAssemblies Include="$(OutputPath)NLayer.dll" />
 			<InputAssemblies Include="$(OutputPath)NVorbis.dll" />
-			<InputAssemblies Include="$(OutputPath)SixLabors.ImageSharp.dll" />
 			<IlRepackLibs Include="$(OutputPath)" />
 			<IlRepackLibs Include="$(MelonNET6)" />
 		</ItemGroup>

@@ -179,5 +179,11 @@
             <Private>false</Private>
             <HintPath>$(MelonAssemblies)\UnityEngine.UnityWebRequestModule.dll</HintPath>
         </Reference>
+        <Reference
+            Include="UnityEngine.UnityWebRequestTextureModule, Version=0.0.0.0, Culture=neutral, PublicKeyToken=null">
+            <SpecificVersion>false</SpecificVersion>
+            <Private>false</Private>
+            <HintPath>$(MelonAssemblies)\UnityEngine.UnityWebRequestTextureModule.dll</HintPath>
+        </Reference>
     </ItemGroup>
 </Project>

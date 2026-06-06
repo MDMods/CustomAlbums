@@ -1,9 +1,10 @@
-﻿using CustomAlbums.Data;
+using CustomAlbums.Data;
 using CustomAlbums.ModExtensions;
 using CustomAlbums.Utilities;
 using Il2CppAssets.Scripts.PeroTools.Commons;
 using Il2CppAssets.Scripts.PeroTools.GeneralLocalization;
 using Il2CppPeroTools2.Resources;
+using System.Diagnostics;
 using System.IO.Compression;
 using UnityEngine;
 using Logger = CustomAlbums.Utilities.Logger;
@@ -104,7 +105,6 @@ namespace CustomAlbums.Managers
                     ResourcesManager.instance.LoadFromName<Sprite>($"{albumName}_cover").hideFlags |=
                         HideFlags.DontUnloadUnusedAsset;
 
-                if (album.HasGif) Task.Run(() => CoverManager.LoadGif(album));
 
                 Logger.Msg($"Loaded {albumName}: {album.Info.Name}");
                 OnAlbumLoaded?.Invoke(typeof(AlbumManager), new AlbumEventArgs(album));
@@ -140,8 +140,6 @@ namespace CustomAlbums.Managers
                     ResourcesManager.instance.LoadFromName<Sprite>($"{albumName}_cover").hideFlags |=
                         HideFlags.DontUnloadUnusedAsset;
 
-                if (album.HasGif) Task.Run(() => CoverManager.LoadGif(album));
-
                 Logger.Msg($"Loaded {albumName}: {album.Info.Name}");
                 OnAlbumLoaded?.Invoke(typeof(AlbumManager), new AlbumEventArgs(album));
                 return album;
@@ -158,6 +156,8 @@ namespace CustomAlbums.Managers
         public static void LoadAlbums()
         {
             LoadedAlbums.Clear();
+
+            var stopwatch = Stopwatch.StartNew();
             
             var packs = new List<string>();
             var files = new List<string>();
@@ -168,7 +168,9 @@ namespace CustomAlbums.Managers
             foreach (var pack in packs) LoadPack(pack);
             foreach (var file in files) LoadOne(file);
 
-            Logger.Msg($"Finished loading {LoadedAlbums.Count} albums.", false);
+            stopwatch.Stop();
+
+            Logger.Msg($"Finished loading {LoadedAlbums.Count} albums in {stopwatch.Elapsed}", false);
         }
 
         public static IEnumerable<string> GetAllUid()

@@ -1,9 +1,8 @@
-﻿using CustomAlbums.Managers;
+using CustomAlbums.Managers;
 using CustomAlbums.Patches;
 using CustomAlbums.Utilities;
 using MelonLoader;
-using static CustomAlbums.Patches.AnimatedCoverPatch;
-
+using MelonLoader.Utils;
 namespace CustomAlbums
 {
     public class Main : MelonMod
@@ -20,6 +19,9 @@ namespace CustomAlbums
 
             if (!Directory.Exists(AlbumManager.SearchPath)) Directory.CreateDirectory(AlbumManager.SearchPath);
             
+            var cacheDir = Path.Combine(MelonEnvironment.UserDataDirectory, "CustomAlbums", "Cache");
+            if (Directory.Exists(cacheDir)) Directory.Delete(cacheDir, true);
+
             ModSettings.Register();
             AssetPatch.AttachHook();
             SavePatch.AttachHook();
@@ -32,38 +34,21 @@ namespace CustomAlbums
         {
             base.OnLateInitializeMelon();
             // TODO: Actually write HotReload
-            // HotReloadManager.OnLateInitializeMelon();
+            HotReloadManager.OnLateInitializeMelon();
         }
 
-        /// <summary>
-        ///     This override adds support for animated covers.
-        /// </summary>
-        public override void OnUpdate()
-        {
-            base.OnUpdate();
-            MusicStageCellPatch.AnimateCoversUpdate();
-        }
-
-        /// <summary>
-        ///     This override adds support for hot reloading.
-        /// </summary>
         public override void OnFixedUpdate()
         {
             base.OnFixedUpdate();
             // TODO: Actually write HotReload
-            // HotReloadManager.FixedUpdate();
-            
-            // Dispatcher for GIF covers
-            if (CoverManager.GifAlbumDatas.TryDequeue(out var gifData))
-            {
-                CoverManager.LoadAnimatedCover(gifData);
-            }
+            HotReloadManager.FixedUpdate();
         }
 
-        public override void OnSceneWasLoaded(int buildIndex, string sceneName)
+        public override void OnDeinitializeMelon()
         {
-            base.OnSceneWasLoaded(buildIndex, sceneName);
-            MusicStageCellPatch.CurrentScene = sceneName;
+            base.OnDeinitializeMelon();
+            var cacheDir = Path.Combine(MelonEnvironment.UserDataDirectory, "CustomAlbums", "Cache");
+            if (Directory.Exists(cacheDir)) Directory.Delete(cacheDir, true);
         }
     }
 }

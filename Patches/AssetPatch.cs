@@ -1,4 +1,4 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -44,6 +44,14 @@ namespace CustomAlbums.Patches
         {
             var success = AssetCache.Remove(oldAssetName, out var asset);
             return success && AssetCache.TryAdd(newAssetName, asset);
+        }
+
+        /// <summary>
+        ///     Updates the cache with a new asset.
+        /// </summary>
+        internal static void UpdateCache(string key, Object value)
+        {
+            AssetCache[key] = value;
         }
 
         /// <summary>
@@ -224,7 +232,7 @@ namespace CustomAlbums.Patches
                                 newAsset = album?.Music;
                                 break;
                             case "_cover":
-                                newAsset = album?.AnimatedCover?.Frames[0] ?? album?.Cover;
+                                newAsset = album?.Cover;
                                 break;
                             default:
                                 Logger.Error($"Unknown suffix: {suffix}");
