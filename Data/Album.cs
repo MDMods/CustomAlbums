@@ -96,6 +96,19 @@ namespace CustomAlbums.Data
         public bool IsPackaged { get; }
         public bool IsPack { get; }
         public bool HasPng { get; }
+        public bool HasCover
+        {
+            get
+            {
+                if (HasPng)
+                {
+                    CustomAlbums.Managers.HotReloadManager.PnlStageInstance?.RefreshStageUI();
+                    return true;
+                }
+                
+                return false;
+            }
+        }
         public string PackName { get; }
         public AlbumInfo Info { get; }
 
@@ -107,8 +120,24 @@ namespace CustomAlbums.Data
             get 
             {
                 if (_defaultCover != null) return _defaultCover;
-                var tex = new Texture2D(2, 2);
-                _defaultCover = Sprite.Create(tex, new Rect(0, 0, 2, 2), new Vector2(0.5f, 0.5f));
+                
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                using var stream = assembly.GetManifestResourceStream("CustomAlbums.Resources.default_cover.png");
+                
+                Texture2D tex;
+                if (stream != null)
+                {
+                    using var ms = new System.IO.MemoryStream();
+                    stream.CopyTo(ms);
+                    tex = new Texture2D(2, 2, TextureFormat.ARGB32, false);
+                    tex.LoadImage(ms.ToArray());
+                }
+                else
+                {
+                    tex = new Texture2D(2, 2);
+                }
+                
+                _defaultCover = Sprite.Create(tex, new Rect(0, 0, tex.width, tex.height), new Vector2(0.5f, 0.5f));
                 _defaultCover.hideFlags |= HideFlags.DontUnloadUnusedAsset;
                 return _defaultCover;
             }
@@ -164,6 +193,7 @@ namespace CustomAlbums.Data
                 _cover.hideFlags |= HideFlags.DontUnloadUnusedAsset;
                 
                 CustomAlbums.Patches.AssetPatch.UpdateCache($"{AlbumName}_cover", _cover);
+                CustomAlbums.Patches.CoverRefreshPatch.Refresh($"{CustomAlbums.Managers.AlbumManager.Uid}-{Index}");
             }
             
             _isCoverLoading = false;
