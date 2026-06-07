@@ -30,7 +30,7 @@ namespace CustomAlbums.Patches
         internal static bool? _hqPresent = null;
         internal static bool HQPresent => _hqPresent ??= MelonBase.FindMelon("Headquarters", "AshtonMemer") is not null;           
 
-        private static string OriginalNoNetText;
+        private static string OriginalRepairingText;
 
         internal static readonly Logger Logger = new(nameof(SavePatch));
 
@@ -194,10 +194,10 @@ namespace CustomAlbums.Patches
             private static bool FirstRun = true;
             private static bool Prefix(string uid, PnlRank __instance)
             {
-                var noNetComp = __instance.noNet.GetComponent<UnityEngine.UI.Text>();
+                var repairingComp = __instance.repairing.GetComponent<UnityEngine.UI.Text>();
                 if (FirstRun)
                 {
-                    OriginalNoNetText = noNetComp.text;
+                    OriginalRepairingText = repairingComp.text;
                     FirstRun = false;
                 }
                 // Check first run case when on a custom and HQ is not present
@@ -209,13 +209,13 @@ namespace CustomAlbums.Patches
                 // Vanilla chart or HQ present
                 if (!uid.StartsWith($"{AlbumManager.Uid}-") || HQPresent)
                 {
-                    noNetComp.text = OriginalNoNetText;
+                    repairingComp.text = OriginalRepairingText;
                     return true;
                 }
 
                 // Custom and HQ not present
-                noNetComp.text = "Headquarters mod is not loaded! ~(*´Д｀)";
-                __instance.noNet.SetActive(true);
+                repairingComp.text = "Headquarters mod is not loaded! ~(*´Д｀)";
+                __instance.repairing.SetActive(true);
                 return false;
             }
         }
