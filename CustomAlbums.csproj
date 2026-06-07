@@ -20,6 +20,10 @@
 	</ItemGroup>
 
     <ItemGroup>
+        <EmbeddedResource Include="Resources\default_cover.png" />
+    </ItemGroup>
+
+    <ItemGroup>
         <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.43">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
