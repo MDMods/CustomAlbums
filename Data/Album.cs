@@ -91,7 +91,7 @@ namespace CustomAlbums.Data
         }
 
         public string PackAlbumName { get; } = string.Empty;
-        public int Index { get; }
+        public int Index { get; internal set; }
         public string Path { get; }
         public bool IsPackaged { get; }
         public bool IsPack { get; }

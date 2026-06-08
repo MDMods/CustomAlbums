@@ -43,7 +43,7 @@ namespace CustomAlbums.Data
             var stageInfo = BmsLoader.TransmuteData(bms);
             stageInfo.mapName = MapName;
             stageInfo.scene = bms.Info.Genre;
-            stageInfo.music = $"{ParentAlbum.Index}";
+            stageInfo.music = ParentAlbum.Uid;
             stageInfo.difficulty = Difficulty;
             stageInfo.bpm = bms.Bpm;
             stageInfo.md5 = Md5;

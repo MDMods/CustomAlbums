@@ -34,6 +34,7 @@ namespace CustomAlbums.Managers
         internal static Events.LoadAlbumEvent OnAlbumLoaded;
 
         private static int MaxCount { get; set; }
+        private static readonly Dictionary<string, int> UidHistory = new();
         internal static string CurrentPack { get; set; } = null;
         public static Dictionary<string, Album> LoadedAlbums { get; } = new();
 
@@ -52,8 +53,6 @@ namespace CustomAlbums.Managers
                 // Initialize pack and variables
                 var pack = PackManager.CreatePack(json, directory);
                 CurrentPack = pack.Title;
-
-                MaxCount = Math.Max(LoadedAlbums.Count, MaxCount);
 
                 pack.StartIndex = MaxCount;
 
@@ -87,16 +86,25 @@ namespace CustomAlbums.Managers
         public static Album LoadOne(string directory, ZipArchiveEntry mdm, string fullFileName)
         {
             var fileName = Path.GetFileNameWithoutExtension(fullFileName);
-            MaxCount = Math.Max(LoadedAlbums.Count, MaxCount);
-            
-            if (LoadedAlbums.ContainsKey(fileName)) return null;
-
             try
             {
-                var album = new Album(directory, mdm, MaxCount, CurrentPack);
+                var album = new Album(directory, mdm, 0, CurrentPack);
                 if (album.Info is null) return null;
 
                 var albumName = album.AlbumName;
+                if (LoadedAlbums.ContainsKey(albumName)) return null;
+
+                if (UidHistory.TryGetValue(albumName, out var oldIndex))
+                {
+                    album.Index = oldIndex;
+                }
+                else
+                {
+                    album.Index = MaxCount;
+                    MaxCount++;
+                    UidHistory[albumName] = album.Index;
+                }
+                
                 Logger.Msg("Adding " + albumName + " as a pack!");
 
                 LoadedAlbums.Add(albumName, album);
@@ -121,18 +129,26 @@ namespace CustomAlbums.Managers
 
         public static Album LoadOne(string path)
         {
-            MaxCount = Math.Max(LoadedAlbums.Count, MaxCount);
             var isDirectory = File.GetAttributes(path).HasFlag(FileAttributes.Directory);
             var fileName = isDirectory ? Path.GetFileName(path) : Path.GetFileNameWithoutExtension(path);
-            
-            if (LoadedAlbums.ContainsKey(fileName)) return null;
-            
             try
             {
-                var album = new Album(path, MaxCount, CurrentPack);
+                var album = new Album(path, 0, CurrentPack);
                 if (album.Info is null) return null;
 
                 var albumName = album.AlbumName;
+                if (LoadedAlbums.ContainsKey(albumName)) return null;
+
+                if (UidHistory.TryGetValue(albumName, out var oldIndex))
+                {
+                    album.Index = oldIndex;
+                }
+                else
+                {
+                    album.Index = MaxCount;
+                    MaxCount++;
+                    UidHistory[albumName] = album.Index;
+                }
                 
                 LoadedAlbums.Add(albumName, album);
 
@@ -156,6 +172,8 @@ namespace CustomAlbums.Managers
         public static void LoadAlbums()
         {
             LoadedAlbums.Clear();
+            UidHistory.Clear();
+            MaxCount = 0;
 
             var stopwatch = Stopwatch.StartNew();
             
