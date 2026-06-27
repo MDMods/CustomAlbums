@@ -21,12 +21,25 @@ namespace CustomAlbums.Data
         public string MapName { get; }
         public int Difficulty { get; }
         public bool TalkFileVersion2 { get; set; }
+        private string _md5;
         public string Md5
         {
             get
             {
-                using var stream = ParentAlbum.OpenMemoryStream($"map{Difficulty}.bms");
-                return stream.GetHash();
+                if (!string.IsNullOrEmpty(_md5)) return _md5;
+                try
+                {
+                    using var stream = ParentAlbum.OpenMemoryStream($"map{Difficulty}.bms");
+                    if (stream != null)
+                    {
+                        _md5 = stream.GetHash();
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger.Warning($"Could not compute MD5 for {MapName}: {e.Message}");
+                }
+                return _md5 ?? string.Empty;
             }
         }
 
