@@ -111,19 +111,10 @@ internal static class HotReloadManager
                     var jsonArray = new JsonArray();
                     var localJsonArray = new JsonArray();
 
-                    var firstSongs = new HashSet<string>(AlbumManager.LoadedAlbums.Values
-                        .GroupBy(a => PackManager.GetPackFromUid(a.Uid))
-                        .Select(g => g.OrderBy(a => a.Index).First().Uid));
-
                     foreach (var (albumStr, albumObj) in AlbumManager.LoadedAlbums)
                     {
                         var aInfo = albumObj.Info;
-                        var pack = PackManager.GetPackFromUid(albumObj.Uid);
-                        var isFirstSong = firstSongs.Contains(albumObj.Uid);
-                        var titleString = pack?.Title ?? "Unclassified";
-
                         var displayName = aInfo.Name ?? "";
-                        if (isFirstSong) displayName = $"【{titleString}】 {aInfo.Name}";
 
                         var customChartJson = new
                         {
