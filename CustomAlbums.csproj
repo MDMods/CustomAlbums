@@ -9,18 +9,18 @@
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
     </PropertyGroup>
 
-	<ItemGroup>
-        <None Remove="Directory.Build.props" />
-		<None Remove="SetPath.cmd" />
-		<None Remove=".gitattributes" />
-		<None Remove=".gitignore" />
-		<None Remove="LICENSE" />
-		<None Remove="README.md" />
-		<None Remove="ILRepack.targets" />
-	</ItemGroup>
+    <ItemGroup>
+        <None Remove="Directory.Build.props"/>
+        <None Remove="SetPath.cmd"/>
+        <None Remove=".gitattributes"/>
+        <None Remove=".gitignore"/>
+        <None Remove="LICENSE"/>
+        <None Remove="README.md"/>
+        <None Remove="ILRepack.targets"/>
+    </ItemGroup>
 
     <ItemGroup>
-        <EmbeddedResource Include="Resources\default_cover.png" />
+        <EmbeddedResource Include="Resources\default_cover.png"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -28,20 +28,20 @@
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-		<PackageReference Include="NAudio.Vorbis" Version="1.5.0">
-			<ExcludeAssets>contentFiles</ExcludeAssets>
-		</PackageReference>
-        <PackageReference Include="NLayer" Version="1.16.0" />
-        <PackageReference Include="System.Net.Http" Version="4.3.4" />
-        <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
+        <PackageReference Include="NAudio.Vorbis" Version="1.5.0">
+            <ExcludeAssets>contentFiles</ExcludeAssets>
+        </PackageReference>
+        <PackageReference Include="NLayer" Version="1.16.0"/>
+        <PackageReference Include="System.Net.Http" Version="4.3.4"/>
+        <PackageReference Include="System.Text.RegularExpressions" Version="4.3.1"/>
     </ItemGroup>
 
     <Target Name="CopyMod" AfterTargets="Repack" Condition="'$(WORKER)' != 'GitHub'">
-        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GameFolder)\Mods" />
-        <Message Text="Copied assembly to '$(GameFolder)\Mods\$(ProjectName).dll'" Importance="High" />
+        <Copy SourceFiles="$(OutputPath)$(AssemblyName).dll" DestinationFolder="$(GameFolder)\Mods"/>
+        <Message Text="Copied assembly to '$(GameFolder)\Mods\$(ProjectName).dll'" Importance="High"/>
     </Target>
 
     <Target Name="WarnDeprecatedPath" AfterTargets="Build" Condition="!Exists('$(MD_DIRECTORY)')">
-        <Message Text="Warning: MD_NET6_DIRECTORY is no longer in use. Please remove the environment variable and run SetPath.cmd again." Importance="High" />
+        <Message Text="Warning: MD_NET6_DIRECTORY is no longer in use. Please remove the environment variable and run SetPath.cmd again." Importance="High"/>
     </Target>
 </Project>

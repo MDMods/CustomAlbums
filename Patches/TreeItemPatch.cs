@@ -1,36 +1,35 @@
-﻿using Il2Cpp;
-using CustomAlbums.Utilities;
+﻿using CustomAlbums.Utilities;
 using HarmonyLib;
+using Il2Cpp;
 
-namespace CustomAlbums.Patches
+namespace CustomAlbums.Patches;
+
+internal class TreeItemPatch
 {
-    internal class TreeItemPatch
+    // TODO: Finish "Album" support
+    private static readonly Logger Logger = new(nameof(TreeItemPatch));
+
+    [HarmonyPatch(typeof(PnlMusicTagItem), nameof(PnlMusicTagItem.OnTagClicked))]
+    internal class OnMusicTagClickedPatch
     {
-        // TODO: Finish "Album" support
-        private static readonly Logger Logger = new(nameof(TreeItemPatch));
-
-        [HarmonyPatch(typeof(PnlMusicTagItem), nameof(PnlMusicTagItem.OnTagClicked))]
-        internal class OnMusicTagClickedPatch
+        private static void Prefix(int tagIndex, PnlMusicTagItem __instance)
         {
-            private static void Prefix(int tagIndex, PnlMusicTagItem __instance)
-            {
-                // STUB
-            }
+            // STUB
         }
+    }
 
-        [HarmonyPatch(typeof(PnlMusicTagItem), nameof(PnlMusicTagItem.Enable))]
-        internal class EnablePatch
+    [HarmonyPatch(typeof(PnlMusicTagItem), nameof(PnlMusicTagItem.Enable))]
+    internal class EnablePatch
+    {
+        private static void Prefix(PnlMusicTagItem __instance)
         {
-            private static void Prefix(PnlMusicTagItem __instance)
-            {
-                // STUB
-            }
+            // STUB
         }
+    }
 
-        [HarmonyPatch(typeof(PnlMusicTagItem), nameof(PnlMusicTagItem.AddDataToMgr))]
-        internal class AddDataPatch
-        {
-           // STUB
-        }
+    [HarmonyPatch(typeof(PnlMusicTagItem), nameof(PnlMusicTagItem.AddDataToMgr))]
+    internal class AddDataPatch
+    {
+        // STUB
     }
 }

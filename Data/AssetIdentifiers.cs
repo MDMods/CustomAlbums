@@ -1,17 +1,16 @@
-﻿namespace CustomAlbums.Data
+﻿namespace CustomAlbums.Data;
+
+internal class AssetIdentifiers
 {
-    internal class AssetIdentifiers
+    internal static readonly List<string> AssetSuffixes = new()
     {
-        internal static readonly List<string> AssetSuffixes = new()
-        {
-            "_demo",
-            "_music",
-            "_cover",
-            "_map1",
-            "_map2",
-            "_map3",
-            "_map4",
-            "_map5"
-        };
-    }
+        "_demo",
+        "_music",
+        "_cover",
+        "_map1",
+        "_map2",
+        "_map3",
+        "_map4",
+        "_map5"
+    };
 }

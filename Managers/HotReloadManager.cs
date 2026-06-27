@@ -1,574 +1,619 @@
 using System.Collections.Concurrent;
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using CustomAlbums.Data;
 using CustomAlbums.Patches;
 using CustomAlbums.Utilities;
 using HarmonyLib;
-using Il2Cpp;
 using Il2CppAssets.Scripts.Database;
-using Il2CppAssets.Scripts.Database.DataClass;
 using Il2CppAssets.Scripts.PeroTools.Commons;
-using Il2CppAssets.Scripts.PeroTools.GeneralLocalization;
 using Il2CppAssets.Scripts.PeroTools.Managers;
 using Il2CppAssets.Scripts.UI.Panels;
 using Il2CppInterop.Runtime.InteropTypes.Arrays;
 using Il2CppPeroTools2.Resources;
-using static Il2CppAssets.Scripts.Database.DBConfigCustomTags;
+using UnityEngine;
+using Logger = CustomAlbums.Utilities.Logger;
+using Object = UnityEngine.Object;
 
-namespace CustomAlbums.Managers
+namespace CustomAlbums.Managers;
+
+internal static class HotReloadManager
 {
-    internal static class HotReloadManager
+    private static readonly Logger Logger = new(nameof(HotReloadManager));
+
+    // Hot-loaded MusicInfo cache: uid -> MusicInfo
+    // Used by GetMusicInfoFromAll Harmony Postfix
+    private static readonly Dictionary<string, MusicInfo> HotLoadedMusicInfos = new();
+    private static readonly Dictionary<string, string> HotLoadedMusicNames = new();
+    private static readonly Dictionary<string, string> HotLoadedMusicAuthors = new();
+
+    private static float _lastProcessTime;
+
+    // Thread-safe queues for FileSystemWatcher background events
+    private static ConcurrentQueue<string> AlbumsToAdd { get; } = new();
+
+    private static ConcurrentQueue<string> AlbumsToDelete { get; } = new();
+    private static ConcurrentDictionary<string, DateTime> LastFileEvent { get; } = new();
+    internal static PnlStage PnlStageInstance { get; set; }
+
+    /// <summary>
+    ///     Checks if a file is fully written and no longer locked by other processes.
+    /// </summary>
+    private static bool IsFileUnlocked(string path)
     {
-        private static readonly Logger Logger = new(nameof(HotReloadManager));
-
-        // Thread-safe queues for FileSystemWatcher background events
-        private static ConcurrentQueue<string> AlbumsToAdd { get; } = new();
-
-        private static ConcurrentQueue<string> AlbumsToDelete { get; } = new();
-        private static ConcurrentDictionary<string, DateTime> LastFileEvent { get; } = new();
-        internal static PnlStage PnlStageInstance { get; set; }
-
-        // Hot-loaded MusicInfo cache: uid -> MusicInfo
-        // Used by GetMusicInfoFromAll Harmony Postfix
-        private static readonly Dictionary<string, MusicInfo> HotLoadedMusicInfos = new();
-        private static readonly Dictionary<string, string> HotLoadedMusicNames = new();
-        private static readonly Dictionary<string, string> HotLoadedMusicAuthors = new();
-
-        /// <summary>
-        ///     Checks if a file is fully written and no longer locked by other processes.
-        /// </summary>
-        private static bool IsFileUnlocked(string path)
+        try
         {
+            using var fileStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None);
+            return fileStream.Length > 0;
+        }
+        catch (Exception ex) when (ex is FileNotFoundException or IOException)
+        {
+            return false;
+        }
+    }
+
+
+    private static int ParseDifficulty(string difficulty)
+    {
+        return int.TryParse(difficulty, out var value) ? value : 0;
+    }
+
+    private static MusicExInfo CreateMusicExInfo(Album album)
+    {
+        var albumInfo = album.Info;
+        var changedDiff = new Il2CppStructArray<int>(5);
+        changedDiff[0] = ParseDifficulty(albumInfo.Difficulty1);
+        changedDiff[1] = ParseDifficulty(albumInfo.Difficulty2);
+        changedDiff[2] = ParseDifficulty(albumInfo.Difficulty3);
+        changedDiff[3] = ParseDifficulty(albumInfo.Difficulty4);
+        changedDiff[4] = ParseDifficulty(albumInfo.Difficulty5);
+
+        var musicExInfo = new MusicExInfo();
+        musicExInfo.m_AlbumIndex = AlbumManager.Uid + 1;
+        musicExInfo.m_AlbumUidIndex = AlbumManager.Uid;
+        musicExInfo.m_MusicIndex = album.Index;
+        musicExInfo.m_AlbumUidName = $"music_package_{AlbumManager.Uid}";
+        musicExInfo.m_AlbumJsonName = AlbumManager.JsonName;
+        musicExInfo.m_ChangedDiff = changedDiff;
+        return musicExInfo;
+    }
+
+    /// <summary>
+    ///     Hot-add: Injects a new .mdm file into the game's runtime database.
+    /// </summary>
+    private static int ProcessAdditions()
+    {
+        var addedCount = 0;
+
+        if (AlbumsToAdd.TryDequeue(out var path))
             try
             {
-                using var fileStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None);
-                return fileStream.Length > 0;
-            }
-            catch (Exception ex) when (ex is FileNotFoundException or IOException)
-            {
-                return false;
-            }
-        }
+                // 1. Load album into AlbumManager
+                var album = AlbumManager.LoadOne(path);
+                if (album == null) Logger.Warning($"Failed to load album from {path}");
 
+                var albumName = album.AlbumName;
+                var uid = $"{AlbumManager.Uid}-{album.Index}";
+                var albumInfo = album.Info;
+                Logger.Msg($"Adding {albumName} (UID: {uid})");
 
-        private static int ParseDifficulty(string difficulty)
-        {
-            return int.TryParse(difficulty, out var value) ? value : 0;
-        }
+                // 2. Transmute: Native DBObject generation via JSON
+                // Instead of reflection, re-serialize ALL custom albums and let the game natively deserialize them!
+                var masterAlbums = Singleton<ConfigManager>.instance.GetConfigObject<DBConfigAlbums>();
+                var albumsInfo = masterAlbums?.GetAlbumsInfoByUid(AlbumManager.MusicPackage);
+                var globalAlbumConfig = albumsInfo != null
+                    ? Singleton<ConfigManager>.instance.GetConfigObject<DBConfigALBUM>(albumsInfo.albumJsonIndex)
+                    : null;
 
-        private static MusicExInfo CreateMusicExInfo(Album album)
-        {
-            var albumInfo = album.Info;
-            var changedDiff = new Il2CppStructArray<int>(5);
-            changedDiff[0] = ParseDifficulty(albumInfo.Difficulty1);
-            changedDiff[1] = ParseDifficulty(albumInfo.Difficulty2);
-            changedDiff[2] = ParseDifficulty(albumInfo.Difficulty3);
-            changedDiff[3] = ParseDifficulty(albumInfo.Difficulty4);
-            changedDiff[4] = ParseDifficulty(albumInfo.Difficulty5);
-
-            var musicExInfo = new MusicExInfo();
-            musicExInfo.m_AlbumIndex = AlbumManager.Uid + 1;
-            musicExInfo.m_AlbumUidIndex = AlbumManager.Uid;
-            musicExInfo.m_MusicIndex = album.Index;
-            musicExInfo.m_AlbumUidName = $"music_package_{AlbumManager.Uid}";
-            musicExInfo.m_AlbumJsonName = AlbumManager.JsonName;
-            musicExInfo.m_ChangedDiff = changedDiff;
-            return musicExInfo;
-        }
-
-        /// <summary>
-        ///     Hot-add: Injects a new .mdm file into the game's runtime database.
-        /// </summary>
-        private static int ProcessAdditions()
-        {
-            var addedCount = 0;
-
-            if (AlbumsToAdd.TryDequeue(out var path))
-            {
-                try
+                if (globalAlbumConfig != null)
                 {
-                    // 1. Load album into AlbumManager
-                    var album = AlbumManager.LoadOne(path);
-                    if (album == null)
+                    var jsonArray = new JsonArray();
+                    var localJsonArray = new JsonArray();
+
+                    var firstSongs = new HashSet<string>(AlbumManager.LoadedAlbums.Values
+                        .GroupBy(a => PackManager.GetPackFromUid(a.Uid))
+                        .Select(g => g.OrderBy(a => a.Index).First().Uid));
+
+                    foreach (var (albumStr, albumObj) in AlbumManager.LoadedAlbums)
                     {
-                        Logger.Warning($"Failed to load album from {path}");
-                    }
+                        var aInfo = albumObj.Info;
+                        var pack = PackManager.GetPackFromUid(albumObj.Uid);
+                        var isFirstSong = firstSongs.Contains(albumObj.Uid);
+                        var titleString = pack?.Title ?? "Unclassified";
 
-                    var albumName = album.AlbumName;
-                    var uid = $"{AlbumManager.Uid}-{album.Index}";
-                    var albumInfo = album.Info;
-                    Logger.Msg($"Adding {albumName} (UID: {uid})");
+                        var displayName = aInfo.Name ?? "";
+                        if (isFirstSong) displayName = $"【{titleString}】 {aInfo.Name}";
 
-                    // 2. Transmute: Native DBObject generation via JSON
-                    // Instead of reflection, re-serialize ALL custom albums and let the game natively deserialize them!
-                    var masterAlbums = Singleton<ConfigManager>.instance.GetConfigObject<DBConfigAlbums>(-1);
-                    var albumsInfo = masterAlbums?.GetAlbumsInfoByUid(AlbumManager.MusicPackage);
-                    var globalAlbumConfig = albumsInfo != null 
-                        ? Singleton<ConfigManager>.instance.GetConfigObject<DBConfigALBUM>(albumsInfo.albumJsonIndex) 
-                        : null;
-
-                    if (globalAlbumConfig != null)
-                    {
-                        var jsonArray = new JsonArray();
-                        var localJsonArray = new JsonArray();
-
-                        var firstSongs = new HashSet<string>(AlbumManager.LoadedAlbums.Values
-                            .GroupBy(a => PackManager.GetPackFromUid(a.Uid))
-                            .Select(g => g.OrderBy(a => a.Index).First().Uid));
-
-                        foreach (var (albumStr, albumObj) in AlbumManager.LoadedAlbums)
+                        var customChartJson = new
                         {
-                            var aInfo = albumObj.Info;
-                            var pack = PackManager.GetPackFromUid(albumObj.Uid);
-                            var isFirstSong = firstSongs.Contains(albumObj.Uid);
-                            var titleString = pack?.Title ?? "Unclassified";
-
-                            var displayName = aInfo.Name ?? "";
-                            if (isFirstSong)
-                            {
-                                displayName = $"【{titleString}】 {aInfo.Name}";
-                            }
-
-                            var customChartJson = new
-                            {
-                                uid = albumObj.Uid,
-                                name = displayName,
-                                author = aInfo.Author ?? "",
-                                bpm = aInfo.Bpm ?? "0",
-                                music = $"{albumStr}_music",
-                                demo = $"{albumStr}_demo",
-                                cover = $"{albumStr}_cover",
-                                noteJson = $"{albumStr}_map",
-                                scene = aInfo.Scene ?? "scene_01",
-                                unlockLevel = "0",
-                                levelDesigner = aInfo.LevelDesigner ?? "",
-                                levelDesigner1 = aInfo.LevelDesigner1 ?? aInfo.LevelDesigner ?? "",
-                                levelDesigner2 = aInfo.LevelDesigner2 ?? aInfo.LevelDesigner ?? "",
-                                levelDesigner3 = aInfo.LevelDesigner3 ?? aInfo.LevelDesigner ?? "",
-                                levelDesigner4 = aInfo.LevelDesigner4 ?? aInfo.LevelDesigner ?? "",
-                                levelDesigner5 = aInfo.LevelDesigner5 ?? aInfo.LevelDesigner ?? "",
-                                difficulty1 = aInfo.Difficulty1 ?? "0",
-                                difficulty2 = aInfo.Difficulty2 ?? "0",
-                                difficulty3 = aInfo.Difficulty3 ?? "0",
-                                difficulty4 = aInfo.Difficulty4 ?? "0",
-                                difficulty5 = aInfo.Difficulty5 ?? "0"
-                            };
-                            jsonArray.Add(JsonSerializer.SerializeToNode(customChartJson));
-
-                            localJsonArray.Add(JsonSerializer.SerializeToNode(new
-                            {
-                                name = displayName,
-                                author = aInfo.Author ?? ""
-                            }));
-                        }
-
-                        var fullJsonStr = JsonSerializer.Serialize(jsonArray);
-                        var fullLocalJsonStr = JsonSerializer.Serialize(localJsonArray);
-
-                        // 1. Re-deserialize the entire list of custom albums into the global config
-                        globalAlbumConfig.Deserialize(fullJsonStr);
-                        
-                        // 2. Bypass engine cache completely by manually instantiating and injecting the localized databases
-                        var localDicProp = typeof(BaseDBConfigLocalObject<DBConfigLocalALBUM, LocalALBUMInfo>).GetProperty("m_LocalDic", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
-                        if (localDicProp != null)
-                        {
-                            Il2CppSystem.Collections.Generic.Dictionary<int, DBConfigLocalALBUM> globalLocalDic = localDicProp.GetValue(globalAlbumConfig) as Il2CppSystem.Collections.Generic.Dictionary<int, DBConfigLocalALBUM>;
-                            if (globalLocalDic != null)
-                            {
-                                globalLocalDic.Clear();
-                                for (int i = 0; i <= 15; i++)
-                                {
-                                    var newLocalAlbum = new DBConfigLocalALBUM();
-                                    newLocalAlbum.Deserialize(fullLocalJsonStr);
-                                    globalLocalDic.Add(i, newLocalAlbum);
-                                }
-                            }
-                        }
-
-                        // 4. Update the global dictionaries
-                        GlobalDataBase.s_DbMusicTag.AddAllMusicInfo(globalAlbumConfig);
-
-                        // 4. Re-initialize ExInfo for all the newly created MusicInfo objects
-                        var newMusicInfoList = new Il2CppSystem.Collections.Generic.List<MusicInfo>();
-                        globalAlbumConfig.GetAllMusicInfo(newMusicInfoList);
-                        int idx = 0;
-                        foreach (var m in newMusicInfoList)
-                        {
-                            var uidSplit = m.uid.Split('-');
-                            if (uidSplit.Length < 2) { idx++; continue; }
-                            if (!int.TryParse(uidSplit[1], out var parsedIndex)) { idx++; continue; }
-
-                            var aObj = AlbumManager.LoadedAlbums.Values.FirstOrDefault(a => a.Index == parsedIndex);
-                            if (aObj != null)
-                            {
-                                m.Init(idx);
-                                m.InitExInfo();
-                                m.m_MusicExInfo = CreateMusicExInfo(aObj);
-
-                                HotLoadedMusicInfos[m.uid] = m;
-                                HotLoadedMusicNames[m.uid] = aObj.Info.Name ?? "";
-                                HotLoadedMusicAuthors[m.uid] = aObj.Info.Author ?? "";
-                            }
-                            idx++;
-                        }
-
-                        Logger.Msg($"Transmuted MusicInfo for {uid}");
-                    }
-                    else
-                    {
-                        Logger.Error("globalAlbumConfig is null! Cannot inject metadata.");
-                    }
-
-                    // Add to the front-end view list so UI updates correctly
-                    try
-                    {
-                        var dhColBase = Il2CppAssets.Scripts.Database.DataHelper.collections;
-                        var dhColPtr = dhColBase != null ? dhColBase.Pointer : IntPtr.Zero;
-                        var uids = GlobalDataBase.s_DbMusicTag.m_StageShowMusicUids;
-                        if (uids != null)
-                        {
-                            if (!uids.Contains(uid))
-                            {
-                                // Only add if it's not currently displaying the collections list to avoid alias pollution
-                                if (dhColPtr == IntPtr.Zero || uids.Pointer != dhColPtr)
-                                {
-                                    uids.Add(uid);
-                                    Logger.Msg($"Added {uid} to m_StageShowMusicUids");
-                                }
-                            }
-                        }
-                        // Add to All Music tag (Index 0)
-
-                        var allMusicTag = GlobalDataBase.dbMusicTag.GetAlbumTagInfo(0);
-                        if (allMusicTag != null)
-                        {
-                            if (allMusicTag.m_MusicUids != null && !allMusicTag.m_MusicUids.Contains(uid))
-                            {
-                                if (allMusicTag.m_MusicUids.Pointer != dhColPtr)
-                                    allMusicTag.m_MusicUids.Add(uid);
-                            }
-                            if (allMusicTag.m_DisplayMusicUids != null)
-                            {
-                                foreach (var d in allMusicTag.m_DisplayMusicUids)
-                                {
-                                    if (d.musicUids != null && !d.musicUids.Contains(uid))
-                                    {
-                                        if (d.musicUids.Pointer != dhColPtr)
-                                            d.musicUids.Add(uid);
-                                    }
-                                }
-                            }
-                        }
-
-                        // 5. Removed dicLevelConfig injection. It was causing Headquarters to crash by supplying an incorrect difficulty level.
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Warning($"Failed to add to view lists: {ex.Message}");
-                    }
-                    
-                    // 3. Inject search tags into ConfigManager
-                    try
-                    {
-                        var config = Singleton<ConfigManager>.instance.GetConfigObject<DBConfigMusicSearchTag>();
-                        var searchTag = new MusicSearchTagInfo
-                        {
-                            uid = uid,
-                            listIndex = config.count
+                            uid = albumObj.Uid,
+                            name = displayName,
+                            author = aInfo.Author ?? "",
+                            bpm = aInfo.Bpm ?? "0",
+                            music = $"{albumStr}_music",
+                            demo = $"{albumStr}_demo",
+                            cover = $"{albumStr}_cover",
+                            noteJson = $"{albumStr}_map",
+                            scene = aInfo.Scene ?? "scene_01",
+                            unlockLevel = "0",
+                            levelDesigner = aInfo.LevelDesigner ?? "",
+                            levelDesigner1 = aInfo.LevelDesigner1 ?? aInfo.LevelDesigner ?? "",
+                            levelDesigner2 = aInfo.LevelDesigner2 ?? aInfo.LevelDesigner ?? "",
+                            levelDesigner3 = aInfo.LevelDesigner3 ?? aInfo.LevelDesigner ?? "",
+                            levelDesigner4 = aInfo.LevelDesigner4 ?? aInfo.LevelDesigner ?? "",
+                            levelDesigner5 = aInfo.LevelDesigner5 ?? aInfo.LevelDesigner ?? "",
+                            difficulty1 = aInfo.Difficulty1 ?? "0",
+                            difficulty2 = aInfo.Difficulty2 ?? "0",
+                            difficulty3 = aInfo.Difficulty3 ?? "0",
+                            difficulty4 = aInfo.Difficulty4 ?? "0",
+                            difficulty5 = aInfo.Difficulty5 ?? "0"
                         };
+                        jsonArray.Add(JsonSerializer.SerializeToNode(customChartJson));
 
-                        var tags = new List<string> { "custom albums" };
-                        if (albumInfo.SearchTags != null) tags.AddRange(albumInfo.SearchTags);
-                        if (!string.IsNullOrEmpty(albumInfo.NameRomanized)) tags.Add(albumInfo.NameRomanized);
-                        for (var i = 0; i < tags.Count; i++) tags[i] = tags[i].ToLower();
-                        searchTag.tag = new Il2CppInterop.Runtime.InteropTypes.Arrays.Il2CppStringArray(tags.ToArray());
-
-                        if (!config.m_Dictionary.ContainsKey(uid))
+                        localJsonArray.Add(JsonSerializer.SerializeToNode(new
                         {
-                            config.m_Dictionary.Add(uid, searchTag);
-                            config.list.Add(searchTag);
+                            name = displayName,
+                            author = aInfo.Author ?? ""
+                        }));
+                    }
+
+                    var fullJsonStr = JsonSerializer.Serialize(jsonArray);
+                    var fullLocalJsonStr = JsonSerializer.Serialize(localJsonArray);
+
+                    // 1. Re-deserialize the entire list of custom albums into the global config
+                    globalAlbumConfig.Deserialize(fullJsonStr);
+
+                    // 2. Bypass engine cache completely by manually instantiating and injecting the localized databases
+                    var localDicProp =
+                        typeof(BaseDBConfigLocalObject<DBConfigLocalALBUM, LocalALBUMInfo>).GetProperty("m_LocalDic",
+                            BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    if (localDicProp != null)
+                    {
+                        var globalLocalDic =
+                            localDicProp.GetValue(globalAlbumConfig) as
+                                Il2CppSystem.Collections.Generic.Dictionary<int, DBConfigLocalALBUM>;
+                        if (globalLocalDic != null)
+                        {
+                            globalLocalDic.Clear();
+                            for (var i = 0; i <= 15; i++)
+                            {
+                                var newLocalAlbum = new DBConfigLocalALBUM();
+                                newLocalAlbum.Deserialize(fullLocalJsonStr);
+                                globalLocalDic.Add(i, newLocalAlbum);
+                            }
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Logger.Warning($"Failed to add search tags: {ex.Message}");
-                    }
 
-                    // 4. Preload cover resources
-                    try
+                    // 4. Update the global dictionaries
+                    GlobalDataBase.s_DbMusicTag.AddAllMusicInfo(globalAlbumConfig);
+
+                    // 4. Re-initialize ExInfo for all the newly created MusicInfo objects
+                    var newMusicInfoList = new Il2CppSystem.Collections.Generic.List<MusicInfo>();
+                    globalAlbumConfig.GetAllMusicInfo(newMusicInfoList);
+                    var idx = 0;
+                    foreach (var m in newMusicInfoList)
                     {
-                        if (album.HasFile("cover.png") || album.HasFile("cover.gif"))
+                        var uidSplit = m.uid.Split('-');
+                        if (uidSplit.Length < 2)
                         {
-                            ResourcesManager.instance
-                                .LoadFromName<UnityEngine.Sprite>($"{albumName}_cover")
-                                .hideFlags |= UnityEngine.HideFlags.DontUnloadUnusedAsset;
+                            idx++;
+                            continue;
                         }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Warning($"Failed to preload cover: {ex.Message}");
+
+                        if (!int.TryParse(uidSplit[1], out var parsedIndex))
+                        {
+                            idx++;
+                            continue;
+                        }
+
+                        var aObj = AlbumManager.LoadedAlbums.Values.FirstOrDefault(a => a.Index == parsedIndex);
+                        if (aObj != null)
+                        {
+                            m.Init(idx);
+                            m.InitExInfo();
+                            m.m_MusicExInfo = CreateMusicExInfo(aObj);
+
+                            HotLoadedMusicInfos[m.uid] = m;
+                            HotLoadedMusicNames[m.uid] = aObj.Info.Name ?? "";
+                            HotLoadedMusicAuthors[m.uid] = aObj.Info.Author ?? "";
+                        }
+
+                        idx++;
                     }
 
-                    // UI Hijack will handle rendering the name and author without needing these native injections.
-                    addedCount++;
-                    Logger.Msg($"Successfully added {albumInfo.Name}");
+                    Logger.Msg($"Transmuted MusicInfo for {uid}");
                 }
-                catch (Exception ex)
+                else
                 {
-                    Logger.Warning($"Error adding album: {ex.Message}");
-                    Logger.Warning(ex.StackTrace);
+                    Logger.Error("globalAlbumConfig is null! Cannot inject metadata.");
                 }
-            }
 
-            return addedCount;
-        }
-
-        /// <summary>
-        ///     Hot-delete: Removes a specified album from the game's runtime database.
-        /// </summary>
-        private static int ProcessDeletions()
-        {
-            var deletedCount = 0;
-
-            if (AlbumsToDelete.TryDequeue(out var albumFileName))
-            {
+                // Add to the front-end view list so UI updates correctly
                 try
                 {
-                    var albumKey = $"album_{albumFileName}";
-                    Logger.Msg($"Removing {albumKey}");
-
-                    if (!AlbumManager.LoadedAlbums.TryGetValue(albumKey, out var album))
-                    {
-                        Logger.Warning($"Album {albumKey} not found");
-                    }
-
-                    var uid = $"{AlbumManager.Uid}-{album.Index}";
-
-                    HotLoadedMusicInfos.Remove(uid);
-                    HotLoadedMusicNames.Remove(uid);
-                    HotLoadedMusicAuthors.Remove(uid);
-
-                    // Remove from game music database
-                    try
-                    {
-                        var musicInfo = GlobalDataBase.s_DbMusicTag.GetMusicInfoFromAll(uid);
-                        if (musicInfo != null)
-                        {
-                            GlobalDataBase.s_DbMusicTag.RemoveShowMusicUid(musicInfo);
-                        }
-                        
-                        var allMusicInfo = GlobalDataBase.s_DbMusicTag.m_AllMusicInfo;
-                        if (allMusicInfo != null && allMusicInfo.ContainsKey(uid))
-                        {
-                            allMusicInfo.Remove(uid);
-                        }
-                        
-                        // Remove from all tags (like "All Music" or "Favorites")
-                        if (GlobalDataBase.s_DbMusicTag.m_AllAlbumTagData != null)
-                        {
-                            foreach (var tag in GlobalDataBase.s_DbMusicTag.m_AllAlbumTagData)
+                    var dhColBase = DataHelper.collections;
+                    var dhColPtr = dhColBase != null ? dhColBase.Pointer : IntPtr.Zero;
+                    var uids = GlobalDataBase.s_DbMusicTag.m_StageShowMusicUids;
+                    if (uids != null)
+                        if (!uids.Contains(uid))
+                            // Only add if it's not currently displaying the collections list to avoid alias pollution
+                            if (dhColPtr == IntPtr.Zero || uids.Pointer != dhColPtr)
                             {
-                                var tagInfo = tag.Value;
-                                if (tagInfo.m_MusicUids != null && tagInfo.m_MusicUids.Contains(uid))
-                                {
-                                    tagInfo.m_MusicUids.Remove(uid);
-                                }
-                                if (tagInfo.m_DisplayMusicUids != null)
-                                {
-                                    foreach (var d in tagInfo.m_DisplayMusicUids)
-                                    {
-                                        if (d.musicUids != null && d.musicUids.Contains(uid))
-                                        {
-                                            d.musicUids.Remove(uid);
-                                        }
-                                    }
-                                }
+                                uids.Add(uid);
+                                Logger.Msg($"Added {uid} to m_StageShowMusicUids");
                             }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Warning($"Failed to remove from database: {ex.Message}");
-                    }
 
-                    // Remove from ConfigManager
-                    try
+                    // Add to All Music tag (Index 0)
+                    var allMusicTag = GlobalDataBase.dbMusicTag.GetAlbumTagInfo(0);
+                    if (allMusicTag != null)
                     {
-                        var config = Singleton<ConfigManager>.instance.GetConfigObject<DBConfigMusicSearchTag>();
-                        if (config != null)
-                        {
-                            if (config.m_Dictionary.ContainsKey(uid))
-                            {
-                                var tagInfo = config.m_Dictionary[uid];
-                                config.m_Dictionary.Remove(uid);
-                                config.list.Remove(tagInfo);
-                            }
-                        }
+                        if (allMusicTag.m_MusicUids != null && !allMusicTag.m_MusicUids.Contains(uid))
+                            if (allMusicTag.m_MusicUids.Pointer != dhColPtr)
+                                allMusicTag.m_MusicUids.Add(uid);
+                        if (allMusicTag.m_DisplayMusicUids != null)
+                            foreach (var d in allMusicTag.m_DisplayMusicUids)
+                                if (d.musicUids != null && !d.musicUids.Contains(uid))
+                                    if (d.musicUids.Pointer != dhColPtr)
+                                        d.musicUids.Add(uid);
                     }
-                    catch (Exception ex)
-                    {
-                        Logger.Warning($"Failed to remove search tags: {ex.Message}");
-                    }
-
-                    // Clear resource cache
-                    AlbumManager.LoadedAlbums.Remove(albumKey);
-                    AssetPatch.RemoveFromCache($"{albumKey}_demo");
-                    AssetPatch.RemoveFromCache($"{albumKey}_music");
-                    AssetPatch.RemoveFromCache($"{albumKey}_cover");
-
-                    deletedCount++;
-                    Logger.Msg($"Removed {albumKey}");
+                    // 5. Removed dicLevelConfig injection. It was causing Headquarters to crash by supplying an incorrect difficulty level.
                 }
                 catch (Exception ex)
                 {
-                    Logger.Warning($"Error removing: {ex.Message}");
-                    Logger.Warning(ex.StackTrace);
+                    Logger.Warning($"Failed to add to view lists: {ex.Message}");
                 }
-            }
 
-            return deletedCount;
-        }
-
-        /// <summary>
-        ///     Rebuild Custom Albums tag to update the UID list.
-        /// </summary>
-        private static void RebuildCustomAlbumsTag()
-        {
-            try
-            {
-                var existingTag = GlobalDataBase.dbMusicTag.GetAlbumTagInfo(AlbumManager.Uid);
-                if (existingTag != null)
+                // 3. Inject search tags into ConfigManager
+                try
                 {
-                    var uids = AlbumManager.GetAllUid().ToList();
-                    
-                    if (existingTag.customInfo != null)
+                    var config = Singleton<ConfigManager>.instance.GetConfigObject<DBConfigMusicSearchTag>();
+                    var searchTag = new MusicSearchTagInfo
                     {
-                        existingTag.customInfo.music_list = uids.ToIl2Cpp();
-                    }
-                    
-                    if (existingTag.m_MusicUids != null)
+                        uid = uid,
+                        listIndex = config.count
+                    };
+
+                    var tags = new List<string> { "custom albums" };
+                    if (albumInfo.SearchTags != null) tags.AddRange(albumInfo.SearchTags);
+                    if (!string.IsNullOrEmpty(albumInfo.NameRomanized)) tags.Add(albumInfo.NameRomanized);
+                    for (var i = 0; i < tags.Count; i++) tags[i] = tags[i].ToLower();
+                    searchTag.tag = new Il2CppStringArray(tags.ToArray());
+
+                    if (!config.m_Dictionary.ContainsKey(uid))
                     {
-                        existingTag.m_MusicUids.Clear();
-                        foreach (var uid in uids) existingTag.m_MusicUids.Add(uid);
+                        config.m_Dictionary.Add(uid, searchTag);
+                        config.list.Add(searchTag);
                     }
-                    
-                    if (existingTag.m_DisplayMusicUids != null)
-                    {
-                        foreach (var d in existingTag.m_DisplayMusicUids)
-                        {
-                            if (d.musicUids != null)
-                            {
-                                d.musicUids.Clear();
-                                foreach (var uid in uids) d.musicUids.Add(uid);
-                            }
-                        }
-                    }
-                    
-                    Logger.Msg($"Tag updated ({uids.Count} albums)");
                 }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"Failed to add search tags: {ex.Message}");
+                }
+
+                // 4. Preload cover resources
+                try
+                {
+                    if (album.HasFile("cover.png") || album.HasFile("cover.gif"))
+                        ResourcesManager.instance
+                            .LoadFromName<Sprite>($"{albumName}_cover")
+                            .hideFlags |= HideFlags.DontUnloadUnusedAsset;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"Failed to preload cover: {ex.Message}");
+                }
+
+                // UI Hijack will handle rendering the name and author without needing these native injections.
+                addedCount++;
+                Logger.Msg($"Successfully added {albumInfo.Name}");
             }
             catch (Exception ex)
             {
-                Logger.Warning($"Tag rebuild failed: {ex.Message}");
+                Logger.Warning($"Error adding album: {ex.Message}");
+                Logger.Warning(ex.StackTrace);
             }
-        }
 
-        private static void RefreshUI()
-        {
+        return addedCount;
+    }
+
+    /// <summary>
+    ///     Hot-delete: Removes a specified album from the game's runtime database.
+    /// </summary>
+    private static int ProcessDeletions()
+    {
+        var deletedCount = 0;
+
+        if (AlbumsToDelete.TryDequeue(out var albumFileName))
             try
             {
-                var stage = UnityEngine.Object.FindObjectOfType<Il2CppAssets.Scripts.UI.Panels.PnlStage>();
-                if (stage != null && stage.gameObject.activeInHierarchy)
+                var albumKey = $"album_{albumFileName}";
+                Logger.Msg($"Removing {albumKey}");
+
+                if (!AlbumManager.LoadedAlbums.TryGetValue(albumKey, out var album))
+                    Logger.Warning($"Album {albumKey} not found");
+
+                var uid = $"{AlbumManager.Uid}-{album.Index}";
+
+                HotLoadedMusicInfos.Remove(uid);
+                HotLoadedMusicNames.Remove(uid);
+                HotLoadedMusicAuthors.Remove(uid);
+
+                // Remove from game music database
+                try
                 {
-                    stage.RefreshStageUI();
-                    Logger.Msg("UI refreshed");
+                    var musicInfo = GlobalDataBase.s_DbMusicTag.GetMusicInfoFromAll(uid);
+                    if (musicInfo != null) GlobalDataBase.s_DbMusicTag.RemoveShowMusicUid(musicInfo);
+
+                    var allMusicInfo = GlobalDataBase.s_DbMusicTag.m_AllMusicInfo;
+                    if (allMusicInfo != null && allMusicInfo.ContainsKey(uid)) allMusicInfo.Remove(uid);
+
+                    // Remove from all tags (like "All Music" or "Favorites")
+                    if (GlobalDataBase.s_DbMusicTag.m_AllAlbumTagData != null)
+                        foreach (var tag in GlobalDataBase.s_DbMusicTag.m_AllAlbumTagData)
+                        {
+                            var tagInfo = tag.Value;
+                            if (tagInfo.m_MusicUids != null && tagInfo.m_MusicUids.Contains(uid))
+                                tagInfo.m_MusicUids.Remove(uid);
+                            if (tagInfo.m_DisplayMusicUids != null)
+                                foreach (var d in tagInfo.m_DisplayMusicUids)
+                                    if (d.musicUids != null && d.musicUids.Contains(uid))
+                                        d.musicUids.Remove(uid);
+                        }
                 }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"Failed to remove from database: {ex.Message}");
+                }
+
+                // Remove from ConfigManager
+                try
+                {
+                    var config = Singleton<ConfigManager>.instance.GetConfigObject<DBConfigMusicSearchTag>();
+                    if (config != null)
+                        if (config.m_Dictionary.ContainsKey(uid))
+                        {
+                            var tagInfo = config.m_Dictionary[uid];
+                            config.m_Dictionary.Remove(uid);
+                            config.list.Remove(tagInfo);
+                        }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"Failed to remove search tags: {ex.Message}");
+                }
+
+                // Clear resource cache
+                AlbumManager.LoadedAlbums.Remove(albumKey);
+                AssetPatch.RemoveFromCache($"{albumKey}_demo");
+                AssetPatch.RemoveFromCache($"{albumKey}_music");
+                AssetPatch.RemoveFromCache($"{albumKey}_cover");
+
+                deletedCount++;
+                Logger.Msg($"Removed {albumKey}");
             }
             catch (Exception ex)
             {
-                Logger.Warning($"Failed to refresh UI: {ex.Message}");
+                Logger.Warning($"Error removing: {ex.Message}");
+                Logger.Warning(ex.StackTrace);
+            }
+
+        return deletedCount;
+    }
+
+    /// <summary>
+    ///     Rebuild Custom Albums tag to update the UID list.
+    /// </summary>
+    private static void RebuildCustomAlbumsTag()
+    {
+        try
+        {
+            var existingTag = GlobalDataBase.dbMusicTag.GetAlbumTagInfo(AlbumManager.Uid);
+            if (existingTag != null)
+            {
+                var uids = AlbumManager.GetAllUid().ToList();
+
+                if (existingTag.customInfo != null) existingTag.customInfo.music_list = uids.ToIl2Cpp();
+
+                if (existingTag.m_MusicUids != null)
+                {
+                    existingTag.m_MusicUids.Clear();
+                    foreach (var uid in uids) existingTag.m_MusicUids.Add(uid);
+                }
+
+                if (existingTag.m_DisplayMusicUids != null)
+                    foreach (var d in existingTag.m_DisplayMusicUids)
+                        if (d.musicUids != null)
+                        {
+                            d.musicUids.Clear();
+                            foreach (var uid in uids) d.musicUids.Add(uid);
+                        }
+
+                Logger.Msg($"Tag updated ({uids.Count} albums)");
             }
         }
-
-        private static float _lastProcessTime;
-
-        /// <summary>
-        ///     Consume the queue in Unity's FixedUpdate (main thread safe).
-        /// </summary>
-        internal static void FixedUpdate()
+        catch (Exception ex)
         {
-            if (AlbumsToAdd.IsEmpty && AlbumsToDelete.IsEmpty) return;
+            Logger.Warning($"Tag rebuild failed: {ex.Message}");
+        }
+    }
 
-            if (PnlStageInstance == null) return;
-
-            if (UnityEngine.Time.unscaledTime - _lastProcessTime < 0.02f) return;
-            _lastProcessTime = UnityEngine.Time.unscaledTime;
-            
-            var oldSelectedUid = DataHelper.selectedMusicUidFromInfoList;
-            var oldSelectedAlbumName = AlbumManager.GetAlbumNameFromUid(oldSelectedUid);
-
-            var deletedCount = ProcessDeletions();
-            var addedCount = 0;
-            if (deletedCount == 0)
+    private static void RefreshUI()
+    {
+        try
+        {
+            var stage = Object.FindObjectOfType<PnlStage>();
+            if (stage != null && stage.gameObject.activeInHierarchy)
             {
-                addedCount = ProcessAdditions();
+                stage.RefreshStageUI();
+                Logger.Msg("UI refreshed");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Warning($"Failed to refresh UI: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    ///     Consume the queue in Unity's FixedUpdate (main thread safe).
+    /// </summary>
+    internal static void FixedUpdate()
+    {
+        if (AlbumsToAdd.IsEmpty && AlbumsToDelete.IsEmpty) return;
+
+        if (PnlStageInstance == null) return;
+
+        if (Time.unscaledTime - _lastProcessTime < 0.02f) return;
+        _lastProcessTime = Time.unscaledTime;
+
+        var oldSelectedUid = DataHelper.selectedMusicUidFromInfoList;
+        var oldSelectedAlbumName = AlbumManager.GetAlbumNameFromUid(oldSelectedUid);
+
+        var deletedCount = ProcessDeletions();
+        var addedCount = 0;
+        if (deletedCount == 0) addedCount = ProcessAdditions();
+
+        if (deletedCount > 0 || addedCount > 0)
+        {
+            PnlStageInstance?.m_MusicRootAnimator?.Play(PnlStageInstance.animNameAlbumIn);
+
+            if (!string.IsNullOrEmpty(oldSelectedAlbumName) && oldSelectedUid != "0-0")
+            {
+                if (AlbumManager.LoadedAlbums.TryGetValue(oldSelectedAlbumName, out var newAlbum))
+                {
+                    var newUid = $"{AlbumManager.Uid}-{newAlbum.Index}";
+                    if (newUid != oldSelectedUid)
+                    {
+                        DataHelper.selectedMusicUidFromInfoList = newUid;
+                        Logger.Msg($"Updated selected UID from {oldSelectedUid} to {newUid}");
+                    }
+                }
+                else
+                {
+                    DataHelper.selectedMusicUidFromInfoList = "0-0";
+                    Logger.Msg("Selected album was deleted. Resetting selection to 0-0");
+                }
             }
 
-            if (deletedCount > 0 || addedCount > 0)
-            {
-                PnlStageInstance?.m_MusicRootAnimator?.Play(PnlStageInstance.animNameAlbumIn);
+            RebuildCustomAlbumsTag();
+            RefreshUI();
+        }
+    }
 
-                if (!string.IsNullOrEmpty(oldSelectedAlbumName) && oldSelectedUid != "0-0")
+    /// <summary>
+    ///     Initialize FileSystemWatcher to monitor Custom_Albums directory changes.
+    /// </summary>
+    internal static void OnLateInitializeMelon()
+    {
+        try
+        {
+            var watchPath = Path.GetFullPath(AlbumManager.SearchPath);
+            Logger.Msg($"Watching directory: {watchPath}");
+
+            if (!Directory.Exists(watchPath))
+            {
+                Logger.Warning($"Directory does not exist: {watchPath}");
+                return;
+            }
+
+            AlbumManager.AlbumWatcher.Path = watchPath;
+            AlbumManager.AlbumWatcher.Filter = AlbumManager.SearchPattern;
+
+            AlbumManager.AlbumWatcher.Created += (_, e) =>
+            {
+                var now = DateTime.Now;
+                if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) &&
+                    (now - lastTime).TotalMilliseconds < 500) return;
+                LastFileEvent[e.FullPath] = now;
+
+                Logger.Msg($"Detected new file: {e.Name}");
+                Task.Run(() =>
                 {
-                    if (AlbumManager.LoadedAlbums.TryGetValue(oldSelectedAlbumName, out var newAlbum))
+                    var attempts = 0;
+                    while (!IsFileUnlocked(e.FullPath) && attempts < 50)
                     {
-                        var newUid = $"{AlbumManager.Uid}-{newAlbum.Index}";
-                        if (newUid != oldSelectedUid)
-                        {
-                            DataHelper.selectedMusicUidFromInfoList = newUid;
-                            Logger.Msg($"Updated selected UID from {oldSelectedUid} to {newUid}");
-                        }
+                        Thread.Sleep(200);
+                        attempts++;
+                    }
+
+                    if (attempts < 50)
+                    {
+                        AlbumsToAdd.Enqueue(e.FullPath);
+                        Logger.Msg($"Queued for addition: {e.Name}");
                     }
                     else
                     {
-                        DataHelper.selectedMusicUidFromInfoList = "0-0";
-                        Logger.Msg($"Selected album was deleted. Resetting selection to 0-0");
+                        Logger.Warning($"Timed out waiting for file: {e.Name}");
                     }
-                }
+                });
+            };
 
-                RebuildCustomAlbumsTag();
-                RefreshUI();
-            }
-        }
-
-        /// <summary>
-        ///     Initialize FileSystemWatcher to monitor Custom_Albums directory changes.
-        /// </summary>
-        internal static void OnLateInitializeMelon()
-        {
-            try
+            AlbumManager.AlbumWatcher.Deleted += (_, e) =>
             {
+                var now = DateTime.Now;
+                if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) &&
+                    (now - lastTime).TotalMilliseconds < 500) return;
+                LastFileEvent[e.FullPath] = now;
 
-                var watchPath = Path.GetFullPath(AlbumManager.SearchPath);
-                Logger.Msg($"Watching directory: {watchPath}");
+                Logger.Msg($"Detected deletion: {e.Name}");
+                AlbumsToDelete.Enqueue(Path.GetFileNameWithoutExtension(e.Name));
+            };
 
-                if (!Directory.Exists(watchPath))
+            AlbumManager.AlbumWatcher.Changed += (_, e) =>
+            {
+                if (e.ChangeType != WatcherChangeTypes.Changed) return;
+                var now = DateTime.Now;
+                if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) &&
+                    (now - lastTime).TotalMilliseconds < 500) return;
+                LastFileEvent[e.FullPath] = now;
+
+                Logger.Msg($"Detected change: {e.Name}");
+                Task.Run(() =>
                 {
-                    Logger.Warning($"Directory does not exist: {watchPath}");
-                    return;
+                    var attempts = 0;
+                    while (!IsFileUnlocked(e.FullPath) && attempts < 50)
+                    {
+                        Thread.Sleep(200);
+                        attempts++;
+                    }
+
+                    if (attempts < 50)
+                    {
+                        AlbumsToDelete.Enqueue(Path.GetFileNameWithoutExtension(e.Name));
+                        AlbumsToAdd.Enqueue(e.FullPath);
+                        Logger.Msg($"Queued for reload: {e.Name}");
+                    }
+                    else
+                    {
+                        Logger.Warning($"Timed out waiting for file: {e.Name}");
+                    }
+                });
+            };
+
+            AlbumManager.AlbumWatcher.Renamed += (_, e) =>
+            {
+                var now = DateTime.Now;
+                if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) &&
+                    (now - lastTime).TotalMilliseconds < 500) return;
+                LastFileEvent[e.FullPath] = now;
+
+                Logger.Msg($"Detected rename: {e.OldName} -> {e.Name}");
+                var oldKey = $"album_{Path.GetFileNameWithoutExtension(e.OldName)}";
+                var newKey = $"album_{Path.GetFileNameWithoutExtension(e.Name)}";
+
+                if (AlbumManager.LoadedAlbums.Remove(oldKey, out var album))
+                {
+                    AlbumManager.LoadedAlbums.TryAdd(newKey, album);
+                    AssetPatch.ModifyCacheKey($"{oldKey}_demo", $"{newKey}_demo");
+                    AssetPatch.ModifyCacheKey($"{oldKey}_music", $"{newKey}_music");
+                    AssetPatch.ModifyCacheKey($"{oldKey}_cover", $"{newKey}_cover");
+                    Logger.Msg($"Renamed {oldKey} -> {newKey}");
                 }
-
-                AlbumManager.AlbumWatcher.Path = watchPath;
-                AlbumManager.AlbumWatcher.Filter = AlbumManager.SearchPattern;
-
-                AlbumManager.AlbumWatcher.Created += (_, e) =>
+                else
                 {
-                    var now = DateTime.Now;
-                    if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) && (now - lastTime).TotalMilliseconds < 500) return;
-                    LastFileEvent[e.FullPath] = now;
-
-                    Logger.Msg($"Detected new file: {e.Name}");
+                    // Old album was not loaded (e.g. didn't match 'test*.mdm'). Treat this rename as a new creation event.
+                    Logger.Msg($"Old file was not loaded, treating as new file: {e.Name}");
                     Task.Run(() =>
                     {
                         var attempts = 0;
@@ -588,134 +633,47 @@ namespace CustomAlbums.Managers
                             Logger.Warning($"Timed out waiting for file: {e.Name}");
                         }
                     });
-                };
-
-                AlbumManager.AlbumWatcher.Deleted += (_, e) =>
-                {
-                    var now = DateTime.Now;
-                    if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) && (now - lastTime).TotalMilliseconds < 500) return;
-                    LastFileEvent[e.FullPath] = now;
-
-                    Logger.Msg($"Detected deletion: {e.Name}");
-                    AlbumsToDelete.Enqueue(Path.GetFileNameWithoutExtension(e.Name));
-                };
-
-                AlbumManager.AlbumWatcher.Changed += (_, e) =>
-                {
-                    if (e.ChangeType != WatcherChangeTypes.Changed) return;
-                    var now = DateTime.Now;
-                    if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) && (now - lastTime).TotalMilliseconds < 500) return;
-                    LastFileEvent[e.FullPath] = now;
-
-                    Logger.Msg($"Detected change: {e.Name}");
-                    Task.Run(() =>
-                    {
-                        var attempts = 0;
-                        while (!IsFileUnlocked(e.FullPath) && attempts < 50)
-                        {
-                            Thread.Sleep(200);
-                            attempts++;
-                        }
-
-                        if (attempts < 50)
-                        {
-                            AlbumsToDelete.Enqueue(Path.GetFileNameWithoutExtension(e.Name));
-                            AlbumsToAdd.Enqueue(e.FullPath);
-                            Logger.Msg($"Queued for reload: {e.Name}");
-                        }
-                        else
-                        {
-                            Logger.Warning($"Timed out waiting for file: {e.Name}");
-                        }
-                    });
-                };
-
-                AlbumManager.AlbumWatcher.Renamed += (_, e) =>
-                {
-                    var now = DateTime.Now;
-                    if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) && (now - lastTime).TotalMilliseconds < 500) return;
-                    LastFileEvent[e.FullPath] = now;
-
-                    Logger.Msg($"Detected rename: {e.OldName} -> {e.Name}");
-                    var oldKey = $"album_{Path.GetFileNameWithoutExtension(e.OldName)}";
-                    var newKey = $"album_{Path.GetFileNameWithoutExtension(e.Name)}";
-
-                    if (AlbumManager.LoadedAlbums.Remove(oldKey, out var album))
-                    {
-                        AlbumManager.LoadedAlbums.TryAdd(newKey, album);
-                        AssetPatch.ModifyCacheKey($"{oldKey}_demo", $"{newKey}_demo");
-                        AssetPatch.ModifyCacheKey($"{oldKey}_music", $"{newKey}_music");
-                        AssetPatch.ModifyCacheKey($"{oldKey}_cover", $"{newKey}_cover");
-                        Logger.Msg($"Renamed {oldKey} -> {newKey}");
-                    }
-                    else
-                    {
-                        // Old album was not loaded (e.g. didn't match 'test*.mdm'). Treat this rename as a new creation event.
-                        Logger.Msg($"Old file was not loaded, treating as new file: {e.Name}");
-                        Task.Run(() =>
-                        {
-                            var attempts = 0;
-                            while (!IsFileUnlocked(e.FullPath) && attempts < 50)
-                            {
-                                Thread.Sleep(200);
-                                attempts++;
-                            }
-
-                            if (attempts < 50)
-                            {
-                                AlbumsToAdd.Enqueue(e.FullPath);
-                                Logger.Msg($"Queued for addition: {e.Name}");
-                            }
-                            else
-                            {
-                                Logger.Warning($"Timed out waiting for file: {e.Name}");
-                            }
-                        });
-                    }
-                };
-
-                AlbumManager.AlbumWatcher.EnableRaisingEvents = true;
-                Logger.Msg("FileSystemWatcher initialized!");
-            }
-            catch (Exception ex)
-            {
-                Logger.Warning($"Init failed: {ex.Message}");
-                Logger.Warning(ex.StackTrace);
-            }
-        }
-
-        // ============================================================
-        // Harmony Patches
-        // ============================================================
-
-        /// <summary>
-        ///     Intercepts GetMusicInfoFromAll: Returns our manually created MusicInfo
-        ///     when the game looks up a hot-loaded song.
-        /// </summary>
-        [HarmonyPatch(typeof(DBMusicTag), nameof(DBMusicTag.GetMusicInfoFromAll))]
-        internal static class GetMusicInfoFromAllPatch
-        {
-            private static void Postfix(string musicUid, ref MusicInfo __result)
-            {
-                if (string.IsNullOrEmpty(musicUid)) return;
-                
-                if (HotLoadedMusicInfos.TryGetValue(musicUid, out var hotMusicInfo))
-                {
-                    __result = hotMusicInfo;
                 }
-            }
-        }
+            };
 
-        /// <summary>
-        ///     Capture PnlStage instance reference.
-        /// </summary>
-        [HarmonyPatch(typeof(PnlStage), nameof(PnlStage.PreWarm))]
-        internal static class StagePreWarmPatch
+            AlbumManager.AlbumWatcher.EnableRaisingEvents = true;
+            Logger.Msg("FileSystemWatcher initialized!");
+        }
+        catch (Exception ex)
         {
-            private static void Postfix(PnlStage __instance)
-            {
-                PnlStageInstance = __instance;
-            }
+            Logger.Warning($"Init failed: {ex.Message}");
+            Logger.Warning(ex.StackTrace);
+        }
+    }
+
+    // ============================================================
+    // Harmony Patches
+    // ============================================================
+
+    /// <summary>
+    ///     Intercepts GetMusicInfoFromAll: Returns our manually created MusicInfo
+    ///     when the game looks up a hot-loaded song.
+    /// </summary>
+    [HarmonyPatch(typeof(DBMusicTag), nameof(DBMusicTag.GetMusicInfoFromAll))]
+    internal static class GetMusicInfoFromAllPatch
+    {
+        private static void Postfix(string musicUid, ref MusicInfo __result)
+        {
+            if (string.IsNullOrEmpty(musicUid)) return;
+
+            if (HotLoadedMusicInfos.TryGetValue(musicUid, out var hotMusicInfo)) __result = hotMusicInfo;
+        }
+    }
+
+    /// <summary>
+    ///     Capture PnlStage instance reference.
+    /// </summary>
+    [HarmonyPatch(typeof(PnlStage), nameof(PnlStage.PreWarm))]
+    internal static class StagePreWarmPatch
+    {
+        private static void Postfix(PnlStage __instance)
+        {
+            PnlStageInstance = __instance;
         }
     }
 }
