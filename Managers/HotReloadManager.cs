@@ -84,7 +84,7 @@ namespace CustomAlbums.Managers
         {
             var addedCount = 0;
 
-            while (AlbumsToAdd.TryDequeue(out var path))
+            if (AlbumsToAdd.TryDequeue(out var path))
             {
                 try
                 {
@@ -93,7 +93,6 @@ namespace CustomAlbums.Managers
                     if (album == null)
                     {
                         Logger.Warning($"Failed to load album from {path}");
-                        continue;
                     }
 
                     var albumName = album.AlbumName;
@@ -332,7 +331,7 @@ namespace CustomAlbums.Managers
         {
             var deletedCount = 0;
 
-            while (AlbumsToDelete.TryDequeue(out var albumFileName))
+            if (AlbumsToDelete.TryDequeue(out var albumFileName))
             {
                 try
                 {
@@ -342,7 +341,6 @@ namespace CustomAlbums.Managers
                     if (!AlbumManager.LoadedAlbums.TryGetValue(albumKey, out var album))
                     {
                         Logger.Warning($"Album {albumKey} not found");
-                        continue;
                     }
 
                     var uid = $"{AlbumManager.Uid}-{album.Index}";
@@ -493,6 +491,8 @@ namespace CustomAlbums.Managers
             }
         }
 
+        private static float _lastProcessTime;
+
         /// <summary>
         ///     Consume the queue in Unity's FixedUpdate (main thread safe).
         /// </summary>
@@ -502,13 +502,18 @@ namespace CustomAlbums.Managers
 
             if (PnlStageInstance == null) return;
 
-            Logger.Msg($"Processing queue (add={AlbumsToAdd.Count}, del={AlbumsToDelete.Count})");
+            if (UnityEngine.Time.unscaledTime - _lastProcessTime < 0.02f) return;
+            _lastProcessTime = UnityEngine.Time.unscaledTime;
             
             var oldSelectedUid = DataHelper.selectedMusicUidFromInfoList;
             var oldSelectedAlbumName = AlbumManager.GetAlbumNameFromUid(oldSelectedUid);
 
             var deletedCount = ProcessDeletions();
-            var addedCount = ProcessAdditions();
+            var addedCount = 0;
+            if (deletedCount == 0)
+            {
+                addedCount = ProcessAdditions();
+            }
 
             if (deletedCount > 0 || addedCount > 0)
             {
