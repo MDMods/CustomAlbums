@@ -10,7 +10,7 @@ public class Main : MelonMod
 {
     public const string MelonName = "CustomAlbums";
     public const string MelonAuthor = "Two Fellas";
-    public const string MelonVersion = "4.1.9";
+    public const string MelonVersion = "4.2.0";
     private static readonly Logger Logger = new("CustomAlbums");
 
     public override void OnInitializeMelon()
@@ -33,14 +33,12 @@ public class Main : MelonMod
     public override void OnLateInitializeMelon()
     {
         base.OnLateInitializeMelon();
-        // TODO: Actually write HotReload
         HotReloadManager.OnLateInitializeMelon();
     }
 
     public override void OnFixedUpdate()
     {
         base.OnFixedUpdate();
-        // TODO: Actually write HotReload
         HotReloadManager.FixedUpdate();
     }
 
