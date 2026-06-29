@@ -63,24 +63,12 @@ internal class SceneEggPatch
             // If the scene is not scene_05 or scene_08 then there is no Christmas
             if (sceneFestivalName != "scene_05") return true;
 
-        /// <summary>
-        ///     Makes scene_05 be scene_05_christmas if the Christmas SceneEgg is enabled.
-        /// </summary>
-        [HarmonyPatch(typeof(GameMusicScene), nameof(GameMusicScene.SceneFestival))]
-        internal class SceneFestivalPatch
-        {
-            private static bool Prefix(string sceneFestivalName, ref string __result)
-            {
-                // If the scene is not scene_05 or scene_08 then there is no Christmas
-                if (sceneFestivalName != "scene_05") return true;
+            // Ignore the actual SceneEggs
+            if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.None,
+                    SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku, SceneEggs.BadApple, SceneEggs.RinLen, SceneEggs.BlueArchive)) return true;
 
-                // Ignore the actual SceneEggs
-                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.None,
-                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku, SceneEggs.BadApple, SceneEggs.RinLen, SceneEggs.BlueArchive)) return true;
-
-                if (sceneFestivalName == "scene_05") __result = "scene_05_christmas";
-                return false;
-            }
+            if (sceneFestivalName == "scene_05") __result = "scene_05_christmas";
+            return false;
         }
     }
 
@@ -92,16 +80,13 @@ internal class SceneEggPatch
     {
         private static bool Prefix(string bossFestivalName, ref string __result)
         {
-            private static bool Prefix(string bossFestivalName, ref string __result)
-            {
-                // If the boss is not 0501_boss then there is no Christmas
-                if (bossFestivalName != "0501_boss") return true;
-                if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.None,
-                        SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku, SceneEggs.BadApple, SceneEggs.RinLen, SceneEggs.BlueArchive)) return true;
+            // If the boss is not 0501_boss then there is no Christmas
+            if (bossFestivalName != "0501_boss") return true;
+            if (IgnoreSceneEggs(out _, SceneEggs.Arknights, SceneEggs.Cytus, SceneEggs.None,
+                    SceneEggs.Queen, SceneEggs.Touhou, SceneEggs.Wacca, SceneEggs.Miku, SceneEggs.BadApple, SceneEggs.RinLen, SceneEggs.BlueArchive)) return true;
 
-                __result = "0501_boss_christmas";
-                return false;
-            }
+            __result = "0501_boss_christmas";
+            return false;
         }
     }
 
