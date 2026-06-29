@@ -1,41 +1,40 @@
 ﻿using System.Drawing;
 using MelonLoader;
 
-namespace CustomAlbums.Utilities
+namespace CustomAlbums.Utilities;
+
+public class Logger
 {
-    public class Logger
+    private readonly MelonLogger.Instance _logger;
+
+    public Logger(string className)
     {
-        private readonly MelonLogger.Instance _logger;
+        _logger = new MelonLogger.Instance(className, Color.FromArgb(255, 0, 255, 150));
+    }
 
-        public Logger(string className)
-        {
-            _logger = new MelonLogger.Instance(className, Color.FromArgb(255, 0, 255, 150));
-        }
+    public void Msg(string message, bool verbose = true)
+    {
+        if (verbose && !ModSettings.VerboseLogging) return;
+        _logger.Msg(message);
+    }
 
-        public void Msg(string message, bool verbose = true)
-        {
-            if (verbose && !ModSettings.VerboseLogging) return;
-            _logger.Msg(message);
-        }
+    public void Success(string message)
+    {
+        _logger.Msg(ConsoleColor.Green, "Success: " + message);
+    }
 
-        public void Success(string message)
-        {
-            _logger.Msg(ConsoleColor.Green, "Success: " + message);
-        }
+    public void Warning(string message)
+    {
+        _logger.Msg(ConsoleColor.Yellow, "Warning: " + message);
+    }
 
-        public void Warning(string message)
-        {
-            _logger.Msg(ConsoleColor.Yellow, "Warning: " + message);
-        }
+    public void Fail(string message)
+    {
+        _logger.Msg(ConsoleColor.Red, "FAILED: " + message);
+    }
 
-        public void Fail(string message)
-        {
-            _logger.Msg(ConsoleColor.Red, "FAILED: " + message);
-        }
-
-        public void Error(string message)
-        {
-            _logger.Msg(ConsoleColor.Red, "ERROR: " + message);
-        }
+    public void Error(string message)
+    {
+        _logger.Msg(ConsoleColor.Red, "ERROR: " + message);
     }
 }

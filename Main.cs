@@ -1,63 +1,51 @@
-﻿using CustomAlbums.Managers;
+using CustomAlbums.Managers;
 using CustomAlbums.Patches;
 using CustomAlbums.Utilities;
 using MelonLoader;
-using static CustomAlbums.Patches.AnimatedCoverPatch;
+using MelonLoader.Utils;
 
-namespace CustomAlbums
+namespace CustomAlbums;
+
+public class Main : MelonMod
 {
-    public class Main : MelonMod
+    public const string MelonName = "CustomAlbums";
+    public const string MelonAuthor = "Two Fellas";
+    public const string MelonVersion = "4.2.0";
+    private static readonly Logger Logger = new("CustomAlbums");
+
+    public override void OnInitializeMelon()
     {
-        private static readonly Logger Logger = new("CustomAlbums");
+        base.OnInitializeMelon();
 
-        public const string MelonName = "CustomAlbums";
-        public const string MelonAuthor = "Two Fellas";
-        public const string MelonVersion = "4.1.9";
+        if (!Directory.Exists(AlbumManager.SearchPath)) Directory.CreateDirectory(AlbumManager.SearchPath);
 
-        public override void OnInitializeMelon()
-        {
-            base.OnInitializeMelon();
+        var cacheDir = Path.Combine(MelonEnvironment.UserDataDirectory, "CustomAlbums", "Cache");
+        if (Directory.Exists(cacheDir)) Directory.Delete(cacheDir, true);
 
-            if (!Directory.Exists(AlbumManager.SearchPath)) Directory.CreateDirectory(AlbumManager.SearchPath);
-            
-            ModSettings.Register();
-            AssetPatch.AttachHook();
-            SavePatch.AttachHook();
-            AlbumManager.LoadAlbums();
-            SaveManager.LoadSaveFile();
-            Logger.Msg("Initialized CustomAlbums!", false);
-        }
+        ModSettings.Register();
+        AssetPatch.AttachHook();
+        SavePatch.AttachHook();
+        AlbumManager.LoadAlbums();
+        SaveManager.LoadSaveFile();
+        Logger.Msg("Initialized CustomAlbums!", false);
+    }
 
-        public override void OnLateInitializeMelon()
-        {
-            base.OnLateInitializeMelon();
-            // TODO: Actually write HotReload
-            // HotReloadManager.OnLateInitializeMelon();
-        }
+    public override void OnLateInitializeMelon()
+    {
+        base.OnLateInitializeMelon();
+        HotReloadManager.OnLateInitializeMelon();
+    }
 
-        /// <summary>
-        ///     This override adds support for animated covers.
-        /// </summary>
-        public override void OnUpdate()
-        {
-            base.OnUpdate();
-            MusicStageCellPatch.AnimateCoversUpdate();
-        }
+    public override void OnFixedUpdate()
+    {
+        base.OnFixedUpdate();
+        HotReloadManager.FixedUpdate();
+    }
 
-        /// <summary>
-        ///     This override adds support for hot reloading.
-        /// </summary>
-        public override void OnFixedUpdate()
-        {
-            base.OnFixedUpdate();
-            // TODO: Actually write HotReload
-            // HotReloadManager.FixedUpdate();
-        }
-
-        public override void OnSceneWasLoaded(int buildIndex, string sceneName)
-        {
-            base.OnSceneWasLoaded(buildIndex, sceneName);
-            MusicStageCellPatch.CurrentScene = sceneName;
-        }
+    public override void OnDeinitializeMelon()
+    {
+        base.OnDeinitializeMelon();
+        var cacheDir = Path.Combine(MelonEnvironment.UserDataDirectory, "CustomAlbums", "Cache");
+        if (Directory.Exists(cacheDir)) Directory.Delete(cacheDir, true);
     }
 }
