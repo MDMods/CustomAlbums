@@ -30,29 +30,43 @@ internal static class HotReloadManager
 
     private static float _lastProcessTime;
 
-    // Thread-safe queues for FileSystemWatcher background events
     private static ConcurrentQueue<string> AlbumsToAdd { get; } = new();
 
     private static ConcurrentQueue<string> AlbumsToDelete { get; } = new();
     private static ConcurrentDictionary<string, DateTime> LastFileEvent { get; } = new();
     internal static PnlStage PnlStageInstance { get; set; }
 
-    /// <summary>
-    ///     Checks if a file is fully written and no longer locked by other processes.
-    /// </summary>
     private static bool IsFileUnlocked(string path)
     {
         try
         {
-            using var fileStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None);
-            return fileStream.Length > 0;
+            if (Directory.Exists(path))
+            {
+                var infoPath = Path.Combine(path, "info.json");
+                if (!File.Exists(infoPath)) return false;
+                
+                using var fileStream = File.Open(infoPath, FileMode.Open, FileAccess.Read, FileShare.None);
+                return fileStream.Length > 0;
+            }
+            else
+            {
+                if (!File.Exists(path)) return false;
+                using var fileStream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None);
+                return fileStream.Length > 0;
+            }
         }
-        catch (Exception ex) when (ex is FileNotFoundException or IOException)
+        catch (Exception ex) when (ex is FileNotFoundException or IOException or UnauthorizedAccessException)
         {
             return false;
         }
     }
 
+
+    private static string GetTopLevelName(string relativePath)
+    {
+        var separatorIndex = relativePath.IndexOfAny(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
+        return separatorIndex >= 0 ? relativePath.Substring(0, separatorIndex) : relativePath;
+    }
 
     private static int ParseDifficulty(string difficulty)
     {
@@ -79,9 +93,6 @@ internal static class HotReloadManager
         return musicExInfo;
     }
 
-    /// <summary>
-    ///     Hot-add: Injects a new .mdm file into the game's runtime database.
-    /// </summary>
     private static int ProcessAdditions()
     {
         var addedCount = 0;
@@ -89,7 +100,6 @@ internal static class HotReloadManager
         if (AlbumsToAdd.TryDequeue(out var path))
             try
             {
-                // 1. Load album into AlbumManager
                 var album = AlbumManager.LoadOne(path);
                 if (album == null) Logger.Warning($"Failed to load album from {path}");
 
@@ -98,8 +108,6 @@ internal static class HotReloadManager
                 var albumInfo = album.Info;
                 Logger.Msg($"Adding {albumName} (UID: {uid})");
 
-                // 2. Transmute: Native DBObject generation via JSON
-                // Instead of reflection, re-serialize ALL custom albums and let the game natively deserialize them!
                 var masterAlbums = Singleton<ConfigManager>.instance.GetConfigObject<DBConfigAlbums>();
                 var albumsInfo = masterAlbums?.GetAlbumsInfoByUid(AlbumManager.MusicPackage);
                 var globalAlbumConfig = albumsInfo != null
@@ -152,10 +160,8 @@ internal static class HotReloadManager
                     var fullJsonStr = JsonSerializer.Serialize(jsonArray);
                     var fullLocalJsonStr = JsonSerializer.Serialize(localJsonArray);
 
-                    // 1. Re-deserialize the entire list of custom albums into the global config
                     globalAlbumConfig.Deserialize(fullJsonStr);
 
-                    // 2. Bypass engine cache completely by manually instantiating and injecting the localized databases
                     var localDicProp =
                         typeof(BaseDBConfigLocalObject<DBConfigLocalALBUM, LocalALBUMInfo>).GetProperty("m_LocalDic",
                             BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
@@ -176,10 +182,8 @@ internal static class HotReloadManager
                         }
                     }
 
-                    // 4. Update the global dictionaries
                     GlobalDataBase.s_DbMusicTag.AddAllMusicInfo(globalAlbumConfig);
 
-                    // 4. Re-initialize ExInfo for all the newly created MusicInfo objects
                     var newMusicInfoList = new Il2CppSystem.Collections.Generic.List<MusicInfo>();
                     globalAlbumConfig.GetAllMusicInfo(newMusicInfoList);
                     var idx = 0;
@@ -220,7 +224,6 @@ internal static class HotReloadManager
                     Logger.Error("globalAlbumConfig is null! Cannot inject metadata.");
                 }
 
-                // Add to the front-end view list so UI updates correctly
                 try
                 {
                     var dhColBase = DataHelper.collections;
@@ -228,14 +231,12 @@ internal static class HotReloadManager
                     var uids = GlobalDataBase.s_DbMusicTag.m_StageShowMusicUids;
                     if (uids != null)
                         if (!uids.Contains(uid))
-                            // Only add if it's not currently displaying the collections list to avoid alias pollution
                             if (dhColPtr == IntPtr.Zero || uids.Pointer != dhColPtr)
                             {
                                 uids.Add(uid);
                                 Logger.Msg($"Added {uid} to m_StageShowMusicUids");
                             }
 
-                    // Add to All Music tag (Index 0)
                     var allMusicTag = GlobalDataBase.dbMusicTag.GetAlbumTagInfo(0);
                     if (allMusicTag != null)
                     {
@@ -248,14 +249,13 @@ internal static class HotReloadManager
                                     if (d.musicUids.Pointer != dhColPtr)
                                         d.musicUids.Add(uid);
                     }
-                    // 5. Removed dicLevelConfig injection. It was causing Headquarters to crash by supplying an incorrect difficulty level.
                 }
                 catch (Exception ex)
                 {
                     Logger.Warning($"Failed to add to view lists: {ex.Message}");
                 }
 
-                // 3. Inject search tags into ConfigManager
+                // Inject search tags into ConfigManager
                 try
                 {
                     var config = Singleton<ConfigManager>.instance.GetConfigObject<DBConfigMusicSearchTag>();
@@ -282,10 +282,10 @@ internal static class HotReloadManager
                     Logger.Warning($"Failed to add search tags: {ex.Message}");
                 }
 
-                // 4. Preload cover resources
+                // Preload cover resource
                 try
                 {
-                    if (album.HasFile("cover.png") || album.HasFile("cover.gif"))
+                    if (album.HasFile("cover.png"))
                         ResourcesManager.instance
                             .LoadFromName<Sprite>($"{albumName}_cover")
                             .hideFlags |= HideFlags.DontUnloadUnusedAsset;
@@ -295,7 +295,6 @@ internal static class HotReloadManager
                     Logger.Warning($"Failed to preload cover: {ex.Message}");
                 }
 
-                // UI Hijack will handle rendering the name and author without needing these native injections.
                 addedCount++;
                 Logger.Msg($"Successfully added {albumInfo.Name}");
             }
@@ -308,17 +307,13 @@ internal static class HotReloadManager
         return addedCount;
     }
 
-    /// <summary>
-    ///     Hot-delete: Removes a specified album from the game's runtime database.
-    /// </summary>
     private static int ProcessDeletions()
     {
         var deletedCount = 0;
 
-        if (AlbumsToDelete.TryDequeue(out var albumFileName))
+        if (AlbumsToDelete.TryDequeue(out var albumKey))
             try
             {
-                var albumKey = $"album_{albumFileName}";
                 Logger.Msg($"Removing {albumKey}");
 
                 if (!AlbumManager.LoadedAlbums.TryGetValue(albumKey, out var album))
@@ -339,7 +334,6 @@ internal static class HotReloadManager
                     var allMusicInfo = GlobalDataBase.s_DbMusicTag.m_AllMusicInfo;
                     if (allMusicInfo != null && allMusicInfo.ContainsKey(uid)) allMusicInfo.Remove(uid);
 
-                    // Remove from all tags (like "All Music" or "Favorites")
                     if (GlobalDataBase.s_DbMusicTag.m_AllAlbumTagData != null)
                         foreach (var tag in GlobalDataBase.s_DbMusicTag.m_AllAlbumTagData)
                         {
@@ -392,9 +386,6 @@ internal static class HotReloadManager
         return deletedCount;
     }
 
-    /// <summary>
-    ///     Rebuild Custom Albums tag to update the UID list.
-    /// </summary>
     private static void RebuildCustomAlbumsTag()
     {
         try
@@ -446,9 +437,6 @@ internal static class HotReloadManager
         }
     }
 
-    /// <summary>
-    ///     Consume the queue in Unity's FixedUpdate (main thread safe).
-    /// </summary>
     internal static void FixedUpdate()
     {
         if (AlbumsToAdd.IsEmpty && AlbumsToDelete.IsEmpty) return;
@@ -492,9 +480,6 @@ internal static class HotReloadManager
         }
     }
 
-    /// <summary>
-    ///     Initialize FileSystemWatcher to monitor Custom_Albums directory changes.
-    /// </summary>
     internal static void OnLateInitializeMelon()
     {
         try
@@ -509,20 +494,26 @@ internal static class HotReloadManager
             }
 
             AlbumManager.AlbumWatcher.Path = watchPath;
-            AlbumManager.AlbumWatcher.Filter = AlbumManager.SearchPattern;
+            AlbumManager.AlbumWatcher.IncludeSubdirectories = true;
 
             AlbumManager.AlbumWatcher.Created += (_, e) =>
             {
-                var now = DateTime.Now;
-                if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) &&
-                    (now - lastTime).TotalMilliseconds < 500) return;
-                LastFileEvent[e.FullPath] = now;
+                var topLevelName = GetTopLevelName(e.Name);
+                var fullPath = Path.Combine(watchPath, topLevelName);
 
-                Logger.Msg($"Detected new file: {e.Name}");
+                var now = DateTime.Now;
+                if (LastFileEvent.TryGetValue(topLevelName, out var lastTime) &&
+                    (now - lastTime).TotalMilliseconds < 500) return;
+                LastFileEvent[topLevelName] = now;
+
+                var isMdm = topLevelName.EndsWith(".mdm");
+                if (!isMdm && !Directory.Exists(fullPath)) return;
+
+                Logger.Msg($"Detected new file or folder: {topLevelName}");
                 Task.Run(() =>
                 {
                     var attempts = 0;
-                    while (!IsFileUnlocked(e.FullPath) && attempts < 50)
+                    while (!IsFileUnlocked(fullPath) && attempts < 50)
                     {
                         Thread.Sleep(200);
                         attempts++;
@@ -530,40 +521,77 @@ internal static class HotReloadManager
 
                     if (attempts < 50)
                     {
-                        AlbumsToAdd.Enqueue(e.FullPath);
-                        Logger.Msg($"Queued for addition: {e.Name}");
+                        AlbumsToAdd.Enqueue(fullPath);
+                        Logger.Msg($"Queued for addition: {topLevelName}");
                     }
                     else
                     {
-                        Logger.Warning($"Timed out waiting for file: {e.Name}");
+                        Logger.Warning($"Timed out waiting for file: {topLevelName}");
                     }
                 });
             };
 
             AlbumManager.AlbumWatcher.Deleted += (_, e) =>
             {
-                var now = DateTime.Now;
-                if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) &&
-                    (now - lastTime).TotalMilliseconds < 500) return;
-                LastFileEvent[e.FullPath] = now;
+                var topLevelName = GetTopLevelName(e.Name);
+                var isInnerFile = e.Name != topLevelName;
+                var fullPath = Path.Combine(watchPath, topLevelName);
 
-                Logger.Msg($"Detected deletion: {e.Name}");
-                AlbumsToDelete.Enqueue(Path.GetFileNameWithoutExtension(e.Name));
+                var now = DateTime.Now;
+                if (LastFileEvent.TryGetValue(topLevelName, out var lastTime) &&
+                    (now - lastTime).TotalMilliseconds < 500) return;
+                LastFileEvent[topLevelName] = now;
+
+                var isMdm = topLevelName.EndsWith(".mdm");
+                var albumKey = isMdm ? $"album_{Path.GetFileNameWithoutExtension(topLevelName)}" : $"album_{topLevelName}_folder";
+                if (!isMdm && !AlbumManager.LoadedAlbums.ContainsKey(albumKey)) return;
+
+                if (isInnerFile)
+                {
+                    Logger.Msg($"Detected inner deletion: {e.Name}, reloading {topLevelName}");
+                    Task.Run(() =>
+                    {
+                        var attempts = 0;
+                        while (!IsFileUnlocked(fullPath) && attempts < 50)
+                        {
+                            Thread.Sleep(200);
+                            attempts++;
+                        }
+                        if (attempts < 50)
+                        {
+                            AlbumsToDelete.Enqueue(albumKey);
+                            AlbumsToAdd.Enqueue(fullPath);
+                            Logger.Msg($"Queued for reload: {topLevelName}");
+                        }
+                    });
+                }
+                else
+                {
+                    Logger.Msg($"Detected deletion: {topLevelName}");
+                    AlbumsToDelete.Enqueue(albumKey);
+                }
             };
 
             AlbumManager.AlbumWatcher.Changed += (_, e) =>
             {
                 if (e.ChangeType != WatcherChangeTypes.Changed) return;
+                var topLevelName = GetTopLevelName(e.Name);
+                var fullPath = Path.Combine(watchPath, topLevelName);
+
                 var now = DateTime.Now;
-                if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) &&
+                if (LastFileEvent.TryGetValue(topLevelName, out var lastTime) &&
                     (now - lastTime).TotalMilliseconds < 500) return;
-                LastFileEvent[e.FullPath] = now;
+                LastFileEvent[topLevelName] = now;
+
+                var isMdm = topLevelName.EndsWith(".mdm");
+                var albumKey = isMdm ? $"album_{Path.GetFileNameWithoutExtension(topLevelName)}" : $"album_{topLevelName}_folder";
+                if (!isMdm && !AlbumManager.LoadedAlbums.ContainsKey(albumKey)) return;
 
                 Logger.Msg($"Detected change: {e.Name}");
                 Task.Run(() =>
                 {
                     var attempts = 0;
-                    while (!IsFileUnlocked(e.FullPath) && attempts < 50)
+                    while (!IsFileUnlocked(fullPath) && attempts < 50)
                     {
                         Thread.Sleep(200);
                         attempts++;
@@ -571,27 +599,63 @@ internal static class HotReloadManager
 
                     if (attempts < 50)
                     {
-                        AlbumsToDelete.Enqueue(Path.GetFileNameWithoutExtension(e.Name));
-                        AlbumsToAdd.Enqueue(e.FullPath);
-                        Logger.Msg($"Queued for reload: {e.Name}");
+                        AlbumsToDelete.Enqueue(albumKey);
+                        AlbumsToAdd.Enqueue(fullPath);
+                        Logger.Msg($"Queued for reload: {topLevelName}");
                     }
                     else
                     {
-                        Logger.Warning($"Timed out waiting for file: {e.Name}");
+                        Logger.Warning($"Timed out waiting for file: {topLevelName}");
                     }
                 });
             };
 
             AlbumManager.AlbumWatcher.Renamed += (_, e) =>
             {
+                var oldTopLevelName = GetTopLevelName(e.OldName);
+                var newTopLevelName = GetTopLevelName(e.Name);
+                var isInnerRename = e.OldName != oldTopLevelName || e.Name != newTopLevelName;
+                var fullPath = Path.Combine(watchPath, newTopLevelName);
+                
                 var now = DateTime.Now;
-                if (LastFileEvent.TryGetValue(e.FullPath, out var lastTime) &&
+                if (LastFileEvent.TryGetValue(newTopLevelName, out var lastTime) &&
                     (now - lastTime).TotalMilliseconds < 500) return;
-                LastFileEvent[e.FullPath] = now;
+                LastFileEvent[newTopLevelName] = now;
 
-                Logger.Msg($"Detected rename: {e.OldName} -> {e.Name}");
-                var oldKey = $"album_{Path.GetFileNameWithoutExtension(e.OldName)}";
-                var newKey = $"album_{Path.GetFileNameWithoutExtension(e.Name)}";
+                if (isInnerRename)
+                {
+                    var isMdm = newTopLevelName.EndsWith(".mdm");
+                    var albumKey = isMdm ? $"album_{Path.GetFileNameWithoutExtension(newTopLevelName)}" : $"album_{newTopLevelName}_folder";
+                    if (!isMdm && !AlbumManager.LoadedAlbums.ContainsKey(albumKey)) return;
+
+                    Logger.Msg($"Detected inner rename: {e.OldName} -> {e.Name}, reloading {newTopLevelName}");
+                    Task.Run(() =>
+                    {
+                        var attempts = 0;
+                        while (!IsFileUnlocked(fullPath) && attempts < 50)
+                        {
+                            Thread.Sleep(200);
+                            attempts++;
+                        }
+                        if (attempts < 50)
+                        {
+                            AlbumsToDelete.Enqueue(albumKey);
+                            AlbumsToAdd.Enqueue(fullPath);
+                            Logger.Msg($"Queued for reload: {newTopLevelName}");
+                        }
+                    });
+                    return;
+                }
+
+                var isOldMdm = oldTopLevelName.EndsWith(".mdm");
+                var isNewMdm = newTopLevelName.EndsWith(".mdm");
+                
+                var oldKey = isOldMdm ? $"album_{Path.GetFileNameWithoutExtension(oldTopLevelName)}" : $"album_{oldTopLevelName}_folder";
+                var newKey = isNewMdm ? $"album_{Path.GetFileNameWithoutExtension(newTopLevelName)}" : $"album_{newTopLevelName}_folder";
+
+                if (!isOldMdm && !isNewMdm && !AlbumManager.LoadedAlbums.ContainsKey(oldKey) && !Directory.Exists(fullPath)) return;
+
+                Logger.Msg($"Detected rename: {oldTopLevelName} -> {newTopLevelName}");
 
                 if (AlbumManager.LoadedAlbums.Remove(oldKey, out var album))
                 {
@@ -603,12 +667,11 @@ internal static class HotReloadManager
                 }
                 else
                 {
-                    // Old album was not loaded (e.g. didn't match 'test*.mdm'). Treat this rename as a new creation event.
-                    Logger.Msg($"Old file was not loaded, treating as new file: {e.Name}");
+                    Logger.Msg($"Old file was not loaded, treating as new file: {newTopLevelName}");
                     Task.Run(() =>
                     {
                         var attempts = 0;
-                        while (!IsFileUnlocked(e.FullPath) && attempts < 50)
+                        while (!IsFileUnlocked(fullPath) && attempts < 50)
                         {
                             Thread.Sleep(200);
                             attempts++;
@@ -616,12 +679,12 @@ internal static class HotReloadManager
 
                         if (attempts < 50)
                         {
-                            AlbumsToAdd.Enqueue(e.FullPath);
-                            Logger.Msg($"Queued for addition: {e.Name}");
+                            AlbumsToAdd.Enqueue(fullPath);
+                            Logger.Msg($"Queued for addition: {newTopLevelName}");
                         }
                         else
                         {
-                            Logger.Warning($"Timed out waiting for file: {e.Name}");
+                            Logger.Warning($"Timed out waiting for file: {newTopLevelName}");
                         }
                     });
                 }
@@ -637,14 +700,6 @@ internal static class HotReloadManager
         }
     }
 
-    // ============================================================
-    // Harmony Patches
-    // ============================================================
-
-    /// <summary>
-    ///     Intercepts GetMusicInfoFromAll: Returns our manually created MusicInfo
-    ///     when the game looks up a hot-loaded song.
-    /// </summary>
     [HarmonyPatch(typeof(DBMusicTag), nameof(DBMusicTag.GetMusicInfoFromAll))]
     internal static class GetMusicInfoFromAllPatch
     {
@@ -656,9 +711,6 @@ internal static class HotReloadManager
         }
     }
 
-    /// <summary>
-    ///     Capture PnlStage instance reference.
-    /// </summary>
     [HarmonyPatch(typeof(PnlStage), nameof(PnlStage.PreWarm))]
     internal static class StagePreWarmPatch
     {
