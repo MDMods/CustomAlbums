@@ -22,8 +22,6 @@ internal static class HotReloadManager
 {
     private static readonly Logger Logger = new(nameof(HotReloadManager));
 
-    // Hot-loaded MusicInfo cache: uid -> MusicInfo
-    // Used by GetMusicInfoFromAll Harmony Postfix
     private static readonly Dictionary<string, MusicInfo> HotLoadedMusicInfos = new();
     private static readonly Dictionary<string, string> HotLoadedMusicNames = new();
     private static readonly Dictionary<string, string> HotLoadedMusicAuthors = new();
@@ -68,28 +66,28 @@ internal static class HotReloadManager
         return separatorIndex >= 0 ? relativePath.Substring(0, separatorIndex) : relativePath;
     }
 
-    private static int ParseDifficulty(string difficulty)
-    {
-        return int.TryParse(difficulty, out var value) ? value : 0;
-    }
+
 
     private static MusicExInfo CreateMusicExInfo(Album album)
     {
-        var albumInfo = album.Info;
-        var changedDiff = new Il2CppStructArray<int>(5);
-        changedDiff[0] = ParseDifficulty(albumInfo.Difficulty1);
-        changedDiff[1] = ParseDifficulty(albumInfo.Difficulty2);
-        changedDiff[2] = ParseDifficulty(albumInfo.Difficulty3);
-        changedDiff[3] = ParseDifficulty(albumInfo.Difficulty4);
-        changedDiff[4] = ParseDifficulty(albumInfo.Difficulty5);
+        var changedDiff = new Il2CppStructArray<int>(5)
+        {
+            [0] = 1, // Easy
+            [1] = 2, // Hard
+            [2] = 3, // Master
+            [3] = 4, // Supreme
+            [4] = 5 // Touhou thing
+        };
 
-        var musicExInfo = new MusicExInfo();
-        musicExInfo.m_AlbumIndex = AlbumManager.Uid + 1;
-        musicExInfo.m_AlbumUidIndex = AlbumManager.Uid;
-        musicExInfo.m_MusicIndex = album.Index;
-        musicExInfo.m_AlbumUidName = $"music_package_{AlbumManager.Uid}";
-        musicExInfo.m_AlbumJsonName = AlbumManager.JsonName;
-        musicExInfo.m_ChangedDiff = changedDiff;
+        var musicExInfo = new MusicExInfo
+        {
+            m_AlbumIndex = AlbumManager.Uid + 1,
+            m_AlbumUidIndex = AlbumManager.Uid,
+            m_MusicIndex = album.Index,
+            m_AlbumUidName = $"music_package_{AlbumManager.Uid}",
+            m_AlbumJsonName = AlbumManager.JsonName,
+            m_ChangedDiff = changedDiff
+        };
         return musicExInfo;
     }
 
