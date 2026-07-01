@@ -293,6 +293,15 @@ internal static class HotReloadManager
                     Logger.Warning($"Failed to preload cover: {ex.Message}");
                 }
 
+                try
+                {
+                    HiddenSupportPatch.AddHidden(album);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"Failed to add hidden support: {ex.Message}");
+                }
+
                 addedCount++;
                 Logger.Msg($"Successfully added {albumInfo.Name}");
             }
@@ -322,6 +331,15 @@ internal static class HotReloadManager
                 HotLoadedMusicInfos.Remove(uid);
                 HotLoadedMusicNames.Remove(uid);
                 HotLoadedMusicAuthors.Remove(uid);
+
+                try
+                {
+                    HiddenSupportPatch.RemoveHidden(uid);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Warning($"Failed to remove hidden support: {ex.Message}");
+                }
 
                 // Remove from game music database
                 try
