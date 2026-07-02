@@ -57,7 +57,6 @@ internal class HiddenSupportPatch
         if (instance != null)
         {
             if (!instance.m_HideBmsInfos.ContainsKey(uid))
-            {
                 instance.m_HideBmsInfos.Add(uid,
                     new SpecialSongManager.HideBmsInfo(
                         uid,
@@ -68,7 +67,6 @@ internal class HiddenSupportPatch
                         $"{album.AlbumName}_map4",
                         new Func<bool>(() => instance.IsInvokeHideBms(uid))
                     ));
-            }
 
             if (!instance.m_ConfigHideMusic.m_HideMusicObjectMapping.ContainsKey(uid))
             {
@@ -122,6 +120,9 @@ internal class HiddenSupportPatch
 
             if (instance.m_ConfigHideMusic.m_HideMusicObjectMapping.ContainsKey(uid))
                 instance.m_ConfigHideMusic.m_HideMusicObjectMapping.Remove(uid);
+
+            if (instance.m_IsInvokeHideDic.ContainsKey(uid))
+                instance.m_IsInvokeHideDic.Remove(uid);
         }
     }
 
