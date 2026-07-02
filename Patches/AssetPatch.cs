@@ -122,11 +122,11 @@ internal class AssetPatch
                     levelDesigner3 = albumInfo.LevelDesigner3 ?? albumInfo.LevelDesigner,
                     levelDesigner4 = albumInfo.LevelDesigner4 ?? albumInfo.LevelDesigner,
                     levelDesigner5 = albumInfo.LevelDesigner5 ?? albumInfo.LevelDesigner,
-                    difficulty1 = albumInfo.Difficulty1 ?? "0",
-                    difficulty2 = albumInfo.Difficulty2,
-                    difficulty3 = albumInfo.Difficulty3 ?? "0",
-                    difficulty4 = albumInfo.Difficulty4 ?? "0",
-                    difficulty5 = albumInfo.Difficulty5 ?? "0"
+                    difficulty1 = albumObj.HasDifficulty(1) ? albumInfo.Difficulty1 ?? "0" : "0",
+                    difficulty2 = albumObj.HasDifficulty(2) ? albumInfo.Difficulty2 ?? "0" : "0",
+                    difficulty3 = albumObj.HasDifficulty(3) ? albumInfo.Difficulty3 ?? "0" : "0",
+                    difficulty4 = albumObj.HasDifficulty(4) ? albumInfo.Difficulty4 ?? "0" : "0",
+                    difficulty5 = albumObj.HasDifficulty(5) ? albumInfo.Difficulty5 ?? "0" : "0"
                 };
                 jsonArray.Add(customChartJson);
 

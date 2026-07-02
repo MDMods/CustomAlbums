@@ -1,4 +1,5 @@
-﻿using CustomAlbums.Managers;
+using CustomAlbums.Data;
+using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2Cpp;
@@ -15,10 +16,114 @@ internal class HiddenSupportPatch
 {
     internal static HashSet<string> LoadedHiddens = new();
 
-    internal static void UpdateHiddenCharts()
+    internal static void AddHidden(Album album)
     {
-        HideBmsInfoDicPatch.HasUpdate = true;
-        MusicTagPatch.HasUpdate = true;
+        var uid = album.Uid;
+        if (!album.HasDifficulty(4) && !album.HasDifficulty(5)) return;
+
+        if (album.HasDifficulty(5))
+        {
+            var touhouList = new List<string>();
+            foreach (var s in DBMusicTagDefine.s_BarrageModeSongUid) touhouList.Add(s);
+            if (!touhouList.Contains(uid))
+            {
+                touhouList.Add(uid);
+                var newTouhouArray = new Il2CppStringArray(touhouList.Count);
+                for (var i = 0; i < touhouList.Count; i++) newTouhouArray[i] = touhouList[i];
+                DBMusicTagDefine.s_BarrageModeSongUid = newTouhouArray;
+            }
+        }
+
+        if (!album.HasDifficulty(4)) return;
+
+        if (LoadedHiddens.Add(uid))
+        {
+            var hiddenList = new List<string>();
+            foreach (var s in DBMusicTagDefine.s_HiddenLocal) hiddenList.Add(s);
+            if (!hiddenList.Contains(uid))
+            {
+                hiddenList.Add(uid);
+                var newHiddenArray = new Il2CppStringArray(hiddenList.Count);
+                for (var i = 0; i < hiddenList.Count; i++) newHiddenArray[i] = hiddenList[i];
+                DBMusicTagDefine.s_HiddenLocal = newHiddenArray;
+            }
+
+            var tagInfo = GlobalDataBase.dbMusicTag.GetAlbumTagInfo(32776);
+            if (tagInfo?.m_MusicUids != null && !tagInfo.m_MusicUids.Contains(uid))
+                tagInfo.m_MusicUids.Add(uid);
+        }
+
+        var instance = Singleton<SpecialSongManager>.instance;
+        if (instance != null)
+        {
+            if (!instance.m_HideBmsInfos.ContainsKey(uid))
+                instance.m_HideBmsInfos.Add(uid,
+                    new SpecialSongManager.HideBmsInfo(
+                        uid,
+                        album.Info.HideBmsDifficulty == "0"
+                            ? album.HasDifficulty(3) ? 3 : 2
+                            : album.Info.HideBmsDifficulty.ParseAsInt(),
+                        4,
+                        $"{album.AlbumName}_map4",
+                        new Func<bool>(() => instance.IsInvokeHideBms(uid))
+                    ));
+
+            if (!instance.m_ConfigHideMusic.m_HideMusicObjectMapping.ContainsKey(uid))
+            {
+                var hideMusicInfo = new HideMusicInfo
+                {
+                    musicUid = uid,
+                    invokeType = album.Info.HideBmsMode switch
+                    {
+                        "CLICK" => (int)HiddenInvokeType.Click,
+                        "PRESS" => (int)HiddenInvokeType.LongPress,
+                        "TOGGLE" => (int)HiddenInvokeType.Toggle,
+                        _ => (int)HiddenInvokeType.None
+                    }
+                };
+                instance.m_ConfigHideMusic.m_HideMusicObjectMapping[uid] = hideMusicInfo;
+            }
+        }
+    }
+
+    internal static void RemoveHidden(string uid)
+    {
+        if (LoadedHiddens.Remove(uid))
+        {
+            var hiddenList = new List<string>();
+            foreach (var s in DBMusicTagDefine.s_HiddenLocal) hiddenList.Add(s);
+            if (hiddenList.Remove(uid))
+            {
+                var newHiddenArray = new Il2CppStringArray(hiddenList.Count);
+                for (var i = 0; i < hiddenList.Count; i++) newHiddenArray[i] = hiddenList[i];
+                DBMusicTagDefine.s_HiddenLocal = newHiddenArray;
+            }
+
+            var tagInfo = GlobalDataBase.dbMusicTag.GetAlbumTagInfo(32776);
+            if (tagInfo?.m_MusicUids != null) tagInfo.m_MusicUids.Remove(uid);
+        }
+
+        var touhouList = new List<string>();
+        foreach (var s in DBMusicTagDefine.s_BarrageModeSongUid) touhouList.Add(s);
+        if (touhouList.Remove(uid))
+        {
+            var newTouhouArray = new Il2CppStringArray(touhouList.Count);
+            for (var i = 0; i < touhouList.Count; i++) newTouhouArray[i] = touhouList[i];
+            DBMusicTagDefine.s_BarrageModeSongUid = newTouhouArray;
+        }
+
+        var instance = Singleton<SpecialSongManager>.instance;
+        if (instance != null)
+        {
+            if (instance.m_HideBmsInfos.ContainsKey(uid))
+                instance.m_HideBmsInfos.Remove(uid);
+
+            if (instance.m_ConfigHideMusic.m_HideMusicObjectMapping.ContainsKey(uid))
+                instance.m_ConfigHideMusic.m_HideMusicObjectMapping.Remove(uid);
+
+            if (instance.m_IsInvokeHideDic.ContainsKey(uid))
+                instance.m_IsInvokeHideDic.Remove(uid);
+        }
     }
 
     [HarmonyPatch(typeof(SpecialSongManager), nameof(SpecialSongManager.InitHideBmsInfoDic))]

@@ -1,4 +1,4 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using CustomAlbums.Data;
 using CustomAlbums.Utilities;
 
@@ -32,5 +32,11 @@ public class PackManager
     internal static void AddPack(Pack pack)
     {
         Packs.Add(pack);
+    }
+
+    internal static void RemovePacksByPath(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        Packs.RemoveAll(p => Path.GetFullPath(p.Path).Equals(fullPath, StringComparison.OrdinalIgnoreCase));
     }
 }
