@@ -10,7 +10,7 @@ public class Main : MelonMod
 {
     public const string MelonName = "CustomAlbums";
     public const string MelonAuthor = "Two Fellas";
-    public const string MelonVersion = "4.2.0";
+    public const string MelonVersion = "4.2.1";
     private static readonly Logger Logger = new("CustomAlbums");
 
     public override void OnInitializeMelon()
