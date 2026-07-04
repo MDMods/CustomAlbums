@@ -24,7 +24,6 @@ public abstract class Album
     public AlbumInfo Info { get; protected set; }
 
     public abstract string AlbumName { get; }
-    public abstract bool IsPackaged { get; }
 
     public Dictionary<int, Sheet> Sheets { get; } = new();
 

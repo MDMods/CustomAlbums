@@ -11,7 +11,6 @@ public class PackAlbum : Album
     public string PackAlbumName { get; }
 
     public override string AlbumName => $"album_{(string.IsNullOrEmpty(PackAlbumName) ? System.IO.Path.GetFileNameWithoutExtension(Path) : string.Empty)}{(PackName != null ? $"{PackAlbumName}_{PackName}" : string.Empty)}";
-    public override bool IsPackaged => true;
 
     public PackAlbum(string directory, ZipArchiveEntry mdm, int index, string packName = null)
     {

@@ -8,7 +8,6 @@ namespace CustomAlbums.Albums;
 public class ArchiveAlbum : Album
 {
     public override string AlbumName => $"album_{System.IO.Path.GetFileNameWithoutExtension(Path)}";
-    public override bool IsPackaged => true;
 
     public ArchiveAlbum(string path, int index)
     {

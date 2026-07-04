@@ -1,7 +1,8 @@
-﻿using System.Runtime.CompilerServices;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using CustomAlbums.Data;
 using CustomAlbums.Managers;
+using CustomAlbums.Albums;
 using CustomAlbums.Utilities;
 using HarmonyLib;
 using Il2Cpp;
@@ -347,7 +348,7 @@ internal static class SavePatch
                 var cond = !vanillaParse || ability >= difficulty;
                 __result = cond || DataHelper.unlockMasters.Contains(uid) ||
                            SaveData.UnlockedMasters.Contains(AlbumManager.GetAlbumNameFromUid(uid)) ||
-                           (!AlbumManager.GetByUid(musicInfo.uid)?.IsPackaged ?? false);
+                           (AlbumManager.GetByUid(musicInfo.uid) is FolderAlbum);
                 return false;
             }
 
@@ -360,7 +361,7 @@ internal static class SavePatch
 
             __result = abilityConditionOrGimmick ||
                        SaveData.UnlockedMasters.Contains(AlbumManager.GetAlbumNameFromUid(uid)) ||
-                       !AlbumManager.GetByUid(musicInfo.uid).IsPackaged;
+                       (AlbumManager.GetByUid(musicInfo.uid) is FolderAlbum);
             return false;
         }
     }

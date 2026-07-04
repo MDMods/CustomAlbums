@@ -7,7 +7,6 @@ namespace CustomAlbums.Albums;
 public class FolderAlbum : Album
 {
     public override string AlbumName => $"album_{System.IO.Path.GetFileName(Path)}_folder";
-    public override bool IsPackaged => false;
 
     public FolderAlbum(string path, int index)
     {

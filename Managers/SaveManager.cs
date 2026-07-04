@@ -1,7 +1,8 @@
-﻿using System.IO.Compression;
+using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using CustomAlbums.Data;
+using CustomAlbums.Albums;
 using CustomAlbums.Utilities;
 
 namespace CustomAlbums.Managers;
@@ -65,7 +66,7 @@ public class SaveManager
                     kv.Value.ContainsKey(3) && kv.Value.TryGetValue(2, out var chartSave) && chartSave.Evaluate >= 4)
                 .Select(kv => kv.Key);
             var folderCharts = AlbumManager.LoadedAlbums
-                .Where(kv => kv.Value.HasDifficulty(2) && kv.Value.HasDifficulty(3) && !kv.Value.IsPackaged)
+                .Where(kv => kv.Value.HasDifficulty(2) && kv.Value.HasDifficulty(3) && kv.Value is FolderAlbum)
                 .Select(kv => kv.Key);
             var concat = unlockedHighest.Concat(folderCharts);
             SaveData.UnlockedMasters.UnionWith(concat);
@@ -183,7 +184,7 @@ public class SaveManager
         if (!ModSettings.SavingEnabled) return;
 
         var album = AlbumManager.GetByUid(uid);
-        if (!album?.IsPackaged ?? true) return;
+        if (album is null || album is FolderAlbum) return;
 
         var newEvaluate = evaluate switch
         {
