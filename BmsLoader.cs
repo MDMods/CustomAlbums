@@ -352,7 +352,7 @@ internal static class BmsLoader
         stageInfo.delay = _delay;
 
         stopwatch.Stop();
-        Logger.Msg($"Transmuted BMS in {stopwatch.Elapsed}", false);
+        Logger.Msg($"Transmuted BMS in {stopwatch.Elapsed}");
 
         MusicDataManager.Clear();
         return stageInfo;
