@@ -183,7 +183,8 @@ public static class AlbumManager
 
     public static Album GetByUid(string uid)
     {
-        return LoadedAlbums.FirstOrDefault(album => album.Value.Index == uid[4..].ParseAsInt()).Value;
+        if (uid is null || !uid.StartsWith($"{Uid}-") || !uid[4..].TryParseAsInt(out var index)) return null;
+        return LoadedAlbums.FirstOrDefault(album => album.Value.Index == index).Value;
     }
 
     public static string GetAlbumNameFromUid(string uid)
