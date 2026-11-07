@@ -1,4 +1,3 @@
-using System.IO;
 using System.IO.Compression;
 using CustomAlbums.Data;
 using CustomAlbums.Utilities;
@@ -7,8 +6,6 @@ namespace CustomAlbums.Albums;
 
 public class ArchiveAlbum : Album
 {
-    public override string AlbumName => $"album_{System.IO.Path.GetFileNameWithoutExtension(Path)}";
-
     public ArchiveAlbum(string path, int index)
     {
         if (!File.Exists(path))
@@ -34,6 +31,8 @@ public class ArchiveAlbum : Album
 
         GetSheets();
     }
+
+    public override string AlbumName => $"album_{System.IO.Path.GetFileNameWithoutExtension(Path)}";
 
     public override bool HasFile(string name)
     {

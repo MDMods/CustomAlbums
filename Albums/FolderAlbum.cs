@@ -1,4 +1,3 @@
-using System.IO;
 using CustomAlbums.Data;
 using CustomAlbums.Utilities;
 
@@ -6,8 +5,6 @@ namespace CustomAlbums.Albums;
 
 public class FolderAlbum : Album
 {
-    public override string AlbumName => $"album_{System.IO.Path.GetFileName(Path)}_folder";
-
     public FolderAlbum(string path, int index)
     {
         if (!Directory.Exists(path))
@@ -32,6 +29,8 @@ public class FolderAlbum : Album
 
         GetSheets();
     }
+
+    public override string AlbumName => $"album_{System.IO.Path.GetFileName(Path)}_folder";
 
     protected override string GetCoverUrl(string cacheDir)
     {

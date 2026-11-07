@@ -1,4 +1,3 @@
-using System.IO;
 using System.IO.Compression;
 using CustomAlbums.Data;
 using CustomAlbums.Utilities;
@@ -7,11 +6,6 @@ namespace CustomAlbums.Albums;
 
 public class PackAlbum : Album
 {
-    public string PackName { get; }
-    public string PackAlbumName { get; }
-
-    public override string AlbumName => $"album_{(string.IsNullOrEmpty(PackAlbumName) ? System.IO.Path.GetFileNameWithoutExtension(Path) : string.Empty)}{(PackName != null ? $"{PackAlbumName}_{PackName}" : string.Empty)}";
-
     public PackAlbum(string directory, ZipArchiveEntry mdm, int index, string packName = null)
     {
         if (!string.IsNullOrEmpty(packName)) PackName = packName;
@@ -33,9 +27,15 @@ public class PackAlbum : Album
         Index = index;
         Path = directory;
         PackAlbumName = System.IO.Path.GetFileNameWithoutExtension(mdm.Name);
-        
+
         GetSheets();
     }
+
+    public string PackName { get; }
+    public string PackAlbumName { get; }
+
+    public override string AlbumName =>
+        $"album_{(string.IsNullOrEmpty(PackAlbumName) ? System.IO.Path.GetFileNameWithoutExtension(Path) : string.Empty)}{(PackName != null ? $"{PackAlbumName}_{PackName}" : string.Empty)}";
 
     public override bool HasFile(string name)
     {

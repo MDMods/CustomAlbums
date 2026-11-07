@@ -720,10 +720,7 @@ internal static class BmsLoader
                         }
                     }
 
-                    if (delayCache.TryGetValue(prefabName, out var delay))
-                    {
-                        mData.dt = delay;
-                    }
+                    if (delayCache.TryGetValue(prefabName, out var delay)) mData.dt = delay;
                 }
             }
 

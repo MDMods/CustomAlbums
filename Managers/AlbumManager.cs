@@ -87,10 +87,7 @@ public static class AlbumManager
         {
             var album = new PackAlbum(directory, mdm, 0, CurrentPack);
             var registered = RegisterAlbum(album);
-            if (registered != null)
-            {
-                Logger.Msg("Adding " + registered.AlbumName + " as a pack!");
-            }
+            if (registered != null) Logger.Msg("Adding " + registered.AlbumName + " as a pack!");
             return registered;
         }
         catch (Exception ex)
