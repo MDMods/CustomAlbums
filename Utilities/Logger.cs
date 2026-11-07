@@ -1,5 +1,5 @@
-﻿using System.Drawing;
-using MelonLoader;
+﻿using MelonLoader;
+using MelonLoader.Logging;
 
 namespace CustomAlbums.Utilities;
 
@@ -9,7 +9,7 @@ public class Logger
 
     public Logger(string className)
     {
-        _logger = new MelonLogger.Instance(className, Color.FromArgb(255, 0, 255, 150));
+        _logger = new MelonLogger.Instance(className, ColorARGB.FromArgb(255, 0, 255, 150));
     }
 
     public void Msg(string message, bool verbose = true)
@@ -20,21 +20,21 @@ public class Logger
 
     public void Success(string message)
     {
-        _logger.Msg(ConsoleColor.Green, "Success: " + message);
+        _logger.Msg(ColorARGB.Green, "Success: " + message);
     }
 
     public void Warning(string message)
     {
-        _logger.Msg(ConsoleColor.Yellow, "Warning: " + message);
+        _logger.Msg(ColorARGB.Yellow, "Warning: " + message);
     }
 
     public void Fail(string message)
     {
-        _logger.Msg(ConsoleColor.Red, "FAILED: " + message);
+        _logger.Msg(ColorARGB.Red, "FAILED: " + message);
     }
 
     public void Error(string message)
     {
-        _logger.Msg(ConsoleColor.Red, "ERROR: " + message);
+        _logger.Msg(ColorARGB.Red, "ERROR: " + message);
     }
 }
