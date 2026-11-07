@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using CustomAlbums.Data;
-using CustomAlbums.Managers;
 using CustomAlbums.Utilities;
 using Il2Cpp;
 using Il2CppAssets.Scripts.GameCore;
@@ -25,6 +24,11 @@ internal static class BmsLoader
     private static readonly Dictionary<string, Dictionary<string, NoteConfigData>> BossData = new();
     private static Decimal _delay;
     private static readonly Logger Logger = new(nameof(BmsLoader));
+
+    /// <summary>
+    ///     MusicData for the chart being transmuted.
+    /// </summary>
+    private static readonly List<MusicData> MusicDataList = new() { new MusicData() };
 
     private static readonly Dictionary<string, float> StartDelayCache = new();
     private static readonly Dictionary<(string scene, string animation), float> AnimationDurationCache = new();
@@ -320,23 +324,23 @@ internal static class BmsLoader
         var stopwatch = Stopwatch.StartNew();
 
         if (NoteData.Count == 0) InitNoteData();
-        MusicDataManager.Clear();
+        ClearMusicData();
         _delay = 0;
 
         var noteData = bms.GetNoteData();
         Logger.Msg("Got note data");
 
         LoadMusicData(noteData);
-        MusicDataManager.Sort();
+        SortMusicData();
 
         ProcessBossData(bms);
         ProcessDelay(bms);
-        MusicDataManager.Sort();
+        SortMusicData();
 
         ProcessGeminis();
 
         // Process the delay for each MusicData
-        foreach (var mData in MusicDataManager.Data)
+        foreach (var mData in MusicDataList)
         {
             mData.tick -= _delay;
             mData.showTick = Decimal.Round(mData.tick - mData.dt, 2);
@@ -347,15 +351,47 @@ internal static class BmsLoader
         // Transmute the MusicData to a new StageInfo object
         var stageInfo = ScriptableObject.CreateInstance<StageInfo>();
         stageInfo.musicDatas = new Il2CppSystem.Collections.Generic.List<MusicData>();
-        foreach (var musicData in MusicDataManager.Data)
+        foreach (var musicData in MusicDataList)
             stageInfo.musicDatas.Add(musicData);
         stageInfo.delay = _delay;
 
         stopwatch.Stop();
         Logger.Msg($"Transmuted BMS in {stopwatch.Elapsed}");
 
-        MusicDataManager.Clear();
+        ClearMusicData();
         return stageInfo;
+    }
+
+    private static void AddMusicData(MusicData data)
+    {
+        if (MusicDataList.Count >= short.MaxValue - 1)
+        {
+            Logger.Warning($"BMS is too large to load. Max MusicData allowed is {short.MaxValue}!");
+            return;
+        }
+
+        MusicDataList.Add(data);
+    }
+
+    private static void SortMusicData()
+    {
+        MusicDataList.Sort(1, MusicDataList.Count - 1,
+            Comparer<MusicData>.Create((l, r) => !(r.tick - r.dt - (l.tick - l.dt) > 0) ? 1 : -1));
+
+        for (var i = 1; i < MusicDataList.Count; i++)
+        {
+            var musicData = MusicDataList[i];
+            musicData.tick = Decimal.Round(musicData.tick, 3);
+            musicData.objId = (short)i;
+        }
+
+        Logger.Msg("Sorted MusicData");
+    }
+
+    private static void ClearMusicData()
+    {
+        MusicDataList.Clear();
+        MusicDataList.Add(new MusicData());
     }
 
     private static void InitNoteData()
@@ -389,17 +425,19 @@ internal static class BmsLoader
             if (configData.time < 0) continue;
 
             // Create a new note for each configData
-            var newNote = Interop.CreateTypeValue<MusicData>();
-            newNote.objId = noteId++;
-            newNote.tick = Decimal.Round(configData.time, 3);
-            newNote.configData = configData;
-            newNote.isLongPressEnd = false;
-            newNote.isLongPressing = false;
+            var newNote = new MusicData
+            {
+                objId = noteId++,
+                tick = Decimal.Round(configData.time, 3),
+                configData = configData,
+                isLongPressEnd = false,
+                isLongPressing = false
+            };
 
             if (NoteData.TryGetValue(newNote.configData.note_uid, out var newNoteData))
                 newNote.noteData = newNoteData;
 
-            MusicDataManager.Add(newNote);
+            AddMusicData(newNote);
 
             // Create ticks for hold notes. If it isn't a hold note, there is no need to continue.
             if (!newNote.isLongPressStart) continue;
@@ -412,25 +450,24 @@ internal static class BmsLoader
 
             for (var i = 1; i <= newNote.longPressCount; i++)
             {
-                var holdTick = Interop.CreateTypeValue<MusicData>();
-                holdTick.objId = noteId++;
-                holdTick.tick = i == newNote.longPressCount
-                    ? newNote.tick + newNote.configData.length
-                    : newNote.tick + (Decimal)0.1f * i;
-                holdTick.configData = newNote.configData;
+                var holdConfig = newNote.configData;
+                holdConfig.length = 0;
 
-                // ACTUALLY REQUIRED TO WORK
-                var dataCopy = holdTick.configData;
-                dataCopy.length = 0;
-                holdTick.configData = dataCopy;
+                var holdTick = new MusicData
+                {
+                    objId = noteId++,
+                    tick = i == newNote.longPressCount
+                        ? newNote.tick + newNote.configData.length
+                        : newNote.tick + (Decimal)0.1f * i,
+                    configData = holdConfig,
+                    isLongPressing = i != newNote.longPressCount,
+                    isLongPressEnd = i == newNote.longPressCount,
+                    noteData = newNote.noteData,
+                    longPressPTick = newNote.configData.time,
+                    endIndex = endIndex
+                };
 
-                holdTick.isLongPressing = i != newNote.longPressCount;
-                holdTick.isLongPressEnd = i == newNote.longPressCount;
-                holdTick.noteData = newNote.noteData;
-                holdTick.longPressPTick = newNote.configData.time;
-                holdTick.endIndex = endIndex;
-
-                MusicDataManager.Add(holdTick);
+                AddMusicData(holdTick);
             }
         }
 
@@ -440,7 +477,7 @@ internal static class BmsLoader
     private static void ProcessBossData(Bms bms)
     {
         var scene = bms.Info.Genre;
-        var bossData = MusicDataManager.Data.Where(mData => mData.isBossNote).ToList();
+        var bossData = MusicDataList.Where(mData => mData.isBossNote).ToList();
 
         // If the boss is not used for some reason, no need to process animations.
         if (bossData.Count == 0) return;
@@ -449,7 +486,7 @@ internal static class BmsLoader
         var finalData = bossData[^1];
         if (AnimStatesRight[finalData.noteData.boss_action] != BossState.OffScreen)
         {
-            var finalNote = MusicDataManager.Data[^1];
+            var finalNote = MusicDataList[^1];
             var tick = finalNote.tick;
 
             if (finalNote.isBossNote)
@@ -463,17 +500,21 @@ internal static class BmsLoader
 
             var exitNoteData = BossData[scene]["out"];
 
-            var exitConfig = Interop.CreateTypeValue<MusicConfigData>();
-            exitConfig.note_uid = exitNoteData.uid;
-            exitConfig.time = tick;
+            var exitConfig = new MusicConfigData
+            {
+                note_uid = exitNoteData.uid,
+                time = tick
+            };
 
-            var exitMusicData = Interop.CreateTypeValue<MusicData>();
-            exitMusicData.objId = 0;
-            exitMusicData.tick = exitConfig.time;
-            exitMusicData.configData = exitConfig;
-            exitMusicData.noteData = exitNoteData;
+            var exitMusicData = new MusicData
+            {
+                objId = 0,
+                tick = exitConfig.time,
+                configData = exitConfig,
+                noteData = exitNoteData
+            };
 
-            MusicDataManager.Add(exitMusicData);
+            AddMusicData(exitMusicData);
             bossData.Add(exitMusicData);
             Logger.Msg("Added missing boss exit at " + exitConfig.time);
         }
@@ -557,23 +598,27 @@ internal static class BmsLoader
             if (cachedGearConfig == null) continue;
             var phaseGearConfig = cachedGearConfig;
 
-            var fixedConfigData = Interop.CreateTypeValue<MusicConfigData>();
-            fixedConfigData.blood = data.configData.blood;
-            fixedConfigData.id = data.configData.id;
-            fixedConfigData.length = data.configData.length;
-            fixedConfigData.note_uid = phaseGearConfig.uid;
-            fixedConfigData.pathway = data.configData.pathway;
-            fixedConfigData.time = data.configData.time;
+            var fixedConfigData = new MusicConfigData
+            {
+                blood = data.configData.blood,
+                id = data.configData.id,
+                length = data.configData.length,
+                note_uid = phaseGearConfig.uid,
+                pathway = data.configData.pathway,
+                time = data.configData.time
+            };
 
-            var fixedGear = Interop.CreateTypeValue<MusicData>();
-            fixedGear.objId = data.objId;
-            fixedGear.tick = data.tick;
-            fixedGear.configData = fixedConfigData;
-            fixedGear.isLongPressEnd = data.isLongPressEnd;
-            fixedGear.isLongPressing = data.isLongPressing;
-            fixedGear.noteData = phaseGearConfig;
+            var fixedGear = new MusicData
+            {
+                objId = data.objId,
+                tick = data.tick,
+                configData = fixedConfigData,
+                isLongPressEnd = data.isLongPressEnd,
+                isLongPressing = data.isLongPressing,
+                noteData = phaseGearConfig
+            };
 
-            MusicDataManager.Set(fixedGear.objId, fixedGear);
+            MusicDataList[fixedGear.objId] = fixedGear;
             bossData[i] = fixedGear;
             Logger.Msg($"Fixed gear at tick {data.tick}.");
         }
@@ -599,14 +644,18 @@ internal static class BmsLoader
 
                 var duration = (Decimal)GetAnimationDuration(scene, transfer);
 
-                var mConfig = Interop.CreateTypeValue<MusicConfigData>();
-                mConfig.note_uid = transferNoteData.uid;
-                mConfig.time = Decimal.Round(alignData.tick - alignDelay - duration * (int)alignment, 3);
+                var mConfig = new MusicConfigData
+                {
+                    note_uid = transferNoteData.uid,
+                    time = Decimal.Round(alignData.tick - alignDelay - duration * (int)alignment, 3)
+                };
 
-                var mData = Interop.CreateTypeValue<MusicData>();
-                mData.tick = mConfig.time;
-                mData.configData = mConfig;
-                mData.noteData = transferNoteData;
+                var mData = new MusicData
+                {
+                    tick = mConfig.time,
+                    configData = mConfig,
+                    noteData = transferNoteData
+                };
 
                 var tolerance = (Decimal)0.300f;
                 var fits = alignment switch
@@ -621,7 +670,7 @@ internal static class BmsLoader
                     continue;
                 }
 
-                MusicDataManager.Add(mData);
+                AddMusicData(mData);
                 bossData.Insert(i, mData);
                 i--;
             }
@@ -641,9 +690,9 @@ internal static class BmsLoader
         var sceneInfo = Singleton<StageBattleComponent>.instance.sceneInfo;
         var delayCache = new Dictionary<string, Decimal>();
 
-        for (var i = 0; i < MusicDataManager.Data.Count; i++)
+        for (var i = 0; i < MusicDataList.Count; i++)
         {
-            var mData = MusicDataManager.Data[i];
+            var mData = MusicDataList[i];
             if (!string.IsNullOrEmpty(mData.noteData.ibms_id))
             {
                 var type = mData.noteData.GetNoteType();
@@ -674,7 +723,6 @@ internal static class BmsLoader
                     if (delayCache.TryGetValue(prefabName, out var delay))
                     {
                         mData.dt = delay;
-                        MusicDataManager.Set(i, mData);
                     }
                 }
             }
@@ -692,11 +740,10 @@ internal static class BmsLoader
     {
         var geminiCache = new Dictionary<Decimal, List<MusicData>>();
 
-        for (var i = 1; i < MusicDataManager.Data.Count; i++)
+        for (var i = 1; i < MusicDataList.Count; i++)
         {
-            var mData = MusicDataManager.Data[i];
+            var mData = MusicDataList[i];
             mData.doubleIdx = -1;
-            MusicDataManager.Set(i, mData);
 
             if (mData.noteData.GetNoteType() != NoteType.Monster && mData.noteData.GetNoteType() != NoteType.Hide)
                 continue;
@@ -705,7 +752,7 @@ internal static class BmsLoader
             {
                 var isNoteGemini = Bms.BmsIds[mData.noteData.ibms_id] == Bms.BmsId.Gemini;
                 var isTargetGemini = false;
-                var target = Interop.CreateTypeValue<MusicData>();
+                var target = new MusicData();
 
                 foreach (var gemini in geminiList.Where(gemini => mData.isAir != gemini.isAir))
                 {
@@ -722,9 +769,6 @@ internal static class BmsLoader
                     mData.doubleIdx = target.objId;
                     target.isDouble = isNoteGemini && isTargetGemini;
                     target.doubleIdx = mData.objId;
-
-                    MusicDataManager.Set(mData.objId, mData);
-                    MusicDataManager.Set(target.objId, target);
                 }
             }
             else
