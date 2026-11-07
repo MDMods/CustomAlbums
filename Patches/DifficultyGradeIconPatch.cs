@@ -17,6 +17,11 @@ internal class DifficultyGradeIconPatch
         return highest.GetValueOrDefault(diff)?.Evaluate ?? -1;
     }
 
+    private static int GetVanillaEvaluate(string uid, int diff)
+    {
+        return DataHelper.highest.GetIDataByUid(uid, diff)?.ToChartSave().Evaluate ?? -1;
+    }
+
     /// <summary>
     ///     Enables the S logos on the difficulties for custom charts.
     /// </summary>
@@ -28,12 +33,12 @@ internal class DifficultyGradeIconPatch
 
         if (string.IsNullOrEmpty(uid)) return;
 
-        // For custom charts, we need to set the S logos for each difficulty
-        if (uid.StartsWith($"{AlbumManager.Uid}-"))
-        {
-            // Gets the highest data from save data
-            var customHighest = SaveManager.SaveData.GetChartSaveDataFromUid(uid)?.Highest;
+        var isCustom = uid.StartsWith($"{AlbumManager.Uid}-");
+        var customHighest = isCustom ? SaveManager.SaveData.GetChartSaveDataFromUid(uid)?.Highest : null;
 
+        // For custom charts, we need to set the S logos for each difficulty
+        if (isCustom)
+        {
             if (customHighest == null) return;
 
             // Get the Evaluate value from each, set diff3 to diff4 if hidden is invoked
@@ -54,8 +59,8 @@ internal class DifficultyGradeIconPatch
         if (!specialSongInstance.m_HideBmsInfos.TryGetValue(uid, out var info)) return;
 
         // Get the difficulty evaluates
-        var hiddenEval = DataHelper.highest.GetIDataByUid(uid, 4).ToChartSave().Evaluate;
-        var masterEval = DataHelper.highest.GetIDataByUid(uid, 3).ToChartSave().Evaluate;
+        var hiddenEval = isCustom ? GetEvaluate(customHighest, 4) : GetVanillaEvaluate(uid, 4);
+        var masterEval = isCustom ? GetEvaluate(customHighest, 3) : GetVanillaEvaluate(uid, 3);
 
         // The game handles case 3 already, don't need to reinvent the wheel here
         switch (info.triggerDiff)
