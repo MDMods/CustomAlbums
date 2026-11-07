@@ -84,7 +84,7 @@ internal static class HotReloadManager
     {
         var addedCount = 0;
         if (!AlbumsToAdd.TryDequeue(out var path)) return addedCount;
-        
+
         try
         {
             var newAlbums = new List<Album>();

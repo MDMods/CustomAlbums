@@ -45,14 +45,14 @@ public static class ConfigDataExtensions
     /// </summary>
     public static MusicConfigData ToMusicConfigData(this ProcessedNote note)
     {
-        var config = Interop.CreateTypeValue<MusicConfigData>();
-        config.id = note.Id;
-        config.time = (Decimal)(float)note.Time;
-        config.note_uid = note.NoteUid;
-        config.length = (Decimal)(float)note.Length;
-        config.pathway = note.Pathway;
-        config.blood = note.Blood;
-
-        return config;
+        return new MusicConfigData
+        {
+            id = note.Id,
+            time = (Decimal)(float)note.Time,
+            note_uid = note.NoteUid,
+            length = (Decimal)(float)note.Length,
+            pathway = note.Pathway,
+            blood = note.Blood
+        };
     }
 }

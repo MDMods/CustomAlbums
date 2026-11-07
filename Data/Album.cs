@@ -1,9 +1,7 @@
 using System.Collections;
-using System.IO.Compression;
 using System.Reflection;
 using CustomAlbums.Managers;
 using CustomAlbums.Patches;
-using CustomAlbums.Utilities;
 using MelonLoader;
 using MelonLoader.Utils;
 using UnityEngine;
@@ -12,115 +10,22 @@ using Logger = CustomAlbums.Utilities.Logger;
 
 namespace CustomAlbums.Data;
 
-public class Album
+public abstract class Album
 {
-    private static readonly Logger Logger = new(nameof(Album));
+    protected static readonly Logger Logger = new(nameof(Album));
     private static Sprite _defaultCover;
 
     private Sprite _cover;
     private bool _isCoverLoading;
 
-    public Album(string directory, ZipArchiveEntry mdm, int index, string packName = null)
-    {
-        if (!string.IsNullOrEmpty(packName)) PackName = packName;
-
-        using var mdmStream = mdm.Open();
-        using var openedZip = new ZipArchive(mdmStream);
-
-        var info = openedZip.GetEntry("info.json");
-        if (info == null)
-        {
-            Logger.Error($"Could not find info.json in package: {mdm.Name}");
-            throw new FileNotFoundException();
-        }
-
-        using var stream = info.Open();
-        Info = Json.Deserialize<AlbumInfo>(stream);
-        IsPackaged = true;
-
-        // CurrentPack will always be null if album is not in a pack
-        IsPack = AlbumManager.CurrentPack != null;
-
-        HasPng = openedZip.GetEntry("cover.png") != null;
-
-        Index = index;
-        Path = directory;
-        PackAlbumName = System.IO.Path.GetFileNameWithoutExtension(mdm.Name);
-        GetSheets();
-    }
-
-    public Album(string path, int index, string packName = null)
-    {
-        // If packName is not null then it's a file path, not a folder chart
-        if (Directory.Exists(path) && packName == null)
-        {
-            // Load album from directory
-            if (!File.Exists($"{path}\\info.json"))
-            {
-                Logger.Error($"Could not find info.json at: {path}\\info.json");
-                throw new FileNotFoundException();
-            }
-
-            using var fileStream = File.OpenRead($"{path}\\info.json");
-            Info = Json.Deserialize<AlbumInfo>(fileStream);
-            HasPng = File.Exists(System.IO.Path.Combine(path, "cover.png"));
-        }
-        else if (File.Exists(path))
-        {
-            // Load album from package
-            PackName = packName;
-            using var zip = ZipFile.OpenRead(path);
-            var info = zip.GetEntry("info.json");
-            if (info == null)
-            {
-                Logger.Error($"Could not find info.json in package: {path}");
-                throw new FileNotFoundException();
-            }
-
-            using var stream = info.Open();
-            Info = Json.Deserialize<AlbumInfo>(stream);
-            IsPackaged = true;
-
-            // CurrentPack will always be null if album is not in a pack
-            IsPack = AlbumManager.CurrentPack != null;
-
-            HasPng = zip.GetEntry("cover.png") != null;
-        }
-        else
-        {
-            Logger.Error($"Could not find album at: {path}");
-            throw new FileNotFoundException();
-        }
-
-        Index = index;
-        Path = path;
-
-        GetSheets();
-    }
-
-    public string PackAlbumName { get; } = string.Empty;
     public int Index { get; internal set; }
-    public string Path { get; }
-    public bool IsPackaged { get; }
-    public bool IsPack { get; }
-    public bool HasPng { get; }
+    public string Path { get; protected set; }
+    public bool HasPng { get; protected set; }
+    public AlbumInfo Info { get; protected set; }
 
-    public bool HasCover
-    {
-        get
-        {
-            if (HasPng)
-            {
-                HotReloadManager.PnlStageInstance?.RefreshStageUI();
-                return true;
-            }
+    public abstract string AlbumName { get; }
 
-            return false;
-        }
-    }
-
-    public string PackName { get; }
-    public AlbumInfo Info { get; }
+    public Dictionary<int, Sheet> Sheets { get; } = new();
 
     public static Sprite DefaultCover
     {
@@ -165,41 +70,41 @@ public class Album
         }
     }
 
+    public bool HasCover
+    {
+        get
+        {
+            if (HasPng)
+            {
+                HotReloadManager.PnlStageInstance?.RefreshStageUI();
+                return true;
+            }
+
+            return false;
+        }
+    }
+
     public AudioClip Music => this.GetAudio();
     public AudioClip Demo => this.GetAudio("demo");
-    public Dictionary<int, Sheet> Sheets { get; } = new();
-
-    public string AlbumName =>
-        IsPackaged
-            ? $"album_{(string.IsNullOrEmpty(PackAlbumName) ? System.IO.Path.GetFileNameWithoutExtension(Path) : string.Empty)}{(PackName != null ? $"{PackAlbumName}_{PackName}" : string.Empty)}"
-            : $"album_{System.IO.Path.GetFileName(Path)}_folder";
-
     public string Uid => $"{AlbumManager.Uid}-{Index}";
+
+    protected void GetSheets()
+    {
+        foreach (var difficulty in Info.Difficulties.Keys.Where(difficulty => HasFile($"map{difficulty}.bms")))
+            Sheets.Add(difficulty, new Sheet(this, difficulty));
+    }
+
+    public bool HasDifficulty(int difficulty)
+    {
+        return Sheets.ContainsKey(difficulty);
+    }
 
     private IEnumerator LoadCoverAsync()
     {
-        string url;
         var cacheDir = System.IO.Path.Combine(MelonEnvironment.UserDataDirectory, "CustomAlbums", "Cache");
         if (!Directory.Exists(cacheDir)) Directory.CreateDirectory(cacheDir);
 
-        if (IsPack || IsPackaged)
-        {
-            var cacheFile = System.IO.Path.Combine(cacheDir, $"{Uid}_cover.png");
-            if (File.Exists(cacheFile)) File.Delete(cacheFile);
-
-            using var stream = OpenNullableStream("cover.png");
-            if (stream != null)
-            {
-                using var fs = File.OpenWrite(cacheFile);
-                stream.CopyTo(fs);
-            }
-
-            url = "file:///" + cacheFile.Replace('\\', '/');
-        }
-        else
-        {
-            url = "file:///" + System.IO.Path.Combine(Path, "cover.png").Replace('\\', '/');
-        }
+        var url = GetCoverUrl(cacheDir);
 
         var request = UnityWebRequestTexture.GetTexture(url);
         yield return request.SendWebRequest();
@@ -218,147 +123,23 @@ public class Album
         _isCoverLoading = false;
     }
 
-    public bool HasFile(string name)
+    protected virtual string GetCoverUrl(string cacheDir)
     {
-        if (IsPack && !string.IsNullOrEmpty(PackAlbumName))
+        var cacheFile = System.IO.Path.Combine(cacheDir, $"{Uid}_cover.png");
+        if (File.Exists(cacheFile)) File.Delete(cacheFile);
+
+        using var stream = OpenNullableStream("cover.png");
+        if (stream != null)
         {
-            if (!File.Exists(Path)) return false;
-            try
-            {
-                using var mdp = ZipFile.OpenRead(Path);
-                using var openedMdm = mdp.GetNestedZip(PackAlbumName + ".mdm");
-                return openedMdm.GetEntry(name) != null;
-            }
-            catch (IOException)
-            {
-                return false;
-            }
+            using var fs = File.OpenWrite(cacheFile);
+            stream.CopyTo(fs);
         }
 
-        if (IsPackaged)
-        {
-            if (!File.Exists(Path)) return false;
-            try
-            {
-                using var zip = ZipFile.OpenRead(Path);
-                return zip.GetEntry(name) != null;
-            }
-            catch (IOException)
-            {
-                // This is expected in the case of deleting an album
-                return false;
-            }
-        }
-
-        var path = $"{Path}\\{name}";
-        return File.Exists(path);
+        return "file:///" + cacheFile.Replace('\\', '/');
     }
 
-    public Stream OpenFileStreamIfPossible(string file)
-    {
-        if (IsPack && !string.IsNullOrEmpty(PackAlbumName))
-        {
-            using var mdp = ZipFile.OpenRead(Path);
-            using var openedMdm = mdp.GetNestedZip(PackAlbumName + ".mdm");
-            var entry = openedMdm.GetEntry(file);
-
-            if (entry != null) return entry.Open().ToMemoryStream();
-
-            Logger.Error($"Could not find file in package: {file}");
-            throw new FileNotFoundException();
-        }
-
-        if (IsPackaged)
-        {
-            using var zip = ZipFile.OpenRead(Path);
-            var entry = zip.GetEntry(file);
-
-            if (entry != null) return entry.Open().ToMemoryStream();
-
-            Logger.Error($"Could not find file in package: {file}");
-            throw new FileNotFoundException();
-        }
-
-        var path = $"{Path}\\{file}";
-        if (File.Exists(path))
-            return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-
-        Logger.Error($"Could not find file: {path}");
-        throw new FileNotFoundException();
-    }
-
-    public Stream OpenNullableStream(string file)
-    {
-        if (IsPack && !string.IsNullOrEmpty(PackAlbumName))
-        {
-            using var mdp = ZipFile.OpenRead(Path);
-            using var openedMdm = mdp.GetNestedZip(PackAlbumName + ".mdm");
-            var entry = openedMdm.GetEntry(file);
-
-            if (entry != null) return entry.Open().ToMemoryStream();
-
-            return null;
-        }
-
-        if (IsPackaged)
-        {
-            using var zip = ZipFile.OpenRead(Path);
-            var entry = zip.GetEntry(file);
-
-            if (entry != null) return entry.Open().ToMemoryStream();
-
-            return null;
-        }
-
-        var path = $"{Path}\\{file}";
-        if (File.Exists(path))
-            return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-
-        return null;
-    }
-
-    public MemoryStream OpenMemoryStream(string file)
-    {
-        if (IsPack && !string.IsNullOrEmpty(PackAlbumName))
-        {
-            using var mdp = ZipFile.OpenRead(Path);
-            using var openedMdm = mdp.GetNestedZip(PackAlbumName + ".mdm");
-            var entry = openedMdm.GetEntry(file);
-
-            if (entry != null) return entry.Open().ToMemoryStream();
-
-            Logger.Error($"Could not find file in package: {file}");
-            throw new FileNotFoundException();
-        }
-
-        if (IsPackaged)
-        {
-            using var zip = ZipFile.OpenRead(Path);
-            var entry = zip.GetEntry(file);
-
-            if (entry != null) return entry.Open().ToMemoryStream();
-
-            Logger.Error($"Could not find file in package: {file}");
-            throw new FileNotFoundException();
-        }
-
-        var path = $"{Path}\\{file}";
-        if (File.Exists(path))
-            return File.Open(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite).ToMemoryStream();
-
-        Logger.Error($"Could not find file: {path}");
-        throw new FileNotFoundException();
-    }
-
-    private void GetSheets()
-    {
-        // Adds to the Sheets dictionary
-        foreach (var difficulty in Info.Difficulties.Keys.Where(difficulty => HasFile($"map{difficulty}.bms")))
-            Sheets.Add(difficulty, new Sheet(this, difficulty));
-    }
-
-    public bool HasDifficulty(int difficulty)
-    {
-        return Sheets.ContainsKey(difficulty);
-    }
+    public abstract bool HasFile(string name);
+    public abstract Stream OpenFileStreamIfPossible(string file);
+    public abstract Stream OpenNullableStream(string file);
+    public abstract MemoryStream OpenMemoryStream(string file);
 }

@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.IO.Compression;
+using CustomAlbums.Albums;
 using CustomAlbums.Data;
 using CustomAlbums.ModExtensions;
 using CustomAlbums.Utilities;
@@ -41,22 +42,18 @@ public static class AlbumManager
 
     public static Pack LoadPack(string directory)
     {
-        // Get the files from the directory
         try
         {
             var zipFiles = ZipFile.OpenRead(directory);
 
-            // Filter for .mdm files and find the pack.json file
             var mdms = zipFiles.Entries.Where(file => file.Name.EndsWith(".mdm"));
             var json = zipFiles.Entries.FirstOrDefault(file => file.Name.EndsWith(".json"));
 
-            // Initialize pack and variables
             var pack = PackManager.CreatePack(json, directory);
             CurrentPack = pack.Title;
 
             pack.StartIndex = MaxCount;
 
-            // Count successfully loaded .mdm files
             pack.Length = mdms.Count(mdm =>
             {
                 var album = LoadOne(directory, mdm, mdm.FullName);
@@ -69,7 +66,6 @@ public static class AlbumManager
                 return false;
             });
 
-            // Set the current pack to null and add the pack to the pack list
             CurrentPack = null;
             PackManager.AddPack(pack);
 
@@ -89,35 +85,10 @@ public static class AlbumManager
         var fileName = Path.GetFileNameWithoutExtension(fullFileName);
         try
         {
-            var album = new Album(directory, mdm, 0, CurrentPack);
-            if (album.Info is null) return null;
-
-            var albumName = album.AlbumName;
-            if (LoadedAlbums.ContainsKey(albumName)) return null;
-
-            if (UidHistory.TryGetValue(albumName, out var oldIndex))
-            {
-                album.Index = oldIndex;
-            }
-            else
-            {
-                album.Index = MaxCount;
-                MaxCount++;
-                UidHistory[albumName] = album.Index;
-            }
-
-            Logger.Msg("Adding " + albumName + " as a pack!");
-
-            LoadedAlbums.Add(albumName, album);
-
-            if (album.HasPng)
-                ResourcesManager.instance.LoadFromName<Sprite>($"{albumName}_cover").hideFlags |=
-                    HideFlags.DontUnloadUnusedAsset;
-
-
-            Logger.Msg($"Loaded {albumName}: {album.Info.Name}");
-            OnAlbumLoaded?.Invoke(typeof(AlbumManager), new AlbumEventArgs(album));
-            return album;
+            var album = new PackAlbum(directory, mdm, 0, CurrentPack);
+            var registered = RegisterAlbum(album);
+            if (registered != null) Logger.Msg("Adding " + registered.AlbumName + " as a pack!");
+            return registered;
         }
         catch (Exception ex)
         {
@@ -134,32 +105,13 @@ public static class AlbumManager
         var fileName = isDirectory ? Path.GetFileName(path) : Path.GetFileNameWithoutExtension(path);
         try
         {
-            var album = new Album(path, 0, CurrentPack);
-            if (album.Info is null) return null;
-
-            var albumName = album.AlbumName;
-            if (LoadedAlbums.ContainsKey(albumName)) return null;
-
-            if (UidHistory.TryGetValue(albumName, out var oldIndex))
-            {
-                album.Index = oldIndex;
-            }
+            Album album;
+            if (isDirectory)
+                album = new FolderAlbum(path, 0);
             else
-            {
-                album.Index = MaxCount;
-                MaxCount++;
-                UidHistory[albumName] = album.Index;
-            }
+                album = new ArchiveAlbum(path, 0);
 
-            LoadedAlbums.Add(albumName, album);
-
-            if (album.HasPng)
-                ResourcesManager.instance.LoadFromName<Sprite>($"{albumName}_cover").hideFlags |=
-                    HideFlags.DontUnloadUnusedAsset;
-
-            Logger.Msg($"Loaded {albumName}: {album.Info.Name}");
-            OnAlbumLoaded?.Invoke(typeof(AlbumManager), new AlbumEventArgs(album));
-            return album;
+            return RegisterAlbum(album);
         }
         catch (Exception ex)
         {
@@ -168,6 +120,35 @@ public static class AlbumManager
         }
 
         return null;
+    }
+
+    private static Album RegisterAlbum(Album album)
+    {
+        if (album.Info is null) return null;
+
+        var albumName = album.AlbumName;
+        if (LoadedAlbums.ContainsKey(albumName)) return null;
+
+        if (UidHistory.TryGetValue(albumName, out var oldIndex))
+        {
+            album.Index = oldIndex;
+        }
+        else
+        {
+            album.Index = MaxCount;
+            MaxCount++;
+            UidHistory[albumName] = album.Index;
+        }
+
+        LoadedAlbums.Add(albumName, album);
+
+        if (album.HasPng)
+            ResourcesManager.instance.LoadFromName<Sprite>($"{albumName}_cover").hideFlags |=
+                HideFlags.DontUnloadUnusedAsset;
+
+        Logger.Msg($"Loaded {albumName}: {album.Info.Name}");
+        OnAlbumLoaded?.Invoke(typeof(AlbumManager), new AlbumEventArgs(album));
+        return album;
     }
 
     public static void LoadAlbums()
@@ -199,7 +180,8 @@ public static class AlbumManager
 
     public static Album GetByUid(string uid)
     {
-        return LoadedAlbums.FirstOrDefault(album => album.Value.Index == uid[4..].ParseAsInt()).Value;
+        if (uid is null || !uid.StartsWith($"{Uid}-") || !uid[4..].TryParseAsInt(out var index)) return null;
+        return LoadedAlbums.FirstOrDefault(album => album.Value.Index == index).Value;
     }
 
     public static string GetAlbumNameFromUid(string uid)
